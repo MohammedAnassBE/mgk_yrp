@@ -125,12 +125,19 @@ def get_adjustment_blockers(close, nodes, *, completed=True, excluded_sources=()
 
 
 def format_adjustment_blocker(adjustment) -> str:
-	if adjustment.source_doctype == "MGK Delivery Challan Close":
-		return _(
-			"Stock Valuation Adjustment {0} ({1}) from {2} {3} blocks reopening; "
-			"reopen its source Close and finish its reversal, or retry the unfinished valuation first."
-		).format(adjustment.name, adjustment.status, adjustment.source_doctype, adjustment.source_name)
-	return _(
-		"Stock Valuation Adjustment {0} ({1}) from {2} {3} blocks reopening; "
-		"cancel its source and finish its reversal, or retry the unfinished valuation first."
-	).format(adjustment.name, adjustment.status, adjustment.source_doctype, adjustment.source_name)
+	message = _("Stock Valuation Adjustment {0} ({1}) from {2} {3} blocks reopening.").format(
+		adjustment.name, adjustment.status, adjustment.source_doctype, adjustment.source_name
+	)
+	if adjustment.status == "Completed":
+		action = (
+			_("Reopen its source Close and finish its reversal before reopening.")
+			if adjustment.source_doctype == "MGK Delivery Challan Close"
+			else _("Cancel its source and finish its reversal before reopening.")
+		)
+	elif adjustment.status == "Reversal Queued":
+		action = _("Wait for its reversal to finish; retry the reversal if it fails.")
+	elif adjustment.status in {"Calculation Failed", "Apply Failed"}:
+		action = _("Retry the failed valuation before reopening.")
+	else:
+		action = _("Wait for the valuation to finish before reopening; retry it if it stalls or fails.")
+	return f"{message} {action}"

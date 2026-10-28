@@ -6,6 +6,7 @@ import frappe
 from yrp.yrp_stock.doctype.yrp_stock_valuation_adjustment import yrp_stock_valuation_adjustment as valuation
 
 from mgk_yrp.job_work.dependencies import (
+	format_adjustment_blocker,
 	get_adjustment_blockers,
 	get_downstream_blockers,
 	lock_close_submission,
@@ -176,8 +177,36 @@ class TestReopenDependencies(TestCase):
 		]
 		blockers = get_adjustment_blockers(self.close, ("own-consumption",))
 		self.assertEqual(len(blockers), 1)
-		self.assertIn("reopen its source Close", blockers[0])
-		self.assertNotIn("cancel its source", blockers[0])
+		self.assertIn("Reopen its source Close", blockers[0])
+		self.assertNotIn("Cancel its source", blockers[0])
+		self.assertNotIn("retry", blockers[0].lower())
+
+	def test_adjustment_blocker_instructions_match_status(self):
+		instructions = {
+			"Completed": "Cancel its source and finish its reversal",
+			"Reversal Queued": "Wait for its reversal to finish",
+			"Calculation Failed": "Retry the failed valuation",
+			"Apply Failed": "Retry the failed valuation",
+			"Queued": "Wait for the valuation to finish",
+			"Calculating": "Wait for the valuation to finish",
+			"Applying": "Wait for the valuation to finish",
+		}
+		for status, instruction in instructions.items():
+			with self.subTest(status=status):
+				message = format_adjustment_blocker(
+					frappe._dict(
+						name="SVA-43",
+						source_doctype="MGK Purchase Invoice",
+						source_name="PI-43",
+						status=status,
+					)
+				)
+				self.assertIn(f"SVA-43 ({status})", message)
+				self.assertIn("MGK Purchase Invoice PI-43", message)
+				self.assertIn(instruction, message)
+				self.assertNotIn("unfinished valuation", message)
+				if status == "Completed":
+					self.assertNotIn("retry", message.lower())
 
 	def test_consumption_and_output_share_one_downstream_close_blocker(self):
 		self.close.stock_valuation_adjustment = None

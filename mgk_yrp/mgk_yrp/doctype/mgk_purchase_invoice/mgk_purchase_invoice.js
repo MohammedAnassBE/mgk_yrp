@@ -4,6 +4,14 @@ frappe.ui.form.on("MGK Purchase Invoice", {
 	setup(frm) {
 		const can_amend = frm.toolbar.can_amend.bind(frm.toolbar);
 		frm.toolbar.can_amend = () => !frm.doc.__onload?.valuation_pending && can_amend();
+		const set_action = frm.page.set_action.bind(frm.page);
+		frm.page.set_action = (button, options) => {
+			// A toolbar lookup started before setup can finish after refresh.
+			if (options.label === __("Amend") && !frm.toolbar.can_amend()) {
+				return frm.page.clear_action_of(button);
+			}
+			return set_action(button, options);
+		};
 		frm.set_query("supplier", () => ({ filters: { disabled: 0 } }));
 		frm.get_field("items").grid.cannot_add_rows = true;
 	},

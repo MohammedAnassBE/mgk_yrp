@@ -103,17 +103,17 @@ test("GRN badge filters use the receipt's invoice link supported by Desk", () =>
 	assert.equal(settings.get_indicator({})[2], "purchase_invoice,is,not set");
 });
 
-function refreshForm(doctype, doc, permissions) {
+function refreshForm(doctype, doc, permissions, refresh = true) {
 	const environment = desk(permissions);
 	load(environment, doctype);
 	const shown = [];
 	const grid = { update_docfield_property() {}, refresh() {} };
 	const form = {
-		doctype, doc, fields_dict: { items: { grid } },
+		doctype, doc, fields_dict: { items: { grid }, outputs: { grid } },
 		add_custom_button: label => shown.push(label), remove_custom_button() {}, set_intro() {},
 		set_df_property() {}, page: { clear_secondary_action() {} },
 	};
-	environment.events[doctype].refresh(form);
+	if (refresh) environment.events[doctype].refresh(form);
 	return { environment, form, shown };
 }
 
@@ -257,15 +257,7 @@ for (const [doctype, pending, finished] of [
 ]) {
 	test(`${doctype}: Amend waits for ${JSON.stringify(pending)} and retains permissions`, () => {
 		const { environment, form } = refreshForm(doctype, { docstatus: 2, ...pending });
-		const source = readFileSync(resolve(__dirname,
-			"../../../frappe/frappe/public/js/frappe/form/toolbar.js"), "utf8");
-		const start = source.indexOf("\tcan_amend()");
-		const end = source.indexOf("\n\thas_workflow()", start);
-		const methods = vm.runInContext(`({${source.slice(start, end)}})`, environment.context);
-		form.perm = [{ amend: true }];
-		form.toolbar = { ...methods, frm: form, get_docstatus: () => form.doc.docstatus };
-		form.set_query = () => {};
-		form.get_field = () => form.fields_dict.items;
+		attachToolbar(environment, form);
 		environment.events[doctype].setup(form);
 		assert.equal(form.toolbar.can_amend(), false);
 		form.doc = { docstatus: 2, ...finished };
@@ -276,7 +268,126 @@ for (const [doctype, pending, finished] of [
 		form.doc.docstatus = 1;
 		assert.equal(form.toolbar.can_amend(), false);
 	});
+
+	for (const amended of [false, "amended-document"]) {
+		for (const path of ["fresh load", "refresh"]) {
+			test(`${doctype}: ${path} rejects late Amend (${amended}) during ${JSON.stringify(pending)}`, async () => {
+				const { environment, form } = refreshForm(doctype,
+					{ doctype, name: "test", docstatus: 2, ...finished }, undefined, false);
+				attachToolbar(environment, form);
+				let finish;
+				environment.frappe.xcall = (method, args) => {
+					assert.equal(method, "frappe.client.is_document_amended");
+					assert.equal(args.docname, "test");
+					return new Promise(resolve => { finish = resolve; });
+				};
+				if (path === "refresh") environment.events[doctype].setup(form);
+				else Object.assign(form.doc, pending);
+				form.toolbar.set_primary_action();
+				assert.equal(typeof finish, "function", "lookup begins before the guard takes effect");
+				if (path === "fresh load") environment.events[doctype].setup(form);
+				Object.assign(form.doc, pending);
+				for (let count = 0; count < 2; count++) {
+					form.toolbar.set_primary_action();
+					environment.events[doctype].refresh(form);
+				}
+				finish(amended);
+				await new Promise(resolve => setImmediate(resolve));
+				assert.equal(form.page.btn_primary.visible, false);
+				assert.equal(form.page.btn_secondary.visible, false);
+				Object.assign(form.doc, finished);
+				form.toolbar.set_primary_action();
+				finish(false);
+				await new Promise(resolve => setImmediate(resolve));
+				assert.equal(form.page.btn_primary.visible, true, "Amend returns after completion");
+				assert.equal(form.page.btn_primary.label, "Amend");
+			});
+		}
+	}
 }
+
+function toolbarButton() {
+	return {
+		visible: false,
+		addClass() { this.visible = false; return this; },
+		unbind() { return this; }, removeAttr() { return this; },
+		prop() { return this; }, wrap() { return this; }, parent() { return this; },
+		attr() { return this; }, tooltip() { return this; },
+	};
+}
+
+function attachToolbar(environment, form) {
+	const source = readFileSync(resolve(__dirname,
+		"../../../frappe/frappe/public/js/frappe/form/toolbar.js"), "utf8");
+	vm.runInContext(source.slice(source.indexOf("frappe.ui.form.Toolbar =")), environment.context);
+	const page = readFileSync(resolve(__dirname,
+		"../../../frappe/frappe/public/js/frappe/ui/page.js"), "utf8");
+	const start = page.indexOf("\tset_primary_action(");
+	const end = page.indexOf("\n\t// Close and tear down", start);
+	Object.setPrototypeOf(form.page,
+		vm.runInContext(`(class {${page.slice(start, end)}}).prototype`, environment.context));
+	delete form.page.clear_secondary_action;
+	Object.assign(form.page, {
+		btn_primary: toolbarButton(), btn_secondary: toolbarButton(), clear_user_actions() {},
+		set_action(button, options) { button.label = options.label; button.visible = true; },
+	});
+	environment.context.cint = Number;
+	form.perm = [{ amend: true }];
+	form.action_perm_type_map = { Amend: "amend" };
+	form.toolbar = Object.assign(Object.create(environment.frappe.ui.form.Toolbar.prototype), {
+		frm: form, page: form.page, has_workflow: () => false,
+	});
+	form.set_query = () => {};
+	form.get_field = field => form.fields_dict[field];
+	environment.frappe.db = { get_value: () => assert.fail("use status supplied in the document") };
+}
+
+test("Close distinguishes draft previews from rates recorded at close", () => {
+	const { environment, form } = refreshForm("MGK Delivery Challan Close", { docstatus: 0 });
+	const labels = {};
+	form.set_df_property = (field, property, value) => { labels[field] = value; };
+	form.fields_dict.outputs.grid = {
+		update_docfield_property(field, property, value) { labels[field] = value; }, refresh() {},
+	};
+	let intro;
+	form.set_intro = message => { intro = message; };
+	for (const docstatus of [0, 1, 2, 0]) {
+		form.doc = { docstatus, outputs: [{}], output_stock_uom: "Kg", value_per_unit: 3100 / 60 };
+		environment.events[form.doctype].refresh(form);
+		assert.equal(intro, docstatus === 0 ? "Adds ₹51.67 per Kg to 1 GRN rows"
+			: "At close: added ₹51.67 per Kg to 1 GRN rows");
+		assert.equal(labels.value_per_unit, docstatus === 0 ? "Value Per Unit" : "Value Per Unit at Close");
+		assert.equal(labels.allocated_rate, docstatus === 0 ? "Allocated Rate" : "Allocated Rate at Close");
+	}
+});
+
+test("Close hides uncomputed draft gaps and restores saved consumption values", () => {
+	const { environment, form } = refreshForm("MGK Delivery Challan Close", { docstatus: 0 });
+	const hidden = {};
+	form.set_df_property = (field, property, value) => { if (property === "hidden") hidden[field] = value; };
+	form.fields_dict.items.grid = {
+		update_docfield_property(field, property, value) { hidden[field] = value; }, refresh() {},
+	};
+	for (const docstatus of [0, 1, 2, 0]) {
+		form.doc = { docstatus, total_value_gap: docstatus === 0 ? 0 : 125 };
+		environment.events[form.doctype].refresh(form);
+		for (const field of ["total_value_gap", "consumed_value", "value_gap"]) {
+			assert.equal(hidden[field], docstatus === 0, `${field} at docstatus ${docstatus}`);
+		}
+	}
+});
+
+test("Close write-off intro distinguishes previews from the value recorded at close", () => {
+	const { environment, form } = refreshForm("MGK Delivery Challan Close", { docstatus: 0 });
+	let intro;
+	form.set_intro = message => { intro = message; };
+	for (const docstatus of [0, 1]) {
+		form.doc = { docstatus, outputs: [], loss_value: 125 };
+		environment.events[form.doctype].refresh(form);
+		assert.equal(intro, docstatus === 0 ? "No linked GRN: ₹125.00 will be written off"
+			: "At close: ₹125.00 was written off (no linked GRN)");
+	}
+});
 
 for (const name of ["mgk_delivery_challan_close", "mgk_delivery_challan_close_item",
 	"mgk_delivery_challan_close_output"]) {
