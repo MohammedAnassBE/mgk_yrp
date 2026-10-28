@@ -6,6 +6,10 @@ from yrp.stock.uom import apply_item_uom
 SNAPSHOT_FIELDS = ("uom", "stock_uom", "conversion_factor")
 
 
+def has_uom_snapshot(row) -> bool:
+	return all(row.get(fieldname) for fieldname in SNAPSHOT_FIELDS)
+
+
 def apply_independent_uom(row) -> None:
 	apply_item_uom(row, item_field="item")
 	row.stock_qty = flt(row.qty) * flt(row.conversion_factor)

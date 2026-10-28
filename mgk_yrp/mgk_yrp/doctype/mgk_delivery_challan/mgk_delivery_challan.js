@@ -13,10 +13,12 @@ frappe.ui.form.on("MGK Delivery Challan", {
 		grid.cannot_add_rows = Boolean(frm.doc.is_return);
 		grid.refresh();
 		if (frm.doc.docstatus === 1 && !frm.doc.is_return && frm.doc.close_status === "Open") {
-			frm.add_custom_button(__("Return"), () => frappe.model.open_mapped_doc({
-				method: "mgk_yrp.mgk_yrp.doctype.mgk_delivery_challan.mgk_delivery_challan.make_return_delivery_challan",
-				frm,
-			}));
+			if (frappe.model.can_create("MGK Delivery Challan")) {
+				frm.add_custom_button(__("Return"), () => frappe.model.open_mapped_doc({
+					method: "mgk_yrp.mgk_yrp.doctype.mgk_delivery_challan.mgk_delivery_challan.make_return_delivery_challan",
+					frm,
+				}));
+			}
 			if (frappe.model.can_create("MGK Delivery Challan Close")) {
 				frm.add_custom_button(__("Close"), () => frappe.model.open_mapped_doc({
 					method: "mgk_yrp.mgk_yrp.doctype.mgk_delivery_challan.mgk_delivery_challan.make_delivery_challan_close",

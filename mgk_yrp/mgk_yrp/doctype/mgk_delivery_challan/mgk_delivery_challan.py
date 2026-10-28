@@ -17,9 +17,9 @@ from mgk_yrp.stock.ledger import (
 )
 from mgk_yrp.stock.locking import lock_documents
 from mgk_yrp.stock.uom import (
-	SNAPSHOT_FIELDS,
 	apply_independent_uom,
 	copy_uom_snapshot,
+	has_uom_snapshot,
 	validate_uom_snapshot,
 )
 from mgk_yrp.stock.warehouse import get_supplier_warehouse
@@ -85,7 +85,7 @@ class MGKDeliveryChallan(Document):
 			original = source_rows.get(row.against_dc_item)
 			if not original or original.item != row.item:
 				frappe.throw(_("Row {0}: Item must map to a row of this Delivery Challan.").format(row.idx))
-			if row.is_new() and not any(row.get(fieldname) for fieldname in SNAPSHOT_FIELDS):
+			if row.is_new() and not has_uom_snapshot(row):
 				copy_uom_snapshot(row, original)
 			validate_uom_snapshot(row, original, _("Delivery Challan"))
 			copy_uom_snapshot(row, original)

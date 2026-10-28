@@ -1,6 +1,7 @@
 frappe.ui.form.on("MGK Purchase Order", {
 	refresh(frm) {
-		if (frm.doc.docstatus === 1 && (frm.doc.items || []).some(row => flt(row.pending_qty) > 0)) {
+		if (frm.doc.docstatus === 1 && (frm.doc.items || []).some(row => flt(row.pending_qty) > 0)
+			&& frappe.model.can_create("MGK Goods Received Note")) {
 			frm.add_custom_button(__("Create GRN"), () => frappe.model.open_mapped_doc({
 				method: "mgk_yrp.mgk_yrp.doctype.mgk_purchase_order.mgk_purchase_order.make_goods_received_note",
 				frm,

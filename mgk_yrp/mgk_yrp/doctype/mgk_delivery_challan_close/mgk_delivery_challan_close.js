@@ -9,7 +9,7 @@ frappe.ui.form.on("MGK Delivery Challan Close", {
 		if (frm.doc.docstatus === 1 && frappe.model.can_cancel(frm.doctype)) {
 			frm.add_custom_button(__("Reopen"), () => frm.savecancel());
 		}
-		if (frm.doc.reopen_status === "Reversing") {
+		if (frm.doc.docstatus === 2 && frm.doc.reopen_status === "Reversing") {
 			frm.set_intro(__("Reversing valuation; consumption will be cancelled when the reversal completes."), "orange");
 			if (frappe.model.can_cancel(frm.doctype)) {
 				frm.add_custom_button(__("Finish Reopen"), async () => {

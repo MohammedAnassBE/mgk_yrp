@@ -50,6 +50,7 @@ class TestPurchaseOrderGRN(IntegrationTestCase):
 		self.assertEqual(receipt.items[0].rate, 100)
 		self.assertEqual(receipt.items[0].conversion_factor, order.items[0].conversion_factor)
 		receipt.items[0].qty = 20
+		receipt.set("items", receipt.items[:1])
 		receipt.insert(ignore_permissions=True).submit()
 		self.assertEqual(receipt.items[0].qty, 20)
 		make_po_grn(order, {order.items[1].name: 40})
@@ -206,6 +207,7 @@ class TestPurchaseOrderGRN(IntegrationTestCase):
 		old_names = {row.name for row in get_voucher_sles(receipt.doctype, receipt.name)}
 		receipt.cancel()
 		amended = frappe.copy_doc(receipt)
+		amended.docstatus = 0
 		amended.amended_from = receipt.name
 		amended.insert(ignore_permissions=True).submit()
 		self.assertNotEqual(amended.name, receipt.name)

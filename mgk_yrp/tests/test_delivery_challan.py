@@ -335,6 +335,7 @@ class TestDeliveryChallan(IntegrationTestCase):
 		old_names = {entry.name for entry in get_voucher_sles(challan.doctype, challan.name)}
 		challan.cancel()
 		amended = frappe.copy_doc(challan)
+		amended.docstatus = 0
 		amended.amended_from = challan.name
 		amended.insert(ignore_permissions=True).submit()
 		self.assert_pair(amended, quantity=50, rate=100, source=self.main, destination=self.destination)

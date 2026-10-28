@@ -13,7 +13,7 @@ from mgk_yrp.purchase.gst import apply_row_gst, get_gst_context
 from mgk_yrp.purchase.revaluation import create_invoice_adjustment
 from mgk_yrp.stock.ledger import validate_stock_dimensions
 from mgk_yrp.stock.locking import lock_documents
-from mgk_yrp.stock.uom import SNAPSHOT_FIELDS, copy_uom_snapshot, validate_uom_snapshot
+from mgk_yrp.stock.uom import copy_uom_snapshot, has_uom_snapshot, validate_uom_snapshot
 
 
 class MGKPurchaseInvoice(Document):
@@ -62,7 +62,7 @@ class MGKPurchaseInvoice(Document):
 			frappe.throw(
 				_("Row {0}: Full-GRN billing requires the original item and quantity.").format(row.idx)
 			)
-		if row.is_new() and not any(row.get(field) for field in SNAPSHOT_FIELDS):
+		if row.is_new() and not has_uom_snapshot(row):
 			copy_uom_snapshot(row, source)
 		validate_uom_snapshot(row, source, _("Goods Received Note"))
 		if not math.isfinite(flt(row.rate)) or flt(row.rate) < 0:

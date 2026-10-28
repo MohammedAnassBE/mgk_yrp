@@ -1,0 +1,12 @@
+{
+ "doctype": "Desktop Icon",
+ "name": "MGK",
+ "label": "MGK",
+ "app": "mgk_yrp",
+ "standard": 1,
+ "hidden": 0,
+ "icon": "stock",
+ "icon_type": "Link",
+ "link_type": "Workspace Sidebar",
+ "link_to": "MGK"
+}

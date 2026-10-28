@@ -1,0 +1,81 @@
+{
+ "doctype": "Sidebar",
+ "name": "MGK",
+ "title": "MGK",
+ "app": "mgk_yrp",
+ "module": "MGK YRP",
+ "header_icon": "stock",
+ "standard": 1,
+ "items": [
+  {
+   "type": "Link",
+   "label": "Purchase Order",
+   "link_type": "DocType",
+   "link_to": "MGK Purchase Order",
+   "child": 0
+  },
+  {
+   "type": "Link",
+   "label": "Goods Received Note",
+   "link_type": "DocType",
+   "link_to": "MGK Goods Received Note",
+   "child": 0
+  },
+  {
+   "type": "Link",
+   "label": "Delivery Challan",
+   "link_type": "DocType",
+   "link_to": "MGK Delivery Challan",
+   "child": 0
+  },
+  {
+   "type": "Link",
+   "label": "Delivery Challan Close",
+   "link_type": "DocType",
+   "link_to": "MGK Delivery Challan Close",
+   "child": 0
+  },
+  {
+   "type": "Link",
+   "label": "Purchase Invoice",
+   "link_type": "DocType",
+   "link_to": "MGK Purchase Invoice",
+   "child": 0
+  },
+  {
+   "type": "Link",
+   "label": "Agent",
+   "link_type": "DocType",
+   "link_to": "MGK Agent",
+   "child": 0
+  },
+  {
+   "type": "Link",
+   "label": "Settings",
+   "link_type": "DocType",
+   "link_to": "MGK Settings",
+   "child": 0
+  },
+  {
+   "type": "Link",
+   "label": "Stock Balance",
+   "link_type": "Report",
+   "link_to": "YRP Stock Balance",
+   "child": 0
+  },
+  {
+   "type": "Link",
+   "label": "Stock Valuation",
+   "link_type": "Report",
+   "link_to": "YRP Stock Valuation",
+   "child": 0
+  },
+  {
+   "type": "Link",
+   "label": "Stock Valuation Adjustment",
+   "link_type": "DocType",
+   "link_to": "YRP Stock Valuation Adjustment",
+   "child": 0
+  }
+ ]
+}

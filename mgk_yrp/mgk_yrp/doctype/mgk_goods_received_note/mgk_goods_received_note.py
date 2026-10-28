@@ -12,9 +12,9 @@ from mgk_yrp.stock import locking
 from mgk_yrp.stock.backdating import validate_backdated_cancel, validate_backdated_posting
 from mgk_yrp.stock.ledger import post_stock_entries, receipt_entry, validate_stock_dimensions
 from mgk_yrp.stock.uom import (
-	SNAPSHOT_FIELDS,
 	apply_independent_uom,
 	copy_uom_snapshot,
+	has_uom_snapshot,
 	validate_uom_snapshot,
 )
 
@@ -95,7 +95,7 @@ class MGKGoodsReceivedNote(Document):
 			source = source_rows.get(row.purchase_order_item)
 			if not source or source.item != row.item:
 				frappe.throw(_("Row {0}: Item must map to a row of this Purchase Order.").format(row.idx))
-			if row.is_new() and not any(row.get(fieldname) for fieldname in SNAPSHOT_FIELDS):
+			if row.is_new() and not has_uom_snapshot(row):
 				copy_uom_snapshot(row, source)
 			validate_uom_snapshot(row, source, _("Purchase Order"))
 			row.rate = source.rate

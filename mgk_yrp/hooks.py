@@ -1,9 +1,13 @@
 app_name = "mgk_yrp"
-app_title = "MGK YRP"
+app_title = "MGK"
 app_publisher = "Anas"
 app_description = "MGK YRP"
 app_email = "mohammedanasman123@gmail.com"
 app_license = "mit"
+
+app_logo_url = "/assets/mgk_yrp/images/mgk.svg"
+app_home = "/desk/mgk"
+add_to_apps_screen = [{"name": app_name, "logo": app_logo_url, "title": app_title, "route": app_home}]
 
 required_apps = ["frappe", "erpnext", "yrp"]
 

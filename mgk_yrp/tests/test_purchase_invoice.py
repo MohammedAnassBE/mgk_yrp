@@ -108,6 +108,22 @@ class TestPurchaseInvoice(CloseTestCase):
 			self.draft_from_rows(stale_rows).insert(ignore_permissions=True)
 		self.assertEqual(receipt.reload().purchase_invoice, first.name)
 
+	def test_grn_list_billing_status_tracks_invoice_submission(self):
+		receipt = self.make_output([])
+		invoice = self.make_invoice([receipt], submit=False)
+		for expected_status in (0, 1):
+			if expected_status:
+				invoice.submit()
+			rows = frappe.get_list(
+				"MGK Goods Received Note",
+				filters={"name": receipt.name},
+				fields=["purchase_invoice", "purchase_invoice.docstatus as purchase_invoice_docstatus"],
+			)
+			self.assertEqual(rows[0].purchase_invoice, invoice.name)
+			self.assertEqual(rows[0].purchase_invoice_docstatus, expected_status)
+		invoice.cancel()
+		self.assertFalse(receipt.reload().purchase_invoice)
+
 	def test_pi_save_stores_and_clears_grn_link(self):
 		first, second = self.make_output([]), self.make_output([])
 		invoice = self.make_invoice([first, second], submit=False)
