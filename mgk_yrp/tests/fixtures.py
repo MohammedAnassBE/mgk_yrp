@@ -291,6 +291,28 @@ def run_adjustments(source_doctype, source_name) -> list[str]:
 	raise AssertionError(f"Valuation did not finish for {source_doctype} {source_name}")
 
 
+def make_purchase_invoice(
+	*, against, supplier, grns, rates: dict[str, float] | None = None, submit=True
+) -> Document:
+	from mgk_yrp.mgk_yrp.doctype.mgk_purchase_invoice.mgk_purchase_invoice import get_grn_rows
+
+	rows = get_grn_rows([receipt.name for receipt in grns])
+	for row in rows:
+		row.rate = (rates or {}).get(row.goods_received_note_item, row.rate)
+	invoice = frappe.get_doc(
+		{
+			"doctype": "MGK Purchase Invoice",
+			"against": against,
+			"supplier": supplier,
+			"posting_date": nowdate(),
+			"items": rows,
+		}
+	).insert(ignore_permissions=True)
+	if submit:
+		invoice.submit()
+	return invoice
+
+
 def make_address(party_type, party_name) -> str:
 	return (
 		frappe.get_doc(

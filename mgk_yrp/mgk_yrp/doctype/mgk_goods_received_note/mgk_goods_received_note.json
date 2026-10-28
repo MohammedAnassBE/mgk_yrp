@@ -170,6 +170,20 @@
    "select": 1,
    "print": 1,
    "report": 1
+  },
+  {
+   "role": "Accounts User",
+   "read": 1,
+   "select": 1,
+   "print": 1,
+   "report": 1
+  },
+  {
+   "role": "Accounts Manager",
+   "read": 1,
+   "select": 1,
+   "print": 1,
+   "report": 1
   }
  ],
  "actions": [],

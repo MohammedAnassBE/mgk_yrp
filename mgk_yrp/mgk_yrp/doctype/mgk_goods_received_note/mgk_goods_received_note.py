@@ -188,6 +188,12 @@ class MGKGoodsReceivedNote(Document):
 	def before_cancel(self):
 		validate_stock_dimensions()
 		self.lock_sources()
+		invoice_name = frappe.db.get_value(self.doctype, self.name, "purchase_invoice", for_update=True)
+		if invoice_name:
+			invoice = frappe.get_doc("MGK Purchase Invoice", invoice_name, for_update=True)
+			invoice.check_permission("read")
+			if invoice.docstatus < 2:
+				frappe.throw(_("Cancel Purchase Invoice {0} before this receipt.").format(invoice.name))
 		if self.against_purchase_order:
 			frappe.get_doc("MGK Purchase Order", self.purchase_order, for_update=True).check_permission(
 				"read"
@@ -199,11 +205,6 @@ class MGKGoodsReceivedNote(Document):
 			"YRP Repost Item Valuation",
 			"YRP Stock Valuation Adjustment",
 		)
-		if self.purchase_invoice:
-			invoice = frappe.get_doc("MGK Purchase Invoice", self.purchase_invoice)
-			invoice.check_permission("read")
-			if invoice.docstatus < 2:
-				frappe.throw(_("Cancel Purchase Invoice {0} before this receipt.").format(invoice.name))
 
 	def validate_cancellable_delivery_challans(self):
 		previous = self.get_doc_before_save()

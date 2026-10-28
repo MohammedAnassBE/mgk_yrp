@@ -1,0 +1,203 @@
+{
+ "doctype": "DocType",
+ "name": "MGK Purchase Invoice",
+ "module": "MGK YRP",
+ "engine": "InnoDB",
+ "field_order": [
+  "against",
+  "supplier",
+  "posting_date",
+  "bill_no",
+  "bill_date",
+  "supplier_gstin",
+  "company_gstin",
+  "tax_type",
+  "items",
+  "total_qty",
+  "net_total",
+  "total_cgst",
+  "total_sgst",
+  "total_igst",
+  "total_tax",
+  "grand_total",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "against",
+   "fieldtype": "Select",
+   "label": "Against",
+   "options": "Purchase Order\nJob Work",
+   "reqd": 1,
+   "default": "Purchase Order"
+  },
+  {
+   "fieldname": "supplier",
+   "fieldtype": "Link",
+   "label": "Supplier",
+   "options": "Supplier",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "label": "Posting Date",
+   "reqd": 1,
+   "default": "Today",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "bill_no",
+   "fieldtype": "Data",
+   "label": "Supplier Invoice No."
+  },
+  {
+   "fieldname": "bill_date",
+   "fieldtype": "Date",
+   "label": "Supplier Invoice Date"
+  },
+  {
+   "fieldname": "supplier_gstin",
+   "fieldtype": "Data",
+   "label": "Supplier GSTIN",
+   "read_only": 1
+  },
+  {
+   "fieldname": "company_gstin",
+   "fieldtype": "Data",
+   "label": "Company GSTIN",
+   "read_only": 1
+  },
+  {
+   "fieldname": "tax_type",
+   "fieldtype": "Select",
+   "label": "Tax Type",
+   "read_only": 1,
+   "options": "No Tax\nCGST + SGST\nIGST"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "MGK Purchase Invoice Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "total_qty",
+   "fieldtype": "Float",
+   "label": "Total Quantity",
+   "read_only": 1,
+   "precision": "6"
+  },
+  {
+   "fieldname": "net_total",
+   "fieldtype": "Currency",
+   "label": "Net Total",
+   "read_only": 1,
+   "precision": "2"
+  },
+  {
+   "fieldname": "total_cgst",
+   "fieldtype": "Currency",
+   "label": "Total CGST",
+   "read_only": 1,
+   "precision": "2"
+  },
+  {
+   "fieldname": "total_sgst",
+   "fieldtype": "Currency",
+   "label": "Total SGST",
+   "read_only": 1,
+   "precision": "2"
+  },
+  {
+   "fieldname": "total_igst",
+   "fieldtype": "Currency",
+   "label": "Total IGST",
+   "read_only": 1,
+   "precision": "2"
+  },
+  {
+   "fieldname": "total_tax",
+   "fieldtype": "Currency",
+   "label": "Total Tax",
+   "read_only": 1,
+   "precision": "2"
+  },
+  {
+   "fieldname": "grand_total",
+   "fieldtype": "Currency",
+   "label": "Grand Total",
+   "read_only": 1,
+   "precision": "2"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "read_only": 1,
+   "options": "MGK Purchase Invoice",
+   "no_copy": 1
+  }
+ ],
+ "permissions": [
+  {
+   "role": "Accounts User",
+   "read": 1,
+   "select": 1,
+   "create": 1,
+   "write": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1,
+   "submit": 1,
+   "cancel": 1,
+   "amend": 1
+  },
+  {
+   "role": "Accounts Manager",
+   "read": 1,
+   "select": 1,
+   "create": 1,
+   "write": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1,
+   "submit": 1,
+   "cancel": 1,
+   "amend": 1
+  },
+  {
+   "role": "Purchase Manager",
+   "read": 1,
+   "select": 1,
+   "create": 1,
+   "write": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1,
+   "submit": 1,
+   "cancel": 1,
+   "amend": 1
+  }
+ ],
+ "actions": [],
+ "links": [],
+ "states": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "autoname": "MGK-PI-.YY.-.#####",
+ "naming_rule": "Expression",
+ "is_submittable": 1,
+ "track_changes": 1
+}
