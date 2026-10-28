@@ -149,6 +149,7 @@ class MGKPurchaseInvoice(Document):
 	def on_cancel(self):
 		create_reversal(self.doctype, self.name)
 		self.sync_grn_links([])
+		self.onload()
 
 	def on_trash(self):
 		try:

@@ -70,6 +70,26 @@ class TestStatusGuards(TestCase):
 			MGKPurchaseInvoice.onload(invoice)
 			get_all.assert_not_called()
 
+	def test_invoice_cancel_response_includes_current_valuation_pending(self):
+		invoice = MGKPurchaseInvoice.__new__(MGKPurchaseInvoice)
+		invoice.__dict__.update(
+			doctype="MGK Purchase Invoice", name="PI-1", docstatus=2, _table_fieldnames={}
+		)
+		module = "mgk_yrp.mgk_yrp.doctype.mgk_purchase_invoice.mgk_purchase_invoice"
+		with (
+			patch.object(invoice, "sync_grn_links"),
+			patch.object(invoice, "get_valid_dict", return_value=frappe._dict()),
+			patch("frappe.get_all", return_value=[]) as get_all,
+			patch(f"{module}.create_reversal") as reverse,
+		):
+			for adjustments in ([{"name": "reversal"}], []):
+				with self.subTest(adjustments=adjustments):
+					invoice.set("__onload", None)
+					get_all.return_value = []
+					reverse.side_effect = lambda *args: setattr(get_all, "return_value", adjustments)
+					invoice.on_cancel()
+					self.assertEqual(invoice.as_dict()["__onload"]["valuation_pending"], bool(adjustments))
+
 	def test_backdated_cancel_names_later_voucher_for_user_and_manager(self):
 		doc = SimpleNamespace(
 			doctype="MGK Goods Received Note",

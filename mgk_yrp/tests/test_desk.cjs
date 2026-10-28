@@ -342,6 +342,29 @@ function attachToolbar(environment, form) {
 	environment.frappe.db = { get_value: () => assert.fail("use status supplied in the document") };
 }
 
+test("PI in-place Cancel hides Amend until the response's reversal finishes", async () => {
+	const doctype = "MGK Purchase Invoice";
+	const { environment, form } = refreshForm(doctype, { doctype, name: "PI-1", docstatus: 1 });
+	attachToolbar(environment, form);
+	environment.events[doctype].setup(form);
+	environment.frappe.xcall = async () => false;
+	form.reload_doc = () => assert.fail("Cancel must supply the status without a reload");
+	form.doc = { doctype, name: "PI-1", docstatus: 2, __onload: { valuation_pending: true } };
+	for (let count = 0; count < 2; count++) {
+		form.toolbar.set_primary_action();
+		environment.events[doctype].refresh(form);
+		await new Promise(resolve => setImmediate(resolve));
+		assert.equal(form.toolbar.can_amend(), false);
+		assert.equal(form.page.btn_primary.visible, false);
+		assert.equal(form.page.btn_secondary.visible, false);
+	}
+	form.doc.__onload.valuation_pending = false;
+	form.toolbar.set_primary_action();
+	await new Promise(resolve => setImmediate(resolve));
+	assert.equal(form.page.btn_primary.visible, true);
+	assert.equal(form.page.btn_primary.label, "Amend");
+});
+
 test("Close distinguishes draft previews from rates recorded at close", () => {
 	const { environment, form } = refreshForm("MGK Delivery Challan Close", { docstatus: 0 });
 	const labels = {};
@@ -375,6 +398,30 @@ test("Close hides uncomputed draft gaps and restores saved consumption values", 
 			assert.equal(hidden[field], docstatus === 0, `${field} at docstatus ${docstatus}`);
 		}
 	}
+});
+
+test("Close hides draft output allocations and restores recorded values", () => {
+	const { environment, form } = refreshForm("MGK Delivery Challan Close", { docstatus: 0 });
+	const hidden = {};
+	let refreshed = 0;
+	form.fields_dict.outputs.grid = {
+		update_docfield_property(field, property, value) {
+			if (property === "hidden") hidden[field] = value;
+		},
+		refresh() { refreshed++; },
+	};
+	for (const docstatus of [0, 1, 2, 0]) {
+		const allocated_value = docstatus === 0 ? 0 : 500;
+		const allocated_rate = docstatus === 0 ? 0 : 500 / 12;
+		form.doc = { docstatus, outputs: [{ allocated_value, allocated_rate }] };
+		environment.events[form.doctype].refresh(form);
+		for (const field of ["allocated_value", "allocated_rate"]) {
+			assert.equal(hidden[field], docstatus === 0, `${field} at docstatus ${docstatus}`);
+		}
+		assert.equal(form.doc.outputs[0].allocated_value, allocated_value);
+		assert.equal(form.doc.outputs[0].allocated_rate, allocated_rate);
+	}
+	assert.equal(refreshed, 4);
 });
 
 test("Close write-off intro distinguishes previews from the value recorded at close", () => {

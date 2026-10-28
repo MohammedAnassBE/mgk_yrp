@@ -234,6 +234,7 @@ class TestReviewUnit(TestCase):
 			meta=SimpleNamespace(fields=[]),
 			update=Mock(),
 			sync_grn_links=Mock(),
+			onload=Mock(),
 		)
 		with (
 			patch(f"{REVALUATION}.is_stock_adjustment_enabled", return_value=False),
@@ -245,6 +246,7 @@ class TestReviewUnit(TestCase):
 			MGKPurchaseInvoice.on_cancel(doc)
 		reverse.assert_called_once_with(doc.doctype, doc.name)
 		doc.sync_grn_links.assert_called_once_with([])
+		doc.onload.assert_called_once_with()
 		self.assertIn("MGK Goods Received Note", doc.ignore_linked_doctypes)
 		self.assertIn("YRP Stock Valuation Adjustment", doc.ignore_linked_doctypes)
 

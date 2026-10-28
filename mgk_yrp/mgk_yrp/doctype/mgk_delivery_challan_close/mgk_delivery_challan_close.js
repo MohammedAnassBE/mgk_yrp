@@ -88,6 +88,9 @@ function refresh_close_values(frm) {
 	}
 	items.refresh();
 	const outputs = frm.fields_dict.outputs.grid;
+	for (const field of ["allocated_value", "allocated_rate"]) {
+		outputs.update_docfield_property(field, "hidden", draft);
+	}
 	outputs.update_docfield_property("allocated_rate", "label",
 		draft ? __("Allocated Rate") : __("Allocated Rate at Close"));
 	outputs.refresh();
