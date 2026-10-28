@@ -20,6 +20,24 @@ from mgk_yrp.stock.uom import copy_uom_snapshot, has_uom_snapshot, validate_uom_
 
 
 class MGKPurchaseInvoice(Document):
+	def onload(self):
+		if self.docstatus == 2:
+			self.set_onload(
+				"valuation_pending",
+				bool(
+					frappe.get_all(
+						"YRP Stock Valuation Adjustment",
+						filters={
+							"source_doctype": self.doctype,
+							"source_name": self.name,
+							"docstatus": 1,
+							"status": ["not in", ["Completed", "Reversed"]],
+						},
+						limit_page_length=1,
+					)
+				),
+			)
+
 	def load_doc_before_save(self, *, raise_exception=False):
 		if not self.is_new():
 			self.lock_sources(previous=frappe.get_doc(self.doctype, self.name))

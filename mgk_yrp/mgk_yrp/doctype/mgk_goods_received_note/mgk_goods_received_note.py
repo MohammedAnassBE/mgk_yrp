@@ -200,10 +200,11 @@ class MGKGoodsReceivedNote(Document):
 		validate_stock_dimensions()
 		invoice_name = frappe.db.get_value(self.doctype, self.name, "purchase_invoice", for_update=True)
 		if invoice_name:
-			invoice = frappe.get_doc("MGK Purchase Invoice", invoice_name, for_update=True)
-			invoice.check_permission("read")
-			if invoice.docstatus < 2:
-				frappe.throw(_("Cancel Purchase Invoice {0} before this receipt.").format(invoice.name))
+			status = frappe.db.get_value("MGK Purchase Invoice", invoice_name, "docstatus", for_update=True)
+			if status is None:
+				frappe.throw(_("Purchase Invoice {0} not found.").format(invoice_name), frappe.DoesNotExistError)
+			if status < 2:
+				frappe.throw(_("Cancel Purchase Invoice {0} before this receipt.").format(invoice_name))
 		if self.against_purchase_order:
 			frappe.get_doc("MGK Purchase Order", self.purchase_order, for_update=True).check_permission(
 				"read"

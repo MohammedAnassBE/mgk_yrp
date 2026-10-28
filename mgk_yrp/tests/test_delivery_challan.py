@@ -7,7 +7,6 @@ from yrp.stock.stock_ledger import NegativeStockError
 from yrp.stock.utils import get_stock_balance
 from yrp.yrp_stock.doctype.yrp_stock_valuation_adjustment.yrp_stock_valuation_adjustment import (
 	create_adjustment,
-	process_adjustment,
 )
 
 from mgk_yrp.mgk_yrp.doctype.mgk_delivery_challan.mgk_delivery_challan import make_return_delivery_challan
@@ -24,6 +23,7 @@ from mgk_yrp.tests.fixtures import (
 	make_uom,
 	make_warehouse,
 )
+from mgk_yrp.tests.valuation_fixtures import process_adjustment
 
 CONTROLLER = "mgk_yrp.mgk_yrp.doctype.mgk_delivery_challan.mgk_delivery_challan"
 ADJUSTMENT = "yrp.yrp_stock.doctype.yrp_stock_valuation_adjustment.yrp_stock_valuation_adjustment"
@@ -32,6 +32,8 @@ ADJUSTMENT = "yrp.yrp_stock.doctype.yrp_stock_valuation_adjustment.yrp_stock_val
 class TestDeliveryChallan(IntegrationTestCase):
 	def setUp(self):
 		super().setUp()
+		self.addCleanup(frappe.db.rollback)
+		self.enterContext(patch("frappe.enqueue"))
 		self.from_supplier = make_supplier(is_company_location=1)
 		self.to_supplier = make_supplier()
 		self.main = make_warehouse(supplier=self.from_supplier)

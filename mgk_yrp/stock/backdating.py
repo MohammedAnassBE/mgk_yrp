@@ -34,6 +34,21 @@ def has_later_linked_movements(
 def has_later_movements(
 	buckets, posting_datetime, exclude_voucher, *, linked_only=False, for_update=False, ignored_sles=()
 ) -> bool:
+	return bool(
+		get_later_movement(
+			buckets,
+			posting_datetime,
+			exclude_voucher,
+			linked_only=linked_only,
+			for_update=for_update,
+			ignored_sles=ignored_sles,
+		)
+	)
+
+
+def get_later_movement(
+	buckets, posting_datetime, exclude_voucher, *, linked_only=False, for_update=False, ignored_sles=()
+):
 	linked_condition = ""
 	locking_clause = "FOR UPDATE" if for_update else ""
 	ignored_condition = "AND sle.name NOT IN %(ignored_sles)s" if ignored_sles else ""
@@ -49,13 +64,14 @@ def has_later_movements(
 		)
 		"""
 	for item, warehouse in sorted(set(buckets)):
-		if frappe.db.sql(
+		rows = frappe.db.sql(
 			f"""
-			SELECT sle.name FROM `tabYRP Stock Ledger Entry` sle
+			SELECT sle.name, sle.voucher_type, sle.voucher_no FROM `tabYRP Stock Ledger Entry` sle
 			WHERE sle.item = %(item)s AND sle.warehouse = %(warehouse)s AND sle.is_cancelled = 0
 				AND sle.posting_datetime >= %(posting)s
 				AND NOT (sle.voucher_type = %(doctype)s AND sle.voucher_no = %(name)s)
 				{linked_condition} {ignored_condition}
+			ORDER BY sle.posting_datetime DESC, sle.creation DESC, sle.name DESC
 			LIMIT 1 {locking_clause}
 			""",
 			{
@@ -66,14 +82,21 @@ def has_later_movements(
 				"name": exclude_voucher[1],
 				"ignored_sles": tuple(ignored_sles),
 			},
-		):
-			return True
-	return False
+			as_dict=True,
+		)
+		if rows:
+			return rows[0]
+	return None
 
 
-def require_stock_manager() -> None:
+def require_stock_manager(later=None) -> None:
 	if "Stock Manager" not in frappe.get_roles():
-		frappe.throw(_("Backdated stock changes require the Stock Manager role."), frappe.PermissionError)
+		message = _("Backdated stock changes require the Stock Manager role.")
+		if later:
+			message += " " + _("Later entry: {0} {1}. Cancel newest entries first.").format(
+				later.voucher_type, later.voucher_no
+			)
+		frappe.throw(message, frappe.PermissionError)
 
 
 def validate_backdated_posting(doc, buckets) -> None:
@@ -86,10 +109,21 @@ def validate_backdated_posting(doc, buckets) -> None:
 
 def validate_linked_movements(doc, buckets, *, for_update=False, ignored_sles=()) -> None:
 	posting_datetime = get_combine_datetime(doc.posting_date, doc.posting_time)
-	if has_later_linked_movements(
-		buckets, posting_datetime, (doc.doctype, doc.name), for_update=for_update, ignored_sles=ignored_sles
-	):
-		frappe.throw(_("Backdated stock changes are blocked by later linked movements."))
+	later = get_later_movement(
+		buckets,
+		posting_datetime,
+		(doc.doctype, doc.name),
+		linked_only=True,
+		for_update=for_update,
+		ignored_sles=ignored_sles,
+	)
+	if later:
+		frappe.throw(
+			_(
+				"Backdated stock changes are blocked by later linked movements: {0} {1}. "
+				"Cancel newest entries first."
+			).format(later.voucher_type, later.voucher_no)
+		)
 
 
 def validate_backdated_cancel(doc, *, buckets=None, for_update=True, ignored_sles=()) -> None:
@@ -97,8 +131,9 @@ def validate_backdated_cancel(doc, *, buckets=None, for_update=True, ignored_sle
 		buckets = [(entry["item"], entry["warehouse"]) for entry in doc.get_stock_entries()]
 	lock_stock_buckets(buckets)
 	posting_datetime = get_combine_datetime(doc.posting_date, doc.posting_time)
-	if has_later_movements(
+	later = get_later_movement(
 		buckets, posting_datetime, (doc.doctype, doc.name), for_update=for_update, ignored_sles=ignored_sles
-	):
-		require_stock_manager()
+	)
+	if later:
+		require_stock_manager(later)
 	validate_linked_movements(doc, buckets, for_update=for_update, ignored_sles=ignored_sles)

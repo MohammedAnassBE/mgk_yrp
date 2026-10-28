@@ -7,6 +7,7 @@ from yrp.yrp_stock.doctype.yrp_stock_valuation_adjustment import yrp_stock_valua
 
 from mgk_yrp.job_work.dependencies import get_adjustment_blockers, get_downstream_blockers
 from mgk_yrp.job_work.reopen import finish_reopen, validate_reopen
+from mgk_yrp.job_work.reopen import get_adjustment_blockers as get_reopen_adjustment_blockers
 from mgk_yrp.purchase.revaluation import lock_invoice_sources
 from mgk_yrp.stock.dependencies import StockDependencies
 from mgk_yrp.stock.locking import LOCK_ORDER
@@ -143,6 +144,54 @@ class TestReopenDependencies(TestCase):
 		adjustment.target = "own-consumption"
 		self.assertIn("other-close-overlay", get_adjustment_blockers(self.close, (adjustment.target,))[0])
 
+	def test_downstream_close_and_its_adjustment_have_one_blocker(self):
+		self.adjustments = [
+			frappe._dict(
+				name="downstream-sva",
+				source_doctype=self.close.doctype,
+				source_name="downstream",
+				status="Reversal Queued",
+				target="yarn",
+			)
+		]
+		blockers = get_downstream_blockers(self.close)
+		self.assertEqual(sum("Close downstream " in message for message in blockers), 1)
+		self.assertFalse(any("downstream-sva" in message for message in blockers))
+
+	def test_close_adjustment_blocker_says_reopen(self):
+		self.adjustments = [
+			frappe._dict(
+				name="other-close-overlay",
+				source_doctype=self.close.doctype,
+				source_name="other-close",
+				status="Completed",
+				target="own-consumption",
+			)
+		]
+		blockers = get_adjustment_blockers(self.close, ("own-consumption",))
+		self.assertEqual(len(blockers), 1)
+		self.assertIn("reopen its source Close", blockers[0])
+		self.assertNotIn("cancel its source", blockers[0])
+
+	def test_consumption_and_output_share_one_downstream_close_blocker(self):
+		self.close.stock_valuation_adjustment = None
+		self.adjustments = [
+			frappe._dict(
+				name="downstream-sva",
+				source_doctype=self.close.doctype,
+				source_name="downstream",
+				status="Applying",
+				target="own-consumption",
+			)
+		]
+		blockers = get_reopen_adjustment_blockers(self.close)
+		self.assertEqual(sum("Close downstream " in message for message in blockers), 1)
+		self.assertFalse(any("downstream-sva" in message for message in blockers))
+		self.downstream.update(docstatus=2, reopen_status="Reopened")
+		blockers = get_reopen_adjustment_blockers(self.close)
+		self.assertEqual(len(blockers), 1)
+		self.assertIn("downstream-sva", blockers[0])
+
 	def test_dependency_parents_then_buckets_then_current_ledger_reads(self):
 		self.buckets.side_effect = lambda buckets: self.events.append(("buckets", buckets))
 		get_downstream_blockers(self.close)
@@ -233,6 +282,7 @@ class TestReopenDependencies(TestCase):
 			self.assertFalse(finish_reopen(self.close.name))
 			complete.assert_not_called()
 		self.assertEqual(self.close.reopen_status, "Reversing")
+		self.close.check_permission.assert_called_once_with("cancel")
 		self.database.set_value.assert_not_called()
 
 

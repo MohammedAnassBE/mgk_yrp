@@ -233,6 +233,51 @@ test("Close intro uses currency precision for repeating rates", () => {
 	assert.equal(intro, "Adds ₹41.67 per Kg to 1 GRN rows");
 });
 
+test("Stock User Close displays server valuation status without an SVA request", () => {
+	const { environment, form } = refreshForm("MGK Delivery Challan Close", { docstatus: 1 });
+	form.doc.stock_valuation_adjustment = "SVA-1";
+	form.doc.__onload = { valuation_status: "Reversal Queued" };
+	let displayed = false;
+	form.dashboard = { add_indicator: (label, color) => {
+		displayed = true;
+		assert.equal(label, "Valuation: Reversal Queued");
+		assert.equal(color, "orange");
+	} };
+	environment.frappe.db = { get_value: () => assert.fail("SVA requires no client read permission") };
+	environment.frappe.call = () => assert.fail("status is supplied by the parent document");
+	environment.events[form.doctype].refresh(form);
+	assert.equal(displayed, true);
+});
+
+for (const [doctype, pending, finished] of [
+	["MGK Delivery Challan Close", { reopen_status: "Reversing" }, { reopen_status: "Reopened" }],
+	["MGK Delivery Challan Close", { reopen_status: "Reopening" }, { reopen_status: "Reopened" }],
+	["MGK Purchase Invoice", { __onload: { valuation_pending: true } },
+		{ __onload: { valuation_pending: false } }],
+]) {
+	test(`${doctype}: Amend waits for ${JSON.stringify(pending)} and retains permissions`, () => {
+		const { environment, form } = refreshForm(doctype, { docstatus: 2, ...pending });
+		const source = readFileSync(resolve(__dirname,
+			"../../../frappe/frappe/public/js/frappe/form/toolbar.js"), "utf8");
+		const start = source.indexOf("\tcan_amend()");
+		const end = source.indexOf("\n\thas_workflow()", start);
+		const methods = vm.runInContext(`({${source.slice(start, end)}})`, environment.context);
+		form.perm = [{ amend: true }];
+		form.toolbar = { ...methods, frm: form, get_docstatus: () => form.doc.docstatus };
+		form.set_query = () => {};
+		form.get_field = () => form.fields_dict.items;
+		environment.events[doctype].setup(form);
+		assert.equal(form.toolbar.can_amend(), false);
+		form.doc = { docstatus: 2, ...finished };
+		assert.equal(form.toolbar.can_amend(), true);
+		form.perm[0].amend = false;
+		assert.equal(form.toolbar.can_amend(), false);
+		form.perm[0].amend = true;
+		form.doc.docstatus = 1;
+		assert.equal(form.toolbar.can_amend(), false);
+	});
+}
+
 for (const name of ["mgk_delivery_challan_close", "mgk_delivery_challan_close_item",
 	"mgk_delivery_challan_close_output"]) {
 	test(`${name}: readable labels, currency defaults and visible grid columns`, () => {

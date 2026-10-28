@@ -1,5 +1,7 @@
 frappe.ui.form.on("MGK Delivery Challan Close", {
 	setup(frm) {
+		const can_amend = frm.toolbar.can_amend.bind(frm.toolbar);
+		frm.toolbar.can_amend = () => !["Reversing", "Reopening"].includes(frm.doc.reopen_status) && can_amend();
 		frm.set_query("delivery_challan", () => ({
 			filters: { docstatus: 1, is_return: 0, close_status: "Open" },
 		}));
@@ -41,7 +43,11 @@ frappe.ui.form.on("MGK Delivery Challan Close", {
 		} else {
 			frm.set_intro(__("No linked GRN: {0} will be written off", [format_currency(frm.doc.loss_value)]));
 		}
-		mgk_close_valuation_status(frm);
+		const status = frm.doc.__onload?.valuation_status;
+		if (status) {
+			frm.dashboard.add_indicator(__("Valuation: {0}", [status]),
+				["Completed", "Reversed"].includes(status) ? "green" : "orange");
+		}
 	},
 	delivery_challan(frm) {
 		if (frm.doc.docstatus === 0 && frm.doc.delivery_challan) {
@@ -49,14 +55,3 @@ frappe.ui.form.on("MGK Delivery Challan Close", {
 		}
 	},
 });
-
-async function mgk_close_valuation_status(frm) {
-	if (!frm.doc.stock_valuation_adjustment) return;
-	const response = await frappe.db.get_value("YRP Stock Valuation Adjustment",
-		frm.doc.stock_valuation_adjustment, "status");
-	if (response.message) {
-		const status = response.message.status;
-		frm.dashboard.add_indicator(__("Valuation: {0}", [status]),
-			["Completed", "Reversed"].includes(status) ? "green" : "orange");
-	}
-}

@@ -417,7 +417,7 @@ class TestPurchaseInvoice(CloseTestCase):
 		amended.items[0].rate = 12
 		amended.insert(ignore_permissions=True)
 		frappe.db.savepoint("invoice_amend_submit")
-		with self.assertRaisesRegex(frappe.ValidationError, "still Queued"):
+		with self.assertRaisesRegex(frappe.ValidationError, "still Reversal Queued"):
 			amended.submit()
 		frappe.db.rollback(save_point="invoice_amend_submit")
 		run_adjustments(invoice.doctype, invoice.name)

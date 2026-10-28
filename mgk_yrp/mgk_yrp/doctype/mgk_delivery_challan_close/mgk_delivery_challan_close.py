@@ -25,6 +25,13 @@ from mgk_yrp.stock.locking import lock_documents
 
 
 class MGKDeliveryChallanClose(Document):
+	def onload(self):
+		if self.stock_valuation_adjustment:
+			self.set_onload(
+				"valuation_status",
+				frappe.db.get_value("YRP Stock Valuation Adjustment", self.stock_valuation_adjustment, "status"),
+			)
+
 	def load_doc_before_save(self, *, raise_exception=False):
 		if not self.is_new():
 			previous = frappe.get_doc(self.doctype, self.name)

@@ -26,19 +26,27 @@ def get_independent_consumptions(close):
 	)
 
 
-def get_downstream_blockers(close, *, graph=None) -> list[str]:
+def get_downstream_blockers(close, *, graph=None, close_blockers=None) -> list[str]:
 	"""Follow the same receipt, outgoing, transfer and production paths as YRP."""
 	if not close.outputs:
 		return []
 	graph = graph or lock_close_dependencies(close)
-	blockers = get_close_blockers(close, graph.outgoing.values())
+	closes = get_close_blockers(close, graph.outgoing.values()) if close_blockers is None else close_blockers
+	blockers = list(closes.values())
 	nodes = graph.nodes - graph.entries
 	if nodes:
-		blockers.extend(get_adjustment_blockers(close, tuple(sorted(nodes)), completed=False))
+		blockers.extend(
+			get_adjustment_blockers(
+				close,
+				tuple(sorted(nodes)),
+				completed=False,
+				excluded_sources=closes,
+			)
+		)
 	return list(dict.fromkeys(blockers))
 
 
-def get_close_blockers(close, outgoing) -> list[str]:
+def get_close_blockers(close, outgoing) -> dict[str, str]:
 	names = sorted(
 		{
 			row.voucher_no
@@ -46,7 +54,7 @@ def get_close_blockers(close, outgoing) -> list[str]:
 			if row.voucher_type == close.doctype and row.voucher_no != close.name
 		}
 	)
-	blockers = []
+	blockers = {}
 	for name in names:
 		downstream = frappe.db.get_value(
 			close.doctype,
@@ -56,13 +64,13 @@ def get_close_blockers(close, outgoing) -> list[str]:
 			for_update=True,
 		)
 		if downstream.docstatus != 2 or downstream.reopen_status != "Reopened":
-			blockers.append(
-				_("Reopen and finish downstream Close {0} before reopening {1}.").format(name, close.name)
+			blockers[name] = _("Reopen and finish downstream Close {0} before reopening {1}.").format(
+				name, close.name
 			)
 	return blockers
 
 
-def get_adjustment_blockers(close, nodes, *, completed=True) -> list[str]:
+def get_adjustment_blockers(close, nodes, *, completed=True, excluded_sources=()) -> list[str]:
 	blockers = []
 	completed_clause = (
 		"OR (adjustment.status = 'Completed' AND COALESCE(adjustment.reversal_of, '') = '')"
@@ -87,11 +95,20 @@ def get_adjustment_blockers(close, nodes, *, completed=True) -> list[str]:
 			{"nodes": nodes, "own": close.stock_valuation_adjustment or ""},
 			as_dict=True,
 		)
-		blockers.extend(format_adjustment_blocker(row) for row in adjustments)
+		blockers.extend(
+			format_adjustment_blocker(row)
+			for row in adjustments
+			if not (row.source_doctype == close.doctype and row.source_name in excluded_sources)
+		)
 	return list(dict.fromkeys(blockers))
 
 
 def format_adjustment_blocker(adjustment) -> str:
+	if adjustment.source_doctype == "MGK Delivery Challan Close":
+		return _(
+			"Stock Valuation Adjustment {0} ({1}) from {2} {3} blocks reopening; "
+			"reopen its source Close and finish its reversal, or retry the unfinished valuation first."
+		).format(adjustment.name, adjustment.status, adjustment.source_doctype, adjustment.source_name)
 	return _(
 		"Stock Valuation Adjustment {0} ({1}) from {2} {3} blocks reopening; "
 		"cancel its source and finish its reversal, or retry the unfinished valuation first."

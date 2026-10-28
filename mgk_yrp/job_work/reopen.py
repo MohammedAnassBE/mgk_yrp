@@ -10,6 +10,7 @@ from yrp.yrp_stock.doctype.yrp_stock_valuation_adjustment.yrp_stock_valuation_ad
 from mgk_yrp.job_work.close_valuation import build_consumption_entries
 from mgk_yrp.job_work.dependencies import get_adjustment_blockers as get_dependency_adjustments
 from mgk_yrp.job_work.dependencies import (
+	get_close_blockers,
 	get_downstream_blockers,
 	get_independent_consumptions,
 	lock_close_dependencies,
@@ -25,16 +26,27 @@ def get_reopen_blockers(close) -> list[str]:
 	challan.check_permission("read")
 	if challan.close_status != "Closed" or challan.delivery_challan_close != close.name:
 		blockers.append(_("Delivery Challan must be Closed by this Close before reopening."))
-	for check in (
-		lambda: validate_reversal_allowed(close.doctype, close.name),
-		lambda: validate_stock_valuation_period(close.posting_date, close.doctype, close.name),
-		lambda: validate_reopen_backdating(close),
-	):
-		try:
-			check()
-		except (frappe.ValidationError, frappe.PermissionError) as error:
-			blockers.append(str(error))
+	blockers.extend(get_guard_blockers(close))
 	blockers.extend(get_adjustment_blockers(close, graph=graph))
+	return list(dict.fromkeys(blockers))
+
+
+def get_guard_blockers(close) -> list[str]:
+	blockers = []
+	muted = frappe.flags.mute_messages
+	frappe.flags.mute_messages = True
+	try:
+		for check in (
+			lambda: validate_reversal_allowed(close.doctype, close.name),
+			lambda: validate_stock_valuation_period(close.posting_date, close.doctype, close.name),
+			lambda: validate_reopen_backdating(close),
+		):
+			try:
+				check()
+			except (frappe.ValidationError, frappe.PermissionError) as error:
+				blockers.append(str(error))
+	finally:
+		frappe.flags.mute_messages = muted
 	return blockers
 
 
@@ -43,11 +55,20 @@ def validate_reopen_backdating(close):
 
 
 def get_adjustment_blockers(close, *, graph=None) -> list[str]:
+	if graph is None and close.outputs:
+		graph = lock_close_dependencies(close)
+	closes = get_close_blockers(close, graph.outgoing.values()) if graph else {}
 	blockers = get_valuation_failure_blockers(close)
-	blockers.extend(get_downstream_blockers(close, graph=graph))
+	blockers.extend(get_downstream_blockers(close, graph=graph, close_blockers=closes))
 	consumptions = tuple(row.consumption_sle for row in close.items if row.consumption_sle)
 	if consumptions:
-		blockers.extend(get_dependency_adjustments(close, consumptions))
+		blockers.extend(
+			get_dependency_adjustments(
+				close,
+				consumptions,
+				excluded_sources=closes,
+			)
+		)
 	return list(dict.fromkeys(blockers))
 
 
@@ -77,7 +98,7 @@ def lock_reopen(close):
 def validate_reopen(close) -> None:
 	blockers = get_reopen_blockers(close)
 	if blockers:
-		frappe.throw("\n".join(blockers))
+		frappe.throw(blockers, as_list=True)
 
 
 def start_reopen(close) -> None:

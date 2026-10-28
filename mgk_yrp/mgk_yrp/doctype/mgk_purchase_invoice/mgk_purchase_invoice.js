@@ -2,6 +2,8 @@ const invoice_method = "mgk_yrp.mgk_yrp.doctype.mgk_purchase_invoice.mgk_purchas
 
 frappe.ui.form.on("MGK Purchase Invoice", {
 	setup(frm) {
+		const can_amend = frm.toolbar.can_amend.bind(frm.toolbar);
+		frm.toolbar.can_amend = () => !frm.doc.__onload?.valuation_pending && can_amend();
 		frm.set_query("supplier", () => ({ filters: { disabled: 0 } }));
 		frm.get_field("items").grid.cannot_add_rows = true;
 	},

@@ -8,6 +8,7 @@ from yrp.yrp_stock.doctype.yrp_stock_valuation_adjustment.yrp_stock_valuation_ad
 
 from mgk_yrp.stock.ledger import get_voucher_sles
 from mgk_yrp.tests.fixtures import (
+	close_dc,
 	make_delivery_challan,
 	make_item,
 	make_job_work_grn,
@@ -17,6 +18,7 @@ from mgk_yrp.tests.fixtures import (
 	make_supplier,
 	make_uom,
 	make_warehouse,
+	run_adjustments,
 )
 
 ADJUSTMENT = "yrp.yrp_stock.doctype.yrp_stock_valuation_adjustment.yrp_stock_valuation_adjustment"
@@ -27,6 +29,8 @@ REOPEN = "mgk_yrp.job_work.reopen"
 class CloseTestCase(IntegrationTestCase):
 	def setUp(self):
 		super().setUp()
+		self.addCleanup(frappe.db.rollback)
+		self.enterContext(patch("frappe.enqueue"))
 		# Tests drive process_adjustment themselves, including reversals and retries.
 		self.enqueue_adjustment = self.enterContext(patch(f"{ADJUSTMENT}.enqueue_adjustment"))
 		for target in (ADJUSTMENT, CLOSE):
@@ -79,6 +83,19 @@ class CloseTestCase(IntegrationTestCase):
 		challan = self.make_challan()
 		receipt = self.make_output([challan])
 		return challan, receipt
+
+	def make_two_stage_chain(self):
+		self.make_input(quantity=100, rate=50)
+		first = self.make_challan()
+		outputs = [self.make_output([first], quantity=12) for _ in range(5)]
+		upstream = close_dc(first)
+		run_adjustments(upstream.doctype, upstream.name)
+		second = self.make_challan(items=[{"item": self.output_item, "qty": 60}])
+		finished_item = make_item(stock_uom=make_uom("Kg"))
+		receipt = self.make_output([second], items=[{"item": finished_item, "qty": 60, "rate": 20}])
+		downstream = close_dc(second)
+		run_adjustments(downstream.doctype, downstream.name)
+		return upstream, downstream, outputs, receipt
 
 	def get_overlay(self, receipt):
 		return sum(row.valuation_adjustment_value for row in get_voucher_sles(receipt.doctype, receipt.name))

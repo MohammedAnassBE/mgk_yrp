@@ -29,8 +29,8 @@ INVOICE = "mgk_yrp.mgk_yrp.doctype.mgk_purchase_invoice.mgk_purchase_invoice"
 ORDER = "mgk_yrp.mgk_yrp.doctype.mgk_purchase_order.mgk_purchase_order"
 
 
-def throw_validation(message, *args, **kwargs):
-	raise frappe.ValidationError(message)
+def throw_validation(message, exc=frappe.ValidationError, *args, **kwargs):
+	raise exc(message)
 
 
 class TestReviewUnit(TestCase):
@@ -86,16 +86,17 @@ class TestReviewUnit(TestCase):
 
 	def test_cancel_checks_current_movements_after_bucket_locks(self):
 		sequence = Mock()
-		sequence.later.return_value = True
+		sequence.later.return_value = frappe._dict(voucher_type="MGK Delivery Challan", voucher_no="DC-2")
 		with (
 			patch(f"{BACKDATING}.lock_stock_buckets", sequence.lock),
-			patch(f"{BACKDATING}.has_later_movements", sequence.later),
+			patch(f"{BACKDATING}.get_later_movement", sequence.later),
 			patch(f"{BACKDATING}.require_stock_manager", sequence.role),
 			patch(f"{BACKDATING}.validate_linked_movements", sequence.linked),
 		):
 			validate_backdated_cancel(self.doc, buckets=self.buckets)
 		self.assertEqual([entry[0] for entry in sequence.mock_calls], ["lock", "later", "role", "linked"])
 		self.assertTrue(sequence.later.call_args.kwargs["for_update"])
+		sequence.role.assert_called_once_with(sequence.later.return_value)
 		self.assertTrue(sequence.linked.call_args.kwargs["for_update"])
 
 	def test_movement_and_production_queries_are_current_reads(self):
@@ -268,13 +269,27 @@ class TestReviewUnit(TestCase):
 			reload=Mock(),
 			flags=frappe._dict(),
 		)
-		invoice = SimpleNamespace(name="PI-1", docstatus=1, check_permission=Mock())
-		self.database.get_value.return_value = invoice.name
-		with patch(f"{GRN}.validate_stock_dimensions"), patch(f"{GRN}.frappe.get_doc", return_value=invoice):
-			with self.assertRaisesRegex(
-				frappe.ValidationError, "Cancel Purchase Invoice PI-1 before this receipt"
+		for status in (0, 1):
+			self.database.get_value.side_effect = ["PI-1", status]
+			with (
+				self.subTest(status=status),
+				patch(f"{GRN}.validate_stock_dimensions"),
+				patch(f"{GRN}.frappe.get_doc", side_effect=frappe.PermissionError) as read,
+				self.assertRaisesRegex(
+					frappe.ValidationError, "Cancel Purchase Invoice PI-1 before this receipt"
+				),
 			):
 				MGKGoodsReceivedNote.before_cancel(doc)
+			read.assert_not_called()
+			self.assertEqual(
+				self.database.get_value.call_args,
+				call(
+					"MGK Purchase Invoice",
+					"PI-1",
+					"docstatus",
+					for_update=True,
+				),
+			)
 		self.assertFalse(hasattr(doc, "ignore_linked_doctypes"))
 
 	def test_close_cancel_keeps_reopen_guard_before_ignoring_managed_links(self):

@@ -266,9 +266,7 @@ def close_dc(dc, submit=True) -> Document:
 
 
 def run_adjustments(source_doctype, source_name) -> list[str]:
-	from yrp.yrp_stock.doctype.yrp_stock_valuation_adjustment.yrp_stock_valuation_adjustment import (
-		process_adjustment,
-	)
+	from mgk_yrp.tests.valuation_fixtures import process_adjustment
 
 	for _attempt in range(10):
 		rows = frappe.get_all(
