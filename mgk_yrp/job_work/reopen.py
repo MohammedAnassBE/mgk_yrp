@@ -8,6 +8,8 @@ from yrp.yrp_stock.doctype.yrp_stock_valuation_adjustment.yrp_stock_valuation_ad
 )
 
 from mgk_yrp.job_work.close_valuation import build_consumption_entries, lock_close_buckets
+from mgk_yrp.job_work.dependencies import get_adjustment_blockers as get_dependency_adjustments
+from mgk_yrp.job_work.dependencies import get_downstream_blockers
 from mgk_yrp.stock.backdating import validate_backdated_cancel
 from mgk_yrp.stock.ledger import post_stock_entries, validate_stock_dimensions
 from mgk_yrp.stock.locking import lock_documents
@@ -34,13 +36,11 @@ def get_reopen_blockers(close) -> list[str]:
 
 def get_adjustment_blockers(close) -> list[str]:
 	blockers = get_valuation_failure_blockers(close)
-	outputs = tuple(row.output_receipt_sle for row in close.outputs)
-	if outputs and get_pending_output_adjustments(close, outputs):
-		blockers.append(_("Another unfinished valuation owns an output receipt; wait before reopening."))
+	blockers.extend(get_downstream_blockers(close))
 	consumptions = tuple(row.consumption_sle for row in close.items if row.consumption_sle)
-	if consumptions and has_other_consumption_adjustment(close, consumptions):
-		blockers.append(_("Consumption is used by another active Stock Valuation Adjustment."))
-	return blockers
+	if consumptions:
+		blockers.extend(get_dependency_adjustments(close, consumptions))
+	return list(dict.fromkeys(blockers))
 
 
 def get_valuation_failure_blockers(close) -> list[str]:
@@ -53,45 +53,12 @@ def get_valuation_failure_blockers(close) -> list[str]:
 		else None
 	)
 	if status in ("Calculation Failed", "Apply Failed"):
-		blockers.append(_("Resolve the Close valuation failure before reopening."))
+		blockers.append(
+			_(
+				"Resolve Close {0} valuation failure in Stock Valuation Adjustment {1} before reopening."
+			).format(close.name, close.stock_valuation_adjustment)
+		)
 	return blockers
-
-
-def get_pending_output_adjustments(close, outputs):
-	return frappe.db.sql(
-		"""
-		SELECT DISTINCT adjustment.name
-		FROM `tabYRP Stock Valuation Adjustment` adjustment
-		JOIN `tabYRP Stock Valuation Adjustment Source` source ON source.parent = adjustment.name
-		WHERE adjustment.docstatus = 1 AND source.target_sle IN %(outputs)s
-			AND adjustment.name != %(own)s
-			AND adjustment.status NOT IN ('Completed', 'Reversed')
-		FOR UPDATE
-		""",
-		{"outputs": outputs, "own": close.stock_valuation_adjustment or ""},
-	)
-
-
-def has_other_consumption_adjustment(close, consumptions) -> bool:
-	parameters = {"consumptions": consumptions, "own": close.stock_valuation_adjustment or ""}
-	for table, relationship in (
-		("YRP Stock Valuation Adjustment Source", "node.parent = adjustment.name"),
-		("YRP Stock Valuation Propagation Entry", "node.adjustment = adjustment.name"),
-	):
-		if frappe.db.sql(
-			f"""
-			SELECT DISTINCT adjustment.name FROM `tabYRP Stock Valuation Adjustment` adjustment
-			JOIN `tab{table}` node ON {relationship}
-			WHERE adjustment.docstatus = 1 AND adjustment.name != %(own)s
-				AND (node.source_sle IN %(consumptions)s OR node.target_sle IN %(consumptions)s)
-				AND (adjustment.status NOT IN ('Completed', 'Reversed') OR
-					(adjustment.status = 'Completed' AND COALESCE(adjustment.reversal_of, '') = ''))
-			FOR UPDATE
-			""",
-			parameters,
-		):
-			return True
-	return False
 
 
 def lock_reopen(close):

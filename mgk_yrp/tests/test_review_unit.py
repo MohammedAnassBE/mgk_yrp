@@ -12,6 +12,7 @@ from mgk_yrp.mgk_yrp.doctype.mgk_delivery_challan_close.mgk_delivery_challan_clo
 )
 from mgk_yrp.mgk_yrp.doctype.mgk_goods_received_note.mgk_goods_received_note import MGKGoodsReceivedNote
 from mgk_yrp.mgk_yrp.doctype.mgk_purchase_invoice.mgk_purchase_invoice import MGKPurchaseInvoice
+from mgk_yrp.mgk_yrp.doctype.mgk_purchase_order.mgk_purchase_order import MGKPurchaseOrder
 from mgk_yrp.purchase.revaluation import create_invoice_adjustment
 from mgk_yrp.stock.backdating import validate_backdated_cancel, validate_backdated_posting
 from mgk_yrp.stock.ledger import assert_transfer_pairs
@@ -25,6 +26,7 @@ DC = "mgk_yrp.mgk_yrp.doctype.mgk_delivery_challan.mgk_delivery_challan"
 CLOSE = "mgk_yrp.mgk_yrp.doctype.mgk_delivery_challan_close.mgk_delivery_challan_close"
 REVALUATION = "mgk_yrp.purchase.revaluation"
 INVOICE = "mgk_yrp.mgk_yrp.doctype.mgk_purchase_invoice.mgk_purchase_invoice"
+ORDER = "mgk_yrp.mgk_yrp.doctype.mgk_purchase_order.mgk_purchase_order"
 
 
 def throw_validation(message, *args, **kwargs):
@@ -40,7 +42,7 @@ class TestReviewUnit(TestCase):
 			mocked = patch(target, value, create=True)
 			mocked.start()
 			self.addCleanup(mocked.stop)
-		for module in (BACKDATING, LEDGER, GRN, DC, CLOSE, REVALUATION):
+		for module in (BACKDATING, LEDGER, GRN, DC, CLOSE, REVALUATION, ORDER):
 			translation = patch(f"{module}._", side_effect=lambda text: text)
 			translation.start()
 			self.addCleanup(translation.stop)
@@ -146,6 +148,14 @@ class TestReviewUnit(TestCase):
 			controller.before_cancel(doc)
 		self.assertEqual([entry[0] for entry in sequence.mock_calls], ["sources", "reload", "policy"])
 		self.assertEqual(doc.docstatus, 2)
+		self.assertTrue(
+			{
+				"YRP Stock Ledger Entry",
+				"YRP Repost Item Valuation",
+				"YRP Stock Valuation Adjustment",
+				"YRP Stock Valuation Production Link",
+			}.issubset(doc.ignore_linked_doctypes)
+		)
 		entries = doc.get_stock_entries()
 		self.assertTrue(entries)
 		self.assertEqual({entry["voucher_detail_no"] for entry in entries}, {"persisted-row"})
@@ -234,6 +244,49 @@ class TestReviewUnit(TestCase):
 			MGKPurchaseInvoice.on_cancel(doc)
 		reverse.assert_called_once_with(doc.doctype, doc.name)
 		doc.sync_grn_links.assert_called_once_with([])
+		self.assertIn("MGK Goods Received Note", doc.ignore_linked_doctypes)
+		self.assertIn("YRP Stock Valuation Adjustment", doc.ignore_linked_doctypes)
+
+	def test_po_cancel_ignores_receipt_links_only_after_order_guard_passes(self):
+		doc = SimpleNamespace(doctype="MGK Purchase Order", name="PO-1")
+		self.database.sql.return_value = [("GRN-1",)]
+		with patch(f"{ORDER}.lock_documents"):
+			with self.assertRaisesRegex(
+				frappe.ValidationError, "Cancel submitted Goods Received Notes first: GRN-1"
+			):
+				MGKPurchaseOrder.before_cancel(doc)
+			self.assertFalse(hasattr(doc, "ignore_linked_doctypes"))
+			self.database.sql.return_value = []
+			MGKPurchaseOrder.before_cancel(doc)
+		self.assertEqual(doc.ignore_linked_doctypes, ("MGK Goods Received Note",))
+
+	def test_grn_cancel_still_names_invoice_before_skipping_generated_links(self):
+		doc = SimpleNamespace(
+			doctype="MGK Goods Received Note",
+			name="GRN-1",
+			lock_sources=Mock(),
+			reload=Mock(),
+			flags=frappe._dict(),
+		)
+		invoice = SimpleNamespace(name="PI-1", docstatus=1, check_permission=Mock())
+		self.database.get_value.return_value = invoice.name
+		with patch(f"{GRN}.validate_stock_dimensions"), patch(f"{GRN}.frappe.get_doc", return_value=invoice):
+			with self.assertRaisesRegex(
+				frappe.ValidationError, "Cancel Purchase Invoice PI-1 before this receipt"
+			):
+				MGKGoodsReceivedNote.before_cancel(doc)
+		self.assertFalse(hasattr(doc, "ignore_linked_doctypes"))
+
+	def test_close_cancel_keeps_reopen_guard_before_ignoring_managed_links(self):
+		doc = SimpleNamespace(flags=frappe._dict(), reload=Mock())
+		with patch(f"{CLOSE}.validate_reopen", side_effect=frappe.ValidationError("downstream Close DCC-1")):
+			with self.assertRaisesRegex(frappe.ValidationError, "DCC-1"):
+				MGKDeliveryChallanClose.before_cancel(doc)
+		self.assertFalse(hasattr(doc, "ignore_linked_doctypes"))
+		with patch(f"{CLOSE}.validate_reopen"):
+			MGKDeliveryChallanClose.before_cancel(doc)
+		self.assertIn("MGK Delivery Challan", doc.ignore_linked_doctypes)
+		self.assertIn("YRP Stock Valuation Production Link", doc.ignore_linked_doctypes)
 
 	def test_grn_link_validation_checks_removals_and_current_links(self):
 		doc = object.__new__(MGKGoodsReceivedNote)

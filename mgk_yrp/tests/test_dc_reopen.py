@@ -4,6 +4,7 @@ import frappe
 from yrp.yrp_stock.doctype.yrp_stock_valuation_adjustment.yrp_stock_valuation_adjustment import (
 	create_reversal,
 	process_adjustment,
+	retry_adjustment,
 )
 
 from mgk_yrp.job_work.reopen import finish_pending_reopens, finish_reopen, get_reopen_blockers
@@ -12,8 +13,8 @@ from mgk_yrp.mgk_yrp.doctype.mgk_delivery_challan.mgk_delivery_challan import (
 	make_return_delivery_challan,
 )
 from mgk_yrp.stock.ledger import get_voucher_sles
-from mgk_yrp.tests.close_fixtures import REOPEN, CloseTestCase
-from mgk_yrp.tests.fixtures import close_dc, make_return, run_adjustments
+from mgk_yrp.tests.close_fixtures import ADJUSTMENT, REOPEN, CloseTestCase
+from mgk_yrp.tests.fixtures import close_dc, make_item, make_return, make_uom, run_adjustments
 
 
 class TestDCReopen(CloseTestCase):
@@ -58,7 +59,7 @@ class TestDCReopen(CloseTestCase):
 		other = self.make_output([])
 		adjustment = self.queue_receipt_adjustment(other, source=close.items[0].consumption_sle)
 		process_adjustment(adjustment)
-		self.assert_preflight_rejects(close, "Consumption is used by another")
+		self.assert_preflight_rejects(close, adjustment)
 		self.assertEqual(self.get_overlay(receipt), 5000)
 
 	def test_reopen_rejected_when_consumption_is_propagation_node(self):
@@ -78,7 +79,7 @@ class TestDCReopen(CloseTestCase):
 				},
 			)
 		)
-		self.assert_preflight_rejects(close, "Consumption is used by another")
+		self.assert_preflight_rejects(close, adjustment)
 
 	def test_reopen_rejected_when_own_adjustment_failed(self):
 		for status in ("Calculation Failed", "Apply Failed"):
@@ -91,8 +92,87 @@ class TestDCReopen(CloseTestCase):
 
 	def test_reopen_rejected_when_other_output_adjustment_pending(self):
 		_, receipt, close = self.make_closed_cycle()
-		self.queue_receipt_adjustment(receipt)
-		self.assert_preflight_rejects(close, "unfinished valuation owns an output")
+		adjustment = self.queue_receipt_adjustment(receipt)
+		self.assert_preflight_rejects(close, adjustment)
+
+	def make_two_stage_chain(self):
+		self.make_input(quantity=100, rate=50)
+		first = self.make_challan()
+		outputs = [self.make_output([first], quantity=12) for _ in range(5)]
+		upstream = close_dc(first)
+		run_adjustments(upstream.doctype, upstream.name)
+		second = self.make_challan(items=[{"item": self.output_item, "qty": 60}])
+		finished_item = make_item(stock_uom=make_uom("Kg"))
+		receipt = self.make_output([second], items=[{"item": finished_item, "qty": 60, "rate": 20}])
+		downstream = close_dc(second)
+		run_adjustments(downstream.doctype, downstream.name)
+		return upstream, downstream, outputs, receipt
+
+	def test_upstream_waits_for_downstream_reversal_and_finish(self):
+		upstream, downstream, outputs, receipt = self.make_two_stage_chain()
+		self.assert_preflight_rejects(upstream, downstream.name)
+		downstream.cancel()
+		run_adjustments(downstream.doctype, downstream.name)
+		finish_reopen(downstream.name)
+		downstream = close_dc(frappe.get_doc("MGK Delivery Challan", downstream.delivery_challan))
+		run_adjustments(downstream.doctype, downstream.name)
+		downstream.cancel()
+		self.assert_preflight_rejects(upstream, downstream.name)
+		run_adjustments(downstream.doctype, downstream.name)
+		self.assertEqual(self.get_overlay(receipt), 0)
+		self.assertTrue(self.get_links(downstream))
+		self.assert_preflight_rejects(upstream, downstream.name)
+		self.assertTrue(finish_reopen(downstream.name))
+		upstream.cancel()
+		run_adjustments(upstream.doctype, upstream.name)
+		self.assertTrue(finish_reopen(upstream.name))
+		self.assertEqual([self.get_overlay(row) for row in outputs], [0] * 5)
+		self.assertEqual(self.get_overlay(receipt), 0)
+
+	def test_failed_reversal_resumes_applied_entries_then_finishes(self):
+		upstream, downstream, outputs, receipt = self.make_two_stage_chain()
+		downstream.cancel()
+		run_adjustments(downstream.doctype, downstream.name)
+		finish_reopen(downstream.name)
+		upstream.cancel()
+		reversal = frappe.db.get_value(
+			"YRP Stock Valuation Adjustment", {"reversal_of": upstream.stock_valuation_adjustment}, "name"
+		)
+		self.fail_after_first_reversal_entry(reversal)
+		self.assertFalse(finish_reopen(upstream.name))
+		self.assertTrue(self.get_links(upstream))
+		applied = frappe.get_all(
+			"YRP Stock Valuation Propagation Entry",
+			filters={"adjustment": reversal, "status": "Applied"},
+			pluck="name",
+		)
+		self.assertTrue(applied)
+		retry_adjustment(reversal)
+		run_adjustments(upstream.doctype, upstream.name)
+		self.assertTrue(finish_reopen(upstream.name))
+		self.assertEqual([self.get_overlay(row) for row in outputs], [0] * 5)
+		self.assertEqual(self.get_overlay(receipt), 0)
+		self.assertFalse(self.get_links(upstream))
+
+	def fail_after_first_reversal_entry(self, reversal):
+		from yrp.yrp_stock.doctype.yrp_stock_valuation_adjustment import yrp_stock_valuation_adjustment
+
+		apply_entry = yrp_stock_valuation_adjustment._apply_propagation_entry
+		calls = 0
+
+		def fail_second_entry(name):
+			nonlocal calls
+			calls += 1
+			if calls == 2:
+				raise frappe.ValidationError("transient reversal failure")
+			return apply_entry(name)
+
+		with patch(f"{ADJUSTMENT}._apply_propagation_entry", side_effect=fail_second_entry):
+			with self.assertRaisesRegex(frappe.ValidationError, "transient reversal failure"):
+				process_adjustment(reversal)
+		self.assertEqual(
+			frappe.db.get_value("YRP Stock Valuation Adjustment", reversal, "status"), "Apply Failed"
+		)
 
 	def test_reopen_rejected_when_period_closed(self):
 		_, _, close = self.make_closed_cycle()

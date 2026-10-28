@@ -8,6 +8,11 @@ frappe.ui.form.on("MGK Delivery Challan", {
 		}
 	},
 	refresh(frm) {
+		frm.ignore_doctypes_on_cancel_all = [
+			"MGK Delivery Challan", "MGK Goods Received Note", "MGK Delivery Challan Close",
+			"YRP Stock Ledger Entry", "YRP Repost Item Valuation", "YRP Stock Valuation Adjustment",
+			"YRP Stock Valuation Production Link",
+		];
 		const grid = frm.fields_dict.items.grid;
 		grid.update_docfield_property("item", "read_only", Boolean(frm.doc.is_return));
 		grid.cannot_add_rows = Boolean(frm.doc.is_return);

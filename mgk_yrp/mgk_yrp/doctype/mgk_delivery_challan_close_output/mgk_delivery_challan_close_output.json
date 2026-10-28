@@ -21,7 +21,9 @@
    "fieldtype": "Link",
    "label": "Goods Received Note",
    "read_only": 1,
-   "options": "MGK Goods Received Note"
+   "options": "MGK Goods Received Note",
+   "in_list_view": 1,
+   "columns": 3
   },
   {
    "fieldname": "goods_received_note_item",
@@ -34,7 +36,9 @@
    "fieldtype": "Link",
    "label": "Item",
    "read_only": 1,
-   "options": "Item"
+   "options": "Item",
+   "in_list_view": 1,
+   "columns": 2
   },
   {
    "fieldname": "warehouse",
@@ -46,21 +50,25 @@
   {
    "fieldname": "stock_uom",
    "fieldtype": "Link",
-   "label": "Stock Uom",
+   "label": "Stock UOM",
    "read_only": 1,
-   "options": "UOM"
+   "options": "UOM",
+   "in_list_view": 1,
+   "columns": 1
   },
   {
    "fieldname": "stock_qty",
    "fieldtype": "Float",
    "label": "Stock Qty",
    "read_only": 1,
-   "precision": "6"
+   "precision": "6",
+   "in_list_view": 1,
+   "columns": 1
   },
   {
    "fieldname": "output_receipt_sle",
    "fieldtype": "Link",
-   "label": "Output Receipt Sle",
+   "label": "Output Receipt SLE",
    "read_only": 1,
    "options": "YRP Stock Ledger Entry"
   },
@@ -69,14 +77,16 @@
    "fieldtype": "Currency",
    "label": "Allocated Value",
    "read_only": 1,
-   "precision": "6"
+   "in_list_view": 1,
+   "columns": 1
   },
   {
    "fieldname": "allocated_rate",
    "fieldtype": "Currency",
    "label": "Allocated Rate",
    "read_only": 1,
-   "precision": "6"
+   "in_list_view": 1,
+   "columns": 2
   }
  ],
  "permissions": [],

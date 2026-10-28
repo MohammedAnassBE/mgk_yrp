@@ -6,6 +6,10 @@ frappe.ui.form.on("MGK Purchase Invoice", {
 		frm.get_field("items").grid.cannot_add_rows = true;
 	},
 	refresh(frm) {
+		frm.ignore_doctypes_on_cancel_all = [
+			"MGK Goods Received Note", "YRP Stock Ledger Entry", "YRP Repost Item Valuation",
+			"YRP Stock Valuation Adjustment", "YRP Stock Valuation Production Link",
+		];
 		frm.remove_custom_button(__("Get GRNs"));
 		if (frm.doc.docstatus === 0 && frm.doc.supplier && frm.doc.against) {
 			frm.add_custom_button(__("Get GRNs"), () => select_invoice_grns(frm));

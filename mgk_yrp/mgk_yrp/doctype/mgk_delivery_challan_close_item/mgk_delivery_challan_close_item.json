@@ -29,14 +29,18 @@
    "fieldtype": "Link",
    "label": "Item",
    "read_only": 1,
-   "options": "Item"
+   "options": "Item",
+   "in_list_view": 1,
+   "columns": 4
   },
   {
    "fieldname": "stock_uom",
    "fieldtype": "Link",
-   "label": "Stock Uom",
+   "label": "Stock UOM",
    "read_only": 1,
-   "options": "UOM"
+   "options": "UOM",
+   "in_list_view": 1,
+   "columns": 1
   },
   {
    "fieldname": "delivered_stock_qty",
@@ -57,26 +61,28 @@
    "fieldtype": "Float",
    "label": "Remaining Stock Qty",
    "read_only": 1,
-   "precision": "6"
+   "precision": "6",
+   "in_list_view": 1,
+   "columns": 2
   },
   {
    "fieldname": "delivered_value",
    "fieldtype": "Currency",
    "label": "Delivered Value",
-   "read_only": 1,
-   "precision": "6"
+   "read_only": 1
   },
   {
    "fieldname": "own_value",
    "fieldtype": "Currency",
    "label": "Own Value",
    "read_only": 1,
-   "precision": "6"
+   "in_list_view": 1,
+   "columns": 3
   },
   {
    "fieldname": "consumption_sle",
    "fieldtype": "Link",
-   "label": "Consumption Sle",
+   "label": "Consumption SLE",
    "read_only": 1,
    "options": "YRP Stock Ledger Entry"
   },
@@ -84,15 +90,13 @@
    "fieldname": "consumed_value",
    "fieldtype": "Currency",
    "label": "Consumed Value",
-   "read_only": 1,
-   "precision": "6"
+   "read_only": 1
   },
   {
    "fieldname": "value_gap",
    "fieldtype": "Currency",
    "label": "Value Gap",
-   "read_only": 1,
-   "precision": "6"
+   "read_only": 1
   }
  ],
  "permissions": [],

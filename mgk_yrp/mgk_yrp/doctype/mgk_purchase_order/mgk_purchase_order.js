@@ -1,5 +1,6 @@
 frappe.ui.form.on("MGK Purchase Order", {
 	refresh(frm) {
+		frm.ignore_doctypes_on_cancel_all = ["MGK Goods Received Note"];
 		if (frm.doc.docstatus === 1 && (frm.doc.items || []).some(row => flt(row.pending_qty) > 0)
 			&& frappe.model.can_create("MGK Goods Received Note")) {
 			frm.add_custom_button(__("Create GRN"), () => frappe.model.open_mapped_doc({

@@ -334,6 +334,8 @@ class TestPurchaseInvoice(CloseTestCase):
 		self.assertAlmostEqual(self.get_overlay(receipt), 5500, places=5)
 		incoming = next(row for row in get_voucher_sles(challan.doctype, challan.name) if row.qty > 0)
 		self.assertAlmostEqual(incoming.valuation_adjustment_value, 500, places=5)
+		with self.assertRaisesRegex(frappe.ValidationError, f"MGK Purchase Invoice {invoice.name}"):
+			close.cancel()
 
 	def test_pi_missing_receipt_target_throws(self):
 		receipt = self.make_output([])
@@ -354,6 +356,7 @@ class TestPurchaseInvoice(CloseTestCase):
 		run_adjustments(invoice.doctype, invoice.name)
 		invoice.cancel()
 		amended = frappe.copy_doc(invoice)
+		amended.docstatus = 0
 		amended.amended_from = invoice.name
 		amended.items[0].rate = 12
 		amended.insert(ignore_permissions=True)

@@ -78,9 +78,8 @@
   {
    "fieldname": "total_dc_value",
    "fieldtype": "Currency",
-   "label": "Total Dc Value",
-   "read_only": 1,
-   "precision": "6"
+   "label": "Total DC Value",
+   "read_only": 1
   },
   {
    "fieldname": "total_output_qty",
@@ -92,7 +91,7 @@
   {
    "fieldname": "output_stock_uom",
    "fieldtype": "Link",
-   "label": "Output Stock Uom",
+   "label": "Output Stock UOM",
    "read_only": 1,
    "options": "UOM"
   },
@@ -100,22 +99,19 @@
    "fieldname": "value_per_unit",
    "fieldtype": "Currency",
    "label": "Value Per Unit",
-   "read_only": 1,
-   "precision": "6"
+   "read_only": 1
   },
   {
    "fieldname": "loss_value",
    "fieldtype": "Currency",
    "label": "Loss Value",
-   "read_only": 1,
-   "precision": "6"
+   "read_only": 1
   },
   {
    "fieldname": "total_value_gap",
    "fieldtype": "Currency",
    "label": "Total Value Gap",
-   "read_only": 1,
-   "precision": "6"
+   "read_only": 1
   },
   {
    "fieldname": "stock_valuation_adjustment",

@@ -117,7 +117,13 @@ class MGKPurchaseInvoice(Document):
 		validate_reversal_allowed(self.doctype, self.name)
 		previous = self.get_doc_before_save().as_dict()
 		self.update({field.fieldname: previous.get(field.fieldname) for field in self.meta.fields})
-		self.ignore_linked_doctypes = ("MGK Goods Received Note", "YRP Stock Valuation Adjustment")
+		self.ignore_linked_doctypes = (
+			"MGK Goods Received Note",
+			"YRP Stock Ledger Entry",
+			"YRP Repost Item Valuation",
+			"YRP Stock Valuation Adjustment",
+			"YRP Stock Valuation Production Link",
+		)
 
 	def on_cancel(self):
 		create_reversal(self.doctype, self.name)

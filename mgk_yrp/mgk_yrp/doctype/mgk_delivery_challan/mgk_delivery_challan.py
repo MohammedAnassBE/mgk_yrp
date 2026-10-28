@@ -200,6 +200,7 @@ class MGKDeliveryChallan(Document):
 			"YRP Stock Ledger Entry",
 			"YRP Repost Item Valuation",
 			"YRP Stock Valuation Adjustment",
+			"YRP Stock Valuation Production Link",
 		)
 
 	def validate_no_dependents(self):

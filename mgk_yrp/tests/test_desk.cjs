@@ -22,7 +22,10 @@ function desk(permissions = {}) {
 		},
 		ui: { form: { on: (doctype, handlers) => { events[doctype] = handlers; } } },
 	};
-	const context = vm.createContext({ frappe, __: value => value, flt: value => Number(value) || 0 });
+	const context = vm.createContext({ frappe,
+		__: (value, args = []) => value.replace(/\{(\d+)\}/g, (_, index) => args[index]),
+		flt: value => Number(value) || 0, format_currency: value => `₹${Number(value).toFixed(2)}`,
+	});
 	vm.runInContext(readFileSync(resolve(__dirname,
 		"../../../frappe/frappe/public/js/frappe/model/indicator.js"), "utf8"), context);
 	return { frappe, events, context };
@@ -100,17 +103,22 @@ test("GRN badge filters use the receipt's invoice link supported by Desk", () =>
 	assert.equal(settings.get_indicator({})[2], "purchase_invoice,is,not set");
 });
 
-function buttons(doctype, doc, permissions) {
+function refreshForm(doctype, doc, permissions) {
 	const environment = desk(permissions);
 	load(environment, doctype);
 	const shown = [];
 	const grid = { update_docfield_property() {}, refresh() {} };
 	const form = {
 		doctype, doc, fields_dict: { items: { grid } },
-		add_custom_button: label => shown.push(label), set_intro() {},
+		add_custom_button: label => shown.push(label), remove_custom_button() {}, set_intro() {},
+		set_df_property() {}, page: { clear_secondary_action() {} },
 	};
 	environment.events[doctype].refresh(form);
-	return shown;
+	return { environment, form, shown };
+}
+
+function buttons(doctype, doc, permissions) {
+	return refreshForm(doctype, doc, permissions).shown;
 }
 
 for (const docstatus of [0, 1, 2]) {
@@ -157,3 +165,85 @@ test("Close reopening actions require cancel permission", () => {
 	assert.deepEqual(buttons("MGK Delivery Challan Close",
 		{ docstatus: 2, reopen_status: "Reversing" }, { cancel: false }), []);
 });
+
+for (const [doctype, linked] of [
+	["MGK Purchase Invoice", ["MGK Goods Received Note", "YRP Stock Valuation Adjustment"]],
+	["MGK Goods Received Note", ["MGK Purchase Invoice", "MGK Delivery Challan Close",
+		"YRP Stock Ledger Entry", "YRP Repost Item Valuation", "YRP Stock Valuation Adjustment",
+		"YRP Stock Valuation Production Link"]],
+	["MGK Delivery Challan", ["MGK Delivery Challan", "MGK Goods Received Note",
+		"MGK Delivery Challan Close", "YRP Stock Ledger Entry", "YRP Repost Item Valuation",
+		"YRP Stock Valuation Adjustment", "YRP Stock Valuation Production Link"]],
+	["MGK Purchase Order", ["MGK Goods Received Note"]],
+]) {
+	test(`${doctype}: form Cancel reaches server guards without Cancel All`, async () => {
+		const { environment, form } = refreshForm(doctype, { doctype, name: "test", docstatus: 1 });
+		for (const name of linked) assert.ok(form.ignore_doctypes_on_cancel_all.includes(name), name);
+		let cancelled = false;
+		form.validate_form_action = action => assert.equal(action, "Cancel");
+		form._cancel = () => { cancelled = true; };
+		form._cancel_all = () => assert.fail("must reach the MGK server guard");
+		environment.context.cstr = String;
+		environment.frappe.call = async ({ args }) => ({ message: { docs: linked
+			.filter(name => !args.ignore_doctypes_on_cancel_all.includes(name))
+			.map(name => ({ doctype: name })) } });
+		const source = readFileSync(resolve(__dirname,
+			"../../../frappe/frappe/public/js/frappe/form/form.js"), "utf8");
+		const start = source.indexOf("\tsavecancel(btn,");
+		const end = source.indexOf("\n\t_cancel_all(", start);
+		const methods = vm.runInContext(`({${source.slice(start, end)}})`, environment.context);
+		methods.savecancel.call(form);
+		await new Promise(resolve => setImmediate(resolve));
+		assert.equal(cancelled, true);
+	});
+}
+
+test("Close has one Reopen action with reopen confirmation", () => {
+	const { environment, form, shown } = refreshForm("MGK Delivery Challan Close", { docstatus: 0 });
+	let cleared = 0;
+	let reopen;
+	let saved = 0;
+	form.doc = { docstatus: 1, delivery_challan: "MGK-DC-test" };
+	form.page.clear_secondary_action = () => { cleared++; };
+	form.validate_form_action = action => assert.equal(action, "Cancel");
+	form.add_custom_button = (label, callback) => { shown.push(label); reopen = callback; };
+	form._cancel = (...args) => { assert.equal(args[3], true); saved++; };
+	form.savecancel = () => assert.fail("generic permanent-cancel confirmation");
+	let confirm;
+	environment.frappe.confirm = (message, callback) => {
+		assert.match(message, /Reopen Delivery Challan MGK-DC-test/);
+		assert.doesNotMatch(message, /Permanently Cancel/);
+		confirm = callback;
+	};
+	environment.events[form.doctype].refresh(form);
+	assert.equal(cleared, 1);
+	assert.deepEqual(shown, ["Reopen"]);
+	reopen();
+	assert.equal(saved, 0);
+	confirm();
+	assert.equal(saved, 1);
+});
+
+test("Close intro uses currency precision for repeating rates", () => {
+	const { environment, form } = refreshForm("MGK Delivery Challan Close", { docstatus: 0 });
+	form.doc = { docstatus: 0, outputs: [{}], output_stock_uom: "Kg", value_per_unit: 2500 / 60 };
+	let intro;
+	form.set_intro = message => { intro = message; };
+	environment.events[form.doctype].refresh(form);
+	assert.equal(intro, "Adds ₹41.67 per Kg to 1 GRN rows");
+});
+
+for (const name of ["mgk_delivery_challan_close", "mgk_delivery_challan_close_item",
+	"mgk_delivery_challan_close_output"]) {
+	test(`${name}: readable labels, currency defaults and visible grid columns`, () => {
+		const meta = JSON.parse(readFileSync(resolve(doctypes, name, `${name}.json`), "utf8"));
+		for (const field of meta.fields) {
+			assert.doesNotMatch(field.label, /\b(Dc|Uom|Sle)\b/);
+			if (field.fieldtype === "Currency") assert.equal(field.precision, undefined);
+		}
+		if (meta.istable) {
+			assert.ok(meta.fields.some(field => field.fieldname === "item" && field.in_list_view));
+			assert.equal(meta.fields.reduce((sum, field) => sum + (field.columns || 0), 0), 10);
+		}
+	});
+}

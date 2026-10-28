@@ -5,9 +5,20 @@ frappe.ui.form.on("MGK Delivery Challan Close", {
 		}));
 	},
 	refresh(frm) {
-		frm.ignore_doctypes_on_cancel_all = ["MGK Delivery Challan", "YRP Stock Valuation Adjustment"];
+		frm.ignore_doctypes_on_cancel_all = [
+			"MGK Delivery Challan", "YRP Stock Ledger Entry", "YRP Repost Item Valuation",
+			"YRP Stock Valuation Adjustment", "YRP Stock Valuation Production Link",
+		];
 		if (frm.doc.docstatus === 1 && frappe.model.can_cancel(frm.doctype)) {
-			frm.add_custom_button(__("Reopen"), () => frm.savecancel());
+			frm.page.clear_secondary_action();
+			frm.add_custom_button(__("Reopen"), () => {
+				frm.validate_form_action("Cancel");
+				frappe.confirm(
+					__("Reopen Delivery Challan {0}? Its valuation will be reversed before stock is released.",
+						[frm.doc.delivery_challan]),
+					() => frm._cancel(null, null, null, true),
+				);
+			});
 		}
 		if (frm.doc.docstatus === 2 && frm.doc.reopen_status === "Reversing") {
 			frm.set_intro(__("Reversing valuation; consumption will be cancelled when the reversal completes."), "orange");
@@ -24,11 +35,11 @@ frappe.ui.form.on("MGK Delivery Challan Close", {
 		} else if (frm.doc.reopen_status === "Reopened") {
 			frm.set_intro(__("Delivery Challan reopened."), "green");
 		} else if ((frm.doc.outputs || []).length) {
-			frm.set_intro(__("Adds ₹{0} per {1} to {2} GRN rows", [
-				flt(frm.doc.value_per_unit, 6), frm.doc.output_stock_uom, frm.doc.outputs.length,
+			frm.set_intro(__("Adds {0} per {1} to {2} GRN rows", [
+				format_currency(frm.doc.value_per_unit), frm.doc.output_stock_uom, frm.doc.outputs.length,
 			]));
 		} else {
-			frm.set_intro(__("No linked GRN: ₹{0} will be written off", [flt(frm.doc.loss_value, 6)]));
+			frm.set_intro(__("No linked GRN: {0} will be written off", [format_currency(frm.doc.loss_value)]));
 		}
 		mgk_close_valuation_status(frm);
 	},

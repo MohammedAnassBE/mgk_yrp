@@ -214,6 +214,8 @@ class MGKGoodsReceivedNote(Document):
 			"YRP Stock Ledger Entry",
 			"YRP Repost Item Valuation",
 			"YRP Stock Valuation Adjustment",
+			"YRP Stock Valuation Production Link",
+			"MGK Delivery Challan Close",
 		)
 
 	def validate_cancellable_delivery_challans(self):

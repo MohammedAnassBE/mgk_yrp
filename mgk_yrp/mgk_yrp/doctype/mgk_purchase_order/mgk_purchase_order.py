@@ -134,6 +134,7 @@ class MGKPurchaseOrder(Document):
 					", ".join(name for (name,) in receipts)
 				)
 			)
+		self.ignore_linked_doctypes = ("MGK Goods Received Note",)
 
 	def update_received_qty(self) -> None:
 		received = self.received_quantities

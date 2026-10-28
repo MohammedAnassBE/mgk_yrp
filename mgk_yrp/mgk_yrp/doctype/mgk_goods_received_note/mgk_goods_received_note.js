@@ -10,6 +10,10 @@ frappe.ui.form.on("MGK Goods Received Note", {
 		}));
 	},
 	refresh(frm) {
+		frm.ignore_doctypes_on_cancel_all = [
+			"MGK Purchase Invoice", "MGK Delivery Challan Close", "YRP Stock Ledger Entry",
+			"YRP Repost Item Valuation", "YRP Stock Valuation Adjustment", "YRP Stock Valuation Production Link",
+		];
 		set_purchase_order_fields(frm);
 	},
 	supplier(frm) {
