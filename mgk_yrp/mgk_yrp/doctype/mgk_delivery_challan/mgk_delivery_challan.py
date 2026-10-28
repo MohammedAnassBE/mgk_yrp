@@ -73,7 +73,7 @@ class MGKDeliveryChallan(Document):
 			"from_warehouse": source.to_warehouse,
 			"to_location": source.from_location,
 			"to_warehouse": source.from_warehouse,
-			"process": source.process,
+			"process_name": source.process_name,
 		}
 		for fieldname, expected in fields.items():
 			if self.get(fieldname) != expected:
@@ -228,7 +228,7 @@ def make_return_delivery_challan(source_name: str) -> Document:
 			"from_warehouse": source.to_warehouse,
 			"to_location": source.from_location,
 			"to_warehouse": source.from_warehouse,
-			"process": source.process,
+			"process_name": source.process_name,
 		}
 	)
 	returned = source.get_returned_stock_qty()

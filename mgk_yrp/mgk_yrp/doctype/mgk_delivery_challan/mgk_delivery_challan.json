@@ -9,7 +9,7 @@
  "track_changes": 1,
  "field_order": [
   "posting_date", "posting_time", "edit_posting_date_and_time", "is_return", "return_against",
-  "from_location", "from_warehouse", "to_location", "to_warehouse", "process", "dc_number",
+  "from_location", "from_warehouse", "to_location", "to_warehouse", "process_name", "dc_number",
   "vehicle_number", "items", "total_qty", "total_declared_value", "close_status",
   "delivery_challan_close", "amended_from"
  ],
@@ -87,7 +87,7 @@
    "read_only_depends_on": "eval:doc.is_return"
   },
   {
-   "fieldname": "process",
+   "fieldname": "process_name",
    "fieldtype": "Link",
    "label": "Process",
    "options": "YRP Process",

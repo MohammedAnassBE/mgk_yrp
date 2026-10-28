@@ -37,7 +37,7 @@ class TestDeliveryChallan(IntegrationTestCase):
 		self.main = make_warehouse(supplier=self.from_supplier)
 		self.destination = make_warehouse(supplier=self.to_supplier)
 		self.item = make_item(stock_uom=make_uom("Kg"))
-		self.process = make_process()
+		self.process_name = make_process()
 
 	def make_receipt(self, *, item=None, quantity=50, rate=100, submit=True):
 		order = make_purchase_order(
@@ -52,7 +52,7 @@ class TestDeliveryChallan(IntegrationTestCase):
 			from_warehouse=self.main,
 			to_supplier=self.to_supplier,
 			to_warehouse=self.destination,
-			process=self.process,
+			process_name=self.process_name,
 			items=[{"item": item or self.item, "qty": quantity, "rate": rate}],
 			submit=submit,
 			**header,
@@ -75,7 +75,7 @@ class TestDeliveryChallan(IntegrationTestCase):
 		return outgoing, incoming
 
 	def test_dc_requires_process_and_locations(self):
-		for fieldname in ("process", "from_location", "to_location", "from_warehouse"):
+		for fieldname in ("process_name", "from_location", "to_location", "from_warehouse"):
 			with self.subTest(fieldname=fieldname):
 				challan = self.make_challan(submit=False)
 				challan.set(fieldname, None)
@@ -93,7 +93,7 @@ class TestDeliveryChallan(IntegrationTestCase):
 			to_supplier=self.to_supplier,
 			to_warehouse=None,
 			items=[{"item": self.item, "qty": 1}],
-			process=self.process,
+			process_name=self.process_name,
 			submit=False,
 		)
 		self.assertEqual(challan.to_warehouse, self.destination)
@@ -155,7 +155,7 @@ class TestDeliveryChallan(IntegrationTestCase):
 		self.assertEqual(
 			(returned.from_location, returned.to_location), (self.to_supplier, self.from_supplier)
 		)
-		self.assertEqual(returned.process, challan.process)
+		self.assertEqual(returned.process_name, challan.process_name)
 		self.assertEqual(challan.reload().items[0].returned_qty, 10)
 		self.assertEqual(get_stock_balance(self.item, self.destination), 40)
 		self.assertEqual(get_stock_balance(self.item, self.main), 10)
@@ -261,7 +261,7 @@ class TestDeliveryChallan(IntegrationTestCase):
 			"from_warehouse": self.main,
 			"to_location": self.to_supplier,
 			"to_warehouse": self.destination,
-			"process": make_process(),
+			"process_name": make_process(),
 		}
 		for fieldname, value in wrong_headers.items():
 			with self.subTest(fieldname=fieldname):

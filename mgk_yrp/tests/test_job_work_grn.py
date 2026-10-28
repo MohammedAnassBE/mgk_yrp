@@ -33,7 +33,7 @@ class TestJobWorkGRN(IntegrationTestCase):
 		self.destination = make_warehouse(supplier=self.supplier)
 		self.raw_item = make_item(stock_uom=make_uom("Kg"))
 		self.output_item = make_item(stock_uom=make_uom("Kg"))
-		self.process = make_process()
+		self.process_name = make_process()
 		self.order = make_purchase_order(
 			supplier=self.owner,
 			warehouse=self.main,
@@ -46,7 +46,7 @@ class TestJobWorkGRN(IntegrationTestCase):
 			from_warehouse=self.main,
 			to_supplier=self.supplier,
 			to_warehouse=self.destination,
-			process=self.process,
+			process_name=self.process_name,
 			items=[{"item": self.raw_item, "qty": 10}],
 			submit=submit,
 		)

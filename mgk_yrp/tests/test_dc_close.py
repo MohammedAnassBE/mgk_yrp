@@ -215,7 +215,7 @@ class TestDCClose(CloseTestCase):
 			to_supplier=dyer,
 			to_warehouse=dye_warehouse,
 			items=[{"item": self.output_item, "qty": 60}],
-			process=self.process,
+			process_name=self.process_name,
 		)
 		dyed_item = make_item(stock_uom=make_uom("Kg"))
 		dyed = make_job_work_grn(

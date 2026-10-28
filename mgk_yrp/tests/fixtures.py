@@ -224,7 +224,7 @@ def make_job_work_grn(*, supplier, warehouse, items, delivery_challans=(), submi
 
 
 def make_delivery_challan(
-	*, from_warehouse, to_supplier, to_warehouse, items, process=None, submit=True, **header
+	*, from_warehouse, to_supplier, to_warehouse, items, process_name=None, submit=True, **header
 ) -> Document:
 	challan = frappe.get_doc(
 		{
@@ -233,7 +233,7 @@ def make_delivery_challan(
 			"from_warehouse": from_warehouse,
 			"to_location": to_supplier,
 			"to_warehouse": to_warehouse,
-			"process": process or make_process(),
+			"process_name": process_name or make_process(),
 			"items": items,
 			**header,
 		}
