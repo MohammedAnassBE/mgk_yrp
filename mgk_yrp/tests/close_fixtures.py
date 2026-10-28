@@ -27,6 +27,8 @@ REOPEN = "mgk_yrp.job_work.reopen"
 class CloseTestCase(IntegrationTestCase):
 	def setUp(self):
 		super().setUp()
+		# Tests drive process_adjustment themselves, including reversals and retries.
+		self.enqueue_adjustment = self.enterContext(patch(f"{ADJUSTMENT}.enqueue_adjustment"))
 		for target in (ADJUSTMENT, CLOSE):
 			setting = patch(f"{target}.is_stock_adjustment_enabled", return_value=True)
 			setting.start()

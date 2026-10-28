@@ -269,7 +269,9 @@ class TestDCReopen(CloseTestCase):
 
 	def test_finish_pending_reopens_scheduler(self):
 		challan, _, close = self.make_closed_cycle()
+		self.enqueue_adjustment.reset_mock()
 		close.cancel()
+		self.enqueue_adjustment.assert_called_once()
 		finish_pending_reopens()
 		self.assertEqual(challan.reload().close_status, "Reopening")
 		run_adjustments(close.doctype, close.name)
