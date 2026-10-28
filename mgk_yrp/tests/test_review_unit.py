@@ -288,6 +288,30 @@ class TestReviewUnit(TestCase):
 		self.assertIn("MGK Delivery Challan", doc.ignore_linked_doctypes)
 		self.assertIn("YRP Stock Valuation Production Link", doc.ignore_linked_doctypes)
 
+	def test_close_cancel_locks_dependencies_before_frappe_locks_current_parent(self):
+		doc = object.__new__(MGKDeliveryChallanClose)
+		doc.__dict__.update(doctype="MGK Delivery Challan Close", name="upstream", docstatus=2)
+		previous, sequence = Mock(), Mock()
+		with (
+			patch.object(doc, "is_new", return_value=False),
+			patch(f"{CLOSE}.frappe.get_doc", return_value=previous),
+			patch(f"{CLOSE}.lock_reopen", sequence.dependencies),
+			patch.object(Document, "load_doc_before_save", sequence.frappe),
+		):
+			doc.load_doc_before_save(raise_exception=True)
+		self.assertEqual(
+			sequence.mock_calls, [call.dependencies(previous), call.frappe(raise_exception=True)]
+		)
+
+	def test_reopen_backdating_excludes_only_explicit_independent_consumptions(self):
+		self.database.sql.return_value = []
+		self.doc.get_stock_entries = lambda: [{"item": "raw", "warehouse": "supplier"}]
+		with patch(f"{BACKDATING}.lock_stock_buckets"):
+			validate_backdated_cancel(self.doc, ignored_sles=["sibling-consumption"])
+		for query in self.database.sql.call_args_list:
+			self.assertIn("AND sle.name NOT IN %(ignored_sles)s", query.args[0])
+			self.assertEqual(query.args[1]["ignored_sles"], ("sibling-consumption",))
+
 	def test_grn_link_validation_checks_removals_and_current_links(self):
 		doc = object.__new__(MGKGoodsReceivedNote)
 		doc.__dict__.update(

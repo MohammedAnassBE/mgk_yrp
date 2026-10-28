@@ -18,7 +18,7 @@ from mgk_yrp.job_work.close_valuation import (
 	lock_close_buckets,
 	validate_outputs,
 )
-from mgk_yrp.job_work.reopen import start_reopen, validate_reopen
+from mgk_yrp.job_work.reopen import lock_reopen, start_reopen, validate_reopen
 from mgk_yrp.mgk_yrp.doctype.mgk_goods_received_note.mgk_goods_received_note import get_linking_grns
 from mgk_yrp.stock.ledger import post_stock_entries, validate_stock_dimensions
 from mgk_yrp.stock.locking import lock_documents
@@ -28,7 +28,10 @@ class MGKDeliveryChallanClose(Document):
 	def load_doc_before_save(self, *, raise_exception=False):
 		if not self.is_new():
 			previous = frappe.get_doc(self.doctype, self.name)
-			self.lock_sources(previous.delivery_challan)
+			if self.docstatus == 2:
+				lock_reopen(previous)
+			else:
+				self.lock_sources(previous.delivery_challan)
 		super().load_doc_before_save(raise_exception=raise_exception)
 
 	def lock_sources(self, previous=None):

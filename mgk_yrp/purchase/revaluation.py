@@ -10,6 +10,39 @@ from yrp.yrp_stock.doctype.yrp_stock_valuation_closing.yrp_stock_valuation_closi
 	lock_stock_valuation_period,
 )
 
+from mgk_yrp.stock.dependencies import CLOSE, StockDependencies
+
+
+def lock_invoice_sources(invoice, grns):
+	receipts = (
+		frappe.db.sql(
+			"""SELECT name FROM `tabYRP Stock Ledger Entry`
+		WHERE voucher_type = 'MGK Goods Received Note' AND voucher_no IN %(grns)s
+			AND qty > 0 AND is_cancelled = 0 ORDER BY name""",
+			{"grns": tuple(sorted(set(grns)))},
+			pluck=True,
+		)
+		if grns
+		else []
+	)
+	graph = StockDependencies(
+		receipts,
+		documents={"MGK Goods Received Note": grns, invoice.doctype: [invoice.name]},
+	).lock()
+	if invoice.docstatus in (1, 2):
+		validate_reopening_closes(graph)
+
+
+def validate_reopening_closes(graph):
+	for name in sorted(graph.close_names):
+		status = frappe.db.get_value(CLOSE, name, "reopen_status", for_update=True)
+		if status == "Reversing":
+			frappe.throw(
+				_("Finish reopening Close {0} before submitting or cancelling a Purchase Invoice.").format(
+					name
+				)
+			)
+
 
 def build_invoice_allocations(invoice) -> list[dict]:
 	allocations = []

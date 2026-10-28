@@ -1,3 +1,5 @@
+from concurrent.futures import ThreadPoolExecutor
+from threading import Event
 from unittest.mock import patch
 
 import frappe
@@ -13,11 +15,54 @@ from mgk_yrp.mgk_yrp.doctype.mgk_delivery_challan.mgk_delivery_challan import (
 	make_return_delivery_challan,
 )
 from mgk_yrp.stock.ledger import get_voucher_sles
+from mgk_yrp.stock.locking import lock_documents
 from mgk_yrp.tests.close_fixtures import ADJUSTMENT, REOPEN, CloseTestCase
 from mgk_yrp.tests.fixtures import close_dc, make_item, make_return, make_uom, run_adjustments
+from mgk_yrp.tests.test_stock_concurrency import worker_connection
 
 
 class TestDCReopen(CloseTestCase):
+	def test_c59_c69_shared_grn_reopens_both_closes_in_creation_order(self):
+		self.assert_shared_grn_reopens(reverse=False)
+
+	def test_c59_c69_shared_grn_reopens_both_closes_in_reverse_order(self):
+		self.assert_shared_grn_reopens(reverse=True)
+
+	def assert_shared_grn_reopens(self, *, reverse):
+		self.make_input(quantity=100)
+		challans = [self.make_challan(), self.make_challan()]
+		receipt = self.make_output(challans)
+		closes = []
+		for challan in challans:
+			close = close_dc(challan)
+			run_adjustments(close.doctype, close.name)
+			closes.append(close)
+		self.assertEqual(self.get_overlay(receipt), 10000)
+		order = closes[::-1] if reverse else closes
+		for index, close in enumerate(order):
+			close.cancel()
+			run_adjustments(close.doctype, close.name)
+			self.assertTrue(finish_reopen(close.name))
+			self.assertEqual(self.get_overlay(receipt), 5000 * (1 - index))
+			self.assertFalse(self.get_links(close))
+			self.assertFalse(get_voucher_sles(close.doctype, close.name))
+			self.assertEqual(
+				frappe.db.get_value("MGK Delivery Challan", close.delivery_challan, "close_status"), "Open"
+			)
+		self.assertEqual([close.reload().reopen_status for close in closes], ["Reopened", "Reopened"])
+
+	def test_shared_grn_waits_for_unfinished_sibling_reversal(self):
+		self.make_input(quantity=100)
+		first, second = self.make_challan(), self.make_challan()
+		self.make_output([first, second])
+		closes = []
+		for challan in (first, second):
+			close = close_dc(challan)
+			run_adjustments(close.doctype, close.name)
+			closes.append(close)
+		closes[0].cancel()
+		self.assert_preflight_rejects(closes[1], "Stock Valuation Adjustment")
+
 	def make_closed_cycle(self, *, process=True):
 		challan, receipt = self.make_cycle()
 		close = close_dc(challan)
@@ -128,6 +173,56 @@ class TestDCReopen(CloseTestCase):
 		self.assertTrue(finish_reopen(upstream.name))
 		self.assertEqual([self.get_overlay(row) for row in outputs], [0] * 5)
 		self.assertEqual(self.get_overlay(receipt), 0)
+
+	def test_c64_c68_upstream_reopen_waits_for_downstream_finish_without_deadlock(self):
+		upstream, downstream, outputs, receipt = self.make_two_stage_chain()
+		downstream.cancel()
+		run_adjustments(downstream.doctype, downstream.name)
+		frappe.db.commit()
+		ready, waiting = Event(), Event()
+		site, sites_path = frappe.local.site, frappe.local.sites_path
+
+		def observe_upstream_parents(documents):
+			if upstream.name in documents.get(upstream.doctype, ()):
+				waiting.set()
+			return lock_documents(documents)
+
+		with ThreadPoolExecutor(max_workers=1) as pool:
+			finisher = pool.submit(
+				self.finish_after_upstream_waits, site, sites_path, downstream, ready, waiting
+			)
+			try:
+				self.assertTrue(ready.wait(10), "Finish did not lock its Close parents")
+				with patch("mgk_yrp.stock.dependencies.lock_documents", side_effect=observe_upstream_parents):
+					upstream.cancel()
+				frappe.db.commit()
+			finally:
+				waiting.set()
+				frappe.db.rollback()
+				self.assertTrue(finisher.result(timeout=20))
+		run_adjustments(upstream.doctype, upstream.name)
+		self.assertTrue(finish_reopen(upstream.name))
+		self.assertEqual(downstream.reload().reopen_status, "Reopened")
+		self.assertFalse(self.get_links(downstream))
+		self.assertEqual([self.get_overlay(row) for row in outputs], [0] * 5)
+		self.assertEqual(self.get_overlay(receipt), 0)
+
+	def finish_after_upstream_waits(self, site, sites_path, close, ready, waiting):
+		with worker_connection(site, sites_path):
+			frappe.db.sql("SET SESSION innodb_lock_wait_timeout = 5")
+			lock_documents(
+				{
+					"MGK Delivery Challan": [close.delivery_challan],
+					"MGK Goods Received Note": [row.goods_received_note for row in close.outputs],
+					close.doctype: [close.name],
+				}
+			)
+			ready.set()
+			if not waiting.wait(10):
+				raise AssertionError("Upstream reopen did not request its dependency parents")
+			finished = finish_reopen(close.name)
+			frappe.db.commit()
+			return finished
 
 	def test_failed_reversal_resumes_applied_entries_then_finishes(self):
 		upstream, downstream, outputs, receipt = self.make_two_stage_chain()

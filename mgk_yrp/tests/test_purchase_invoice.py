@@ -48,6 +48,62 @@ class TestPurchaseInvoice(CloseTestCase):
 			}
 		)
 
+	def make_reopening_chain(self):
+		first = self.make_challan()
+		intermediate = self.make_output([first])
+		upstream = close_dc(first)
+		run_adjustments(upstream.doctype, upstream.name)
+		second = self.make_challan(items=[{"item": self.output_item, "qty": 60}])
+		finished = make_item(stock_uom=make_uom("Kg"))
+		receipt = self.make_output([second], items=[{"item": finished, "qty": 60, "rate": 1}])
+		downstream = close_dc(second)
+		run_adjustments(downstream.doctype, downstream.name)
+		downstream.cancel()
+		run_adjustments(downstream.doctype, downstream.name)
+		self.assertEqual(self.get_overlay(receipt), 0)
+		self.assertTrue(self.get_links(downstream))
+		return downstream, intermediate, receipt
+
+	def test_c67_c82_downward_upstream_pi_waits_between_reversal_and_finish(self):
+		purchase = self.make_input()
+		downstream, intermediate, receipt = self.make_reopening_chain()
+		invoice = self.make_invoice(
+			[purchase],
+			supplier=self.owner,
+			against="Purchase Order",
+			rates={purchase.items[0].name: 90},
+			submit=False,
+		)
+		with patch(f"{REVALUATION}.create_adjustment", wraps=create_adjustment) as create:
+			with self.assertRaisesRegex(frappe.ValidationError, downstream.name):
+				invoice.submit()
+			create.assert_not_called()
+		self.assertEqual(frappe.db.get_value(invoice.doctype, invoice.name, "docstatus"), 0)
+		self.assertTrue(finish_reopen(downstream.name))
+		invoice.reload().submit()
+		run_adjustments(invoice.doctype, invoice.name)
+		self.assertAlmostEqual(self.get_overlay(intermediate), 4500, places=5)
+		self.assertEqual(self.get_overlay(receipt), 0)
+
+	def test_c67_c82_downward_pi_cancellation_waits_between_reversal_and_finish(self):
+		purchase = self.make_input()
+		invoice = self.make_invoice(
+			[purchase], supplier=self.owner, against="Purchase Order", rates={purchase.items[0].name: 110}
+		)
+		run_adjustments(invoice.doctype, invoice.name)
+		downstream, intermediate, receipt = self.make_reopening_chain()
+		with patch(f"{INVOICE}.create_reversal") as reverse:
+			with self.assertRaisesRegex(frappe.ValidationError, downstream.name):
+				invoice.cancel()
+			reverse.assert_not_called()
+		self.assertEqual(frappe.db.get_value(invoice.doctype, invoice.name, "docstatus"), 1)
+		self.assertEqual(purchase.reload().purchase_invoice, invoice.name)
+		self.assertTrue(finish_reopen(downstream.name))
+		invoice.reload().cancel()
+		run_adjustments(invoice.doctype, invoice.name)
+		self.assertAlmostEqual(self.get_overlay(intermediate), 5000, places=5)
+		self.assertEqual(self.get_overlay(receipt), 0)
+
 	def test_get_unbilled_grns_filters_by_type_and_billing(self):
 		purchase = self.make_input()
 		job = self.make_output([])
@@ -387,7 +443,7 @@ class TestPurchaseInvoice(CloseTestCase):
 		invoice = self.make_invoice([receipt], submit=False)
 		sequence = Mock()
 		with (
-			patch(f"{INVOICE}.lock_documents", wraps=lock_documents) as parents,
+			patch("mgk_yrp.stock.dependencies.lock_documents", wraps=lock_documents) as parents,
 			patch.object(
 				Document, "load_doc_before_save", autospec=True, wraps=Document.load_doc_before_save
 			) as load,
@@ -395,13 +451,8 @@ class TestPurchaseInvoice(CloseTestCase):
 			sequence.attach_mock(parents, "parents")
 			sequence.attach_mock(load, "invoice")
 			invoice.load_doc_before_save()
-		self.assertEqual(
-			sequence.mock_calls[0].args[0],
-			{
-				"MGK Goods Received Note": [receipt.name, receipt.name],
-				"MGK Purchase Invoice": [invoice.name],
-			},
-		)
+		self.assertEqual(sequence.mock_calls[0].args[0]["MGK Goods Received Note"], {receipt.name})
+		self.assertEqual(sequence.mock_calls[0].args[0]["MGK Purchase Invoice"], {invoice.name})
 		self.assertEqual(sequence.mock_calls[1][0], "invoice")
 		frappe.db.set_value(
 			receipt.doctype, receipt.name, "purchase_invoice", "another-invoice", update_modified=False

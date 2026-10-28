@@ -10,9 +10,12 @@ from yrp.yrp_stock.doctype.yrp_stock_valuation_adjustment.yrp_stock_valuation_ad
 )
 
 from mgk_yrp.purchase.gst import apply_row_gst, get_gst_context
-from mgk_yrp.purchase.revaluation import create_invoice_adjustment, require_stock_adjustment
+from mgk_yrp.purchase.revaluation import (
+	create_invoice_adjustment,
+	lock_invoice_sources,
+	require_stock_adjustment,
+)
 from mgk_yrp.stock.ledger import validate_stock_dimensions
-from mgk_yrp.stock.locking import lock_documents
 from mgk_yrp.stock.uom import copy_uom_snapshot, has_uom_snapshot, validate_uom_snapshot
 
 
@@ -29,7 +32,7 @@ class MGKPurchaseInvoice(Document):
 	def lock_sources(self, *, previous=None):
 		previous = previous or self.get_doc_before_save()
 		names = self.linked_grns + (previous.linked_grns if previous else [])
-		lock_documents({"MGK Goods Received Note": names, "MGK Purchase Invoice": [self.name]})
+		lock_invoice_sources(self, names)
 
 	def validate(self):
 		validate_against(self.against)

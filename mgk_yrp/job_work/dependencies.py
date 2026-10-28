@@ -1,55 +1,41 @@
 import frappe
 from frappe import _
 
-
-def get_downstream_blockers(close) -> list[str]:
-	"""Follow the same receipt, outgoing, transfer and production paths as YRP."""
-	pending = {row.output_receipt_sle for row in close.outputs if row.output_receipt_sle}
-	visited, blockers = set(), []
-	while pending:
-		receipts = tuple(sorted(pending - visited))
-		if not receipts:
-			break
-		visited.update(receipts)
-		outgoing = get_outgoing_entries(receipts)
-		blockers.extend(get_close_blockers(close, outgoing))
-		nodes = tuple(sorted(set(receipts) | {row.name for row in outgoing}))
-		blockers.extend(get_adjustment_blockers(close, nodes))
-		pending = get_next_receipts(outgoing)
-	return list(dict.fromkeys(blockers))
+from mgk_yrp.stock.dependencies import StockDependencies
 
 
-def get_outgoing_entries(receipts):
+def lock_close_dependencies(close):
+	return StockDependencies(
+		(row.output_receipt_sle for row in close.outputs),
+		entries=(row.consumption_sle for row in close.items),
+		buckets=((row.item, close.warehouse) for row in close.items),
+		documents={close.doctype: [close.name], "MGK Delivery Challan": [close.delivery_challan]},
+	).lock()
+
+
+def get_independent_consumptions(close):
+	receipts = tuple(sorted({row.output_receipt_sle for row in close.outputs if row.output_receipt_sle}))
+	if not receipts:
+		return []
 	return frappe.db.sql(
-		"""
-		SELECT DISTINCT outgoing.name, outgoing.voucher_type, outgoing.voucher_no,
-			outgoing.paired_stock_ledger_entry
-		FROM `tabYRP Stock Ledger Entry` receipt
-		JOIN `tabYRP Stock Ledger Entry` outgoing
-			ON outgoing.item = receipt.item AND outgoing.warehouse = receipt.warehouse
-			AND outgoing.posting_datetime >= receipt.posting_datetime
-		WHERE receipt.name IN %(receipts)s AND receipt.is_cancelled = 0
-			AND outgoing.is_cancelled = 0 AND outgoing.qty < 0
-		ORDER BY outgoing.name FOR UPDATE
-		""",
-		{"receipts": receipts},
-		as_dict=True,
+		"""SELECT DISTINCT consumption_sle FROM `tabYRP Stock Valuation Production Link`
+		WHERE active = 1 AND source_doctype = %(doctype)s AND source_name != %(name)s
+			AND output_receipt_sle IN %(receipts)s ORDER BY consumption_sle FOR UPDATE""",
+		{"doctype": close.doctype, "name": close.name, "receipts": receipts},
+		pluck=True,
 	)
 
 
-def get_next_receipts(outgoing) -> set[str]:
-	pending = {row.paired_stock_ledger_entry for row in outgoing if row.paired_stock_ledger_entry}
-	if outgoing:
-		pending.update(
-			frappe.db.sql(
-				"""SELECT output_receipt_sle FROM `tabYRP Stock Valuation Production Link`
-				WHERE consumption_sle IN %(outgoing)s AND active = 1
-				ORDER BY name FOR UPDATE""",
-				{"outgoing": tuple(row.name for row in outgoing)},
-				pluck=True,
-			)
-		)
-	return pending
+def get_downstream_blockers(close, *, graph=None) -> list[str]:
+	"""Follow the same receipt, outgoing, transfer and production paths as YRP."""
+	if not close.outputs:
+		return []
+	graph = graph or lock_close_dependencies(close)
+	blockers = get_close_blockers(close, graph.outgoing.values())
+	nodes = graph.nodes - graph.entries
+	if nodes:
+		blockers.extend(get_adjustment_blockers(close, tuple(sorted(nodes)), completed=False))
+	return list(dict.fromkeys(blockers))
 
 
 def get_close_blockers(close, outgoing) -> list[str]:
@@ -76,8 +62,13 @@ def get_close_blockers(close, outgoing) -> list[str]:
 	return blockers
 
 
-def get_adjustment_blockers(close, nodes) -> list[str]:
+def get_adjustment_blockers(close, nodes, *, completed=True) -> list[str]:
 	blockers = []
+	completed_clause = (
+		"OR (adjustment.status = 'Completed' AND COALESCE(adjustment.reversal_of, '') = '')"
+		if completed
+		else ""
+	)
 	for table, relationship in (
 		("YRP Stock Valuation Adjustment Source", "node.parent = adjustment.name"),
 		("YRP Stock Valuation Propagation Entry", "node.adjustment = adjustment.name"),
@@ -90,8 +81,7 @@ def get_adjustment_blockers(close, nodes) -> list[str]:
 			JOIN `tab{table}` node ON {relationship}
 			WHERE adjustment.docstatus = 1 AND adjustment.name != %(own)s
 				AND (node.source_sle IN %(nodes)s OR node.target_sle IN %(nodes)s)
-				AND (adjustment.status NOT IN ('Completed', 'Reversed') OR
-					(adjustment.status = 'Completed' AND COALESCE(adjustment.reversal_of, '') = ''))
+				AND (adjustment.status NOT IN ('Completed', 'Reversed') {completed_clause})
 			ORDER BY adjustment.name FOR UPDATE
 			""",
 			{"nodes": nodes, "own": close.stock_valuation_adjustment or ""},

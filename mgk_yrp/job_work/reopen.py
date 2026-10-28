@@ -7,15 +7,19 @@ from yrp.yrp_stock.doctype.yrp_stock_valuation_adjustment.yrp_stock_valuation_ad
 	validate_reversal_allowed,
 )
 
-from mgk_yrp.job_work.close_valuation import build_consumption_entries, lock_close_buckets
+from mgk_yrp.job_work.close_valuation import build_consumption_entries
 from mgk_yrp.job_work.dependencies import get_adjustment_blockers as get_dependency_adjustments
-from mgk_yrp.job_work.dependencies import get_downstream_blockers
+from mgk_yrp.job_work.dependencies import (
+	get_downstream_blockers,
+	get_independent_consumptions,
+	lock_close_dependencies,
+)
 from mgk_yrp.stock.backdating import validate_backdated_cancel
 from mgk_yrp.stock.ledger import post_stock_entries, validate_stock_dimensions
-from mgk_yrp.stock.locking import lock_documents
 
 
 def get_reopen_blockers(close) -> list[str]:
+	graph = lock_reopen(close)
 	blockers = []
 	challan = frappe.get_doc("MGK Delivery Challan", close.delivery_challan, for_update=True)
 	challan.check_permission("read")
@@ -24,19 +28,23 @@ def get_reopen_blockers(close) -> list[str]:
 	for check in (
 		lambda: validate_reversal_allowed(close.doctype, close.name),
 		lambda: validate_stock_valuation_period(close.posting_date, close.doctype, close.name),
-		lambda: validate_backdated_cancel(close, for_update=True),
+		lambda: validate_reopen_backdating(close),
 	):
 		try:
 			check()
 		except (frappe.ValidationError, frappe.PermissionError) as error:
 			blockers.append(str(error))
-	blockers.extend(get_adjustment_blockers(close))
+	blockers.extend(get_adjustment_blockers(close, graph=graph))
 	return blockers
 
 
-def get_adjustment_blockers(close) -> list[str]:
+def validate_reopen_backdating(close):
+	validate_backdated_cancel(close, for_update=True, ignored_sles=get_independent_consumptions(close))
+
+
+def get_adjustment_blockers(close, *, graph=None) -> list[str]:
 	blockers = get_valuation_failure_blockers(close)
-	blockers.extend(get_downstream_blockers(close))
+	blockers.extend(get_downstream_blockers(close, graph=graph))
 	consumptions = tuple(row.consumption_sle for row in close.items if row.consumption_sle)
 	if consumptions:
 		blockers.extend(get_dependency_adjustments(close, consumptions))
@@ -62,24 +70,11 @@ def get_valuation_failure_blockers(close) -> list[str]:
 
 
 def lock_reopen(close):
-	lock_documents({"MGK Delivery Challan": [close.delivery_challan]})
-	close.lock_sources()
-	challan = frappe.get_doc("MGK Delivery Challan", close.delivery_challan, for_update=True)
-	challan.check_permission("read")
 	validate_stock_dimensions()
-	lock_close_buckets(challan)
-	names = sorted(
-		filter(
-			None,
-			[row.output_receipt_sle for row in close.outputs] + [row.consumption_sle for row in close.items],
-		)
-	)
-	for name in names:
-		frappe.db.sql("SELECT name FROM `tabYRP Stock Ledger Entry` WHERE name = %s FOR UPDATE", (name,))
+	return lock_close_dependencies(close)
 
 
 def validate_reopen(close) -> None:
-	lock_reopen(close)
 	blockers = get_reopen_blockers(close)
 	if blockers:
 		frappe.throw("\n".join(blockers))
@@ -128,7 +123,7 @@ def complete_reopen(close) -> None:
 	challan = frappe.get_doc("MGK Delivery Challan", close.delivery_challan, for_update=True)
 	if challan.close_status != "Reopening" or challan.delivery_challan_close != close.name:
 		frappe.throw(_("Delivery Challan is no longer reopening this Close."))
-	validate_backdated_cancel(close, for_update=True)
+	validate_reopen_backdating(close)
 	post_stock_entries(build_consumption_entries(close, close.items), cancel=True)
 	deactivate_production_links(close.doctype, close.name)
 	frappe.db.set_value(

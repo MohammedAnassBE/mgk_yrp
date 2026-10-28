@@ -14,18 +14,29 @@ def is_backdated(doc) -> bool:
 
 
 def has_later_linked_movements(
-	buckets: list[tuple[str, str]], posting_datetime, exclude_voucher: tuple[str, str], *, for_update=False
+	buckets: list[tuple[str, str]],
+	posting_datetime,
+	exclude_voucher: tuple[str, str],
+	*,
+	for_update=False,
+	ignored_sles=(),
 ) -> bool:
 	return has_later_movements(
-		buckets, posting_datetime, exclude_voucher, linked_only=True, for_update=for_update
+		buckets,
+		posting_datetime,
+		exclude_voucher,
+		linked_only=True,
+		for_update=for_update,
+		ignored_sles=ignored_sles,
 	)
 
 
 def has_later_movements(
-	buckets, posting_datetime, exclude_voucher, *, linked_only=False, for_update=False
+	buckets, posting_datetime, exclude_voucher, *, linked_only=False, for_update=False, ignored_sles=()
 ) -> bool:
 	linked_condition = ""
 	locking_clause = "FOR UPDATE" if for_update else ""
+	ignored_condition = "AND sle.name NOT IN %(ignored_sles)s" if ignored_sles else ""
 	if linked_only:
 		linked_condition = f"""
 		AND (
@@ -41,13 +52,20 @@ def has_later_movements(
 		if frappe.db.sql(
 			f"""
 			SELECT sle.name FROM `tabYRP Stock Ledger Entry` sle
-			WHERE sle.item = %s AND sle.warehouse = %s AND sle.is_cancelled = 0
-				AND sle.posting_datetime >= %s
-				AND NOT (sle.voucher_type = %s AND sle.voucher_no = %s)
-				{linked_condition}
+			WHERE sle.item = %(item)s AND sle.warehouse = %(warehouse)s AND sle.is_cancelled = 0
+				AND sle.posting_datetime >= %(posting)s
+				AND NOT (sle.voucher_type = %(doctype)s AND sle.voucher_no = %(name)s)
+				{linked_condition} {ignored_condition}
 			LIMIT 1 {locking_clause}
 			""",
-			(item, warehouse, get_datetime(posting_datetime), *exclude_voucher),
+			{
+				"item": item,
+				"warehouse": warehouse,
+				"posting": get_datetime(posting_datetime),
+				"doctype": exclude_voucher[0],
+				"name": exclude_voucher[1],
+				"ignored_sles": tuple(ignored_sles),
+			},
 		):
 			return True
 	return False
@@ -66,17 +84,21 @@ def validate_backdated_posting(doc, buckets) -> None:
 	validate_linked_movements(doc, buckets, for_update=True)
 
 
-def validate_linked_movements(doc, buckets, *, for_update=False) -> None:
+def validate_linked_movements(doc, buckets, *, for_update=False, ignored_sles=()) -> None:
 	posting_datetime = get_combine_datetime(doc.posting_date, doc.posting_time)
-	if has_later_linked_movements(buckets, posting_datetime, (doc.doctype, doc.name), for_update=for_update):
+	if has_later_linked_movements(
+		buckets, posting_datetime, (doc.doctype, doc.name), for_update=for_update, ignored_sles=ignored_sles
+	):
 		frappe.throw(_("Backdated stock changes are blocked by later linked movements."))
 
 
-def validate_backdated_cancel(doc, *, buckets=None, for_update=True) -> None:
+def validate_backdated_cancel(doc, *, buckets=None, for_update=True, ignored_sles=()) -> None:
 	if buckets is None:
 		buckets = [(entry["item"], entry["warehouse"]) for entry in doc.get_stock_entries()]
 	lock_stock_buckets(buckets)
 	posting_datetime = get_combine_datetime(doc.posting_date, doc.posting_time)
-	if has_later_movements(buckets, posting_datetime, (doc.doctype, doc.name), for_update=for_update):
+	if has_later_movements(
+		buckets, posting_datetime, (doc.doctype, doc.name), for_update=for_update, ignored_sles=ignored_sles
+	):
 		require_stock_manager()
-	validate_linked_movements(doc, buckets, for_update=for_update)
+	validate_linked_movements(doc, buckets, for_update=for_update, ignored_sles=ignored_sles)
