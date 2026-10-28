@@ -1,0 +1,204 @@
+{
+ "doctype": "DocType",
+ "name": "MGK Purchase Order",
+ "module": "MGK YRP",
+ "engine": "InnoDB",
+ "field_order": [
+  "supplier",
+  "po_date",
+  "supplier_address",
+  "address_display",
+  "contact_person",
+  "contact_display",
+  "contact_mobile",
+  "delivery_location",
+  "warehouse",
+  "mgk_agent",
+  "goods_routing",
+  "handling_supplier",
+  "is_karigan_order",
+  "is_salavai_cone_order",
+  "items",
+  "total_qty",
+  "total_amount",
+  "status",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "supplier",
+   "fieldtype": "Link",
+   "label": "Supplier",
+   "options": "Supplier",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "po_date",
+   "fieldtype": "Date",
+   "label": "PO Date",
+   "reqd": 1,
+   "default": "Today",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "supplier_address",
+   "fieldtype": "Link",
+   "label": "Supplier Address",
+   "options": "Address"
+  },
+  {
+   "fieldname": "address_display",
+   "fieldtype": "Small Text",
+   "label": "Address",
+   "read_only": 1
+  },
+  {
+   "fieldname": "contact_person",
+   "fieldtype": "Link",
+   "label": "Contact Person",
+   "options": "Contact"
+  },
+  {
+   "fieldname": "contact_display",
+   "fieldtype": "Data",
+   "label": "Contact",
+   "read_only": 1
+  },
+  {
+   "fieldname": "contact_mobile",
+   "fieldtype": "Data",
+   "label": "Contact Mobile",
+   "read_only": 1
+  },
+  {
+   "fieldname": "delivery_location",
+   "fieldtype": "Link",
+   "label": "Delivery Location",
+   "options": "Supplier",
+   "reqd": 1
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "label": "Warehouse",
+   "options": "Warehouse",
+   "reqd": 1
+  },
+  {
+   "fieldname": "mgk_agent",
+   "fieldtype": "Link",
+   "label": "MGK Agent",
+   "options": "MGK Agent"
+  },
+  {
+   "fieldname": "goods_routing",
+   "fieldtype": "Select",
+   "label": "Goods Routing",
+   "options": "Direct\nThrough Vendor",
+   "reqd": 1,
+   "default": "Direct"
+  },
+  {
+   "fieldname": "handling_supplier",
+   "fieldtype": "Link",
+   "label": "Handling Supplier",
+   "options": "Supplier",
+   "depends_on": "eval:doc.goods_routing == \"Through Vendor\"",
+   "mandatory_depends_on": "eval:doc.goods_routing == \"Through Vendor\""
+  },
+  {
+   "fieldname": "is_karigan_order",
+   "fieldtype": "Check",
+   "label": "Karigan Order",
+   "default": "0"
+  },
+  {
+   "fieldname": "is_salavai_cone_order",
+   "fieldtype": "Check",
+   "label": "Salavai Cone Order",
+   "default": "0"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "MGK Purchase Order Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "total_qty",
+   "fieldtype": "Float",
+   "label": "Total Quantity",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_amount",
+   "fieldtype": "Currency",
+   "label": "Total Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "read_only": 1,
+   "no_copy": 1,
+   "allow_on_submit": 1,
+   "default": "Draft",
+   "in_list_view": 1,
+   "options": "Draft\nTo Receive\nPartially Received\nCompleted\nCancelled"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "options": "MGK Purchase Order",
+   "read_only": 1,
+   "no_copy": 1
+  }
+ ],
+ "permissions": [
+  {
+   "role": "Purchase User",
+   "read": 1,
+   "select": 1,
+   "create": 1,
+   "write": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1,
+   "submit": 1,
+   "cancel": 1,
+   "amend": 1
+  },
+  {
+   "role": "Purchase Manager",
+   "read": 1,
+   "select": 1,
+   "create": 1,
+   "write": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1,
+   "submit": 1,
+   "cancel": 1,
+   "amend": 1
+  }
+ ],
+ "actions": [],
+ "links": [],
+ "states": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "autoname": "MGK-PO-.YY.-.#####",
+ "naming_rule": "Expression",
+ "is_submittable": 1,
+ "track_changes": 1
+}

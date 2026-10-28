@@ -1,0 +1,84 @@
+{
+ "doctype": "DocType",
+ "name": "MGK Settings",
+ "module": "MGK YRP",
+ "engine": "InnoDB",
+ "field_order": [
+  "company",
+  "company_gstin",
+  "company_state_code"
+ ],
+ "fields": [
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "company_gstin",
+   "fieldtype": "Data",
+   "label": "Company GSTIN",
+   "reqd": 1
+  },
+  {
+   "fieldname": "company_state_code",
+   "fieldtype": "Data",
+   "label": "Company State Code",
+   "read_only": 1
+  }
+ ],
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "select": 1,
+   "create": 1,
+   "write": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Purchase User",
+   "read": 1,
+   "select": 1
+  },
+  {
+   "role": "Purchase Manager",
+   "read": 1,
+   "select": 1
+  },
+  {
+   "role": "Stock User",
+   "read": 1,
+   "select": 1
+  },
+  {
+   "role": "Stock Manager",
+   "read": 1,
+   "select": 1
+  },
+  {
+   "role": "Accounts User",
+   "read": 1,
+   "select": 1
+  },
+  {
+   "role": "Accounts Manager",
+   "read": 1,
+   "select": 1
+  }
+ ],
+ "actions": [],
+ "links": [],
+ "states": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "issingle": 1,
+ "track_changes": 1
+}

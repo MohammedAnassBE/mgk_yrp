@@ -1,0 +1,27 @@
+{
+ "doctype": "DocType",
+ "name": "MGK GRN Delivery Challan",
+ "module": "MGK YRP",
+ "engine": "InnoDB",
+ "field_order": [
+  "delivery_challan"
+ ],
+ "fields": [
+  {
+   "fieldname": "delivery_challan",
+   "fieldtype": "Link",
+   "label": "Delivery Challan",
+   "options": "MGK Delivery Challan",
+   "reqd": 1,
+   "in_list_view": 1
+  }
+ ],
+ "permissions": [],
+ "actions": [],
+ "links": [],
+ "states": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "istable": 1,
+ "editable_grid": 1
+}

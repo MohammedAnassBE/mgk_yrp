@@ -1,0 +1,104 @@
+{
+ "doctype": "DocType",
+ "name": "MGK Delivery Challan Close Item",
+ "module": "MGK YRP",
+ "engine": "InnoDB",
+ "istable": 1,
+ "field_order": [
+  "delivery_challan_item",
+  "item",
+  "stock_uom",
+  "delivered_stock_qty",
+  "returned_stock_qty",
+  "remaining_stock_qty",
+  "delivered_value",
+  "own_value",
+  "consumption_sle",
+  "consumed_value",
+  "value_gap"
+ ],
+ "fields": [
+  {
+   "fieldname": "delivery_challan_item",
+   "fieldtype": "Data",
+   "label": "Delivery Challan Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "label": "Item",
+   "read_only": 1,
+   "options": "Item"
+  },
+  {
+   "fieldname": "stock_uom",
+   "fieldtype": "Link",
+   "label": "Stock Uom",
+   "read_only": 1,
+   "options": "UOM"
+  },
+  {
+   "fieldname": "delivered_stock_qty",
+   "fieldtype": "Float",
+   "label": "Delivered Stock Qty",
+   "read_only": 1,
+   "precision": "6"
+  },
+  {
+   "fieldname": "returned_stock_qty",
+   "fieldtype": "Float",
+   "label": "Returned Stock Qty",
+   "read_only": 1,
+   "precision": "6"
+  },
+  {
+   "fieldname": "remaining_stock_qty",
+   "fieldtype": "Float",
+   "label": "Remaining Stock Qty",
+   "read_only": 1,
+   "precision": "6"
+  },
+  {
+   "fieldname": "delivered_value",
+   "fieldtype": "Currency",
+   "label": "Delivered Value",
+   "read_only": 1,
+   "precision": "6"
+  },
+  {
+   "fieldname": "own_value",
+   "fieldtype": "Currency",
+   "label": "Own Value",
+   "read_only": 1,
+   "precision": "6"
+  },
+  {
+   "fieldname": "consumption_sle",
+   "fieldtype": "Link",
+   "label": "Consumption Sle",
+   "read_only": 1,
+   "options": "YRP Stock Ledger Entry"
+  },
+  {
+   "fieldname": "consumed_value",
+   "fieldtype": "Currency",
+   "label": "Consumed Value",
+   "read_only": 1,
+   "precision": "6"
+  },
+  {
+   "fieldname": "value_gap",
+   "fieldtype": "Currency",
+   "label": "Value Gap",
+   "read_only": 1,
+   "precision": "6"
+  }
+ ],
+ "permissions": [],
+ "actions": [],
+ "links": [],
+ "states": [],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

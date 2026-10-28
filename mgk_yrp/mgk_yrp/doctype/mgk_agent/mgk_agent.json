@@ -1,0 +1,100 @@
+{
+ "doctype": "DocType",
+ "name": "MGK Agent",
+ "module": "MGK YRP",
+ "engine": "InnoDB",
+ "field_order": [
+  "agent_name",
+  "mgk_tamil_name",
+  "address_html",
+  "column_break_4",
+  "disabled",
+  "contact_html",
+  "section_break_8",
+  "commission_terms"
+ ],
+ "fields": [
+  {
+   "fieldname": "agent_name",
+   "fieldtype": "Data",
+   "label": "Agent Name",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "mgk_tamil_name",
+   "fieldtype": "Data",
+   "label": "Agent Name (Tamil)"
+  },
+  {
+   "fieldname": "address_html",
+   "fieldtype": "HTML",
+   "label": "Address"
+  },
+  {
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break",
+   "label": ""
+  },
+  {
+   "fieldname": "disabled",
+   "fieldtype": "Check",
+   "label": "Disabled",
+   "default": "0"
+  },
+  {
+   "fieldname": "contact_html",
+   "fieldtype": "HTML",
+   "label": "Contact"
+  },
+  {
+   "fieldname": "section_break_8",
+   "fieldtype": "Section Break",
+   "label": ""
+  },
+  {
+   "fieldname": "commission_terms",
+   "fieldtype": "Small Text",
+   "label": "Commission Terms",
+   "description": "Free-text scratchpad for informal commission arrangements. MGK does not formally bill the Agent; commission may happen outside the system."
+  }
+ ],
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "select": 1,
+   "create": 1,
+   "write": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1
+  },
+  {
+   "role": "Purchase Manager",
+   "create": 1,
+   "read": 1,
+   "write": 1,
+   "report": 1
+  },
+  {
+   "role": "Purchase User",
+   "read": 1,
+   "report": 1
+  }
+ ],
+ "actions": [],
+ "links": [],
+ "states": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "autoname": "AG-.#####",
+ "naming_rule": "Expression",
+ "title_field": "agent_name",
+ "search_fields": "agent_name",
+ "show_title_field_in_link": 1,
+ "track_changes": 1
+}

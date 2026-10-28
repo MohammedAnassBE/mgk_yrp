@@ -1,0 +1,33 @@
+{
+ "doctype": "DocType",
+ "name": "MGK Delivery Challan Item",
+ "module": "MGK YRP",
+ "engine": "InnoDB",
+ "istable": 1,
+ "editable_grid": 1,
+ "field_order": [
+  "item", "qty", "uom", "stock_uom", "conversion_factor", "stock_qty", "rate", "amount",
+  "against_dc_item", "returned_qty"
+ ],
+ "fields": [
+  {"fieldname": "item", "fieldtype": "Link", "label": "Item", "options": "Item", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "qty", "fieldtype": "Float", "label": "Quantity", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "uom", "fieldtype": "Link", "label": "UOM", "options": "UOM", "read_only": 1, "in_list_view": 1},
+  {"fieldname": "stock_uom", "fieldtype": "Link", "label": "Stock UOM", "options": "UOM", "read_only": 1},
+  {"fieldname": "conversion_factor", "fieldtype": "Float", "label": "Conversion Factor", "read_only": 1},
+  {"fieldname": "stock_qty", "fieldtype": "Float", "label": "Stock Quantity", "read_only": 1},
+  {"fieldname": "rate", "fieldtype": "Currency", "label": "Declared Rate", "in_list_view": 1},
+  {"fieldname": "amount", "fieldtype": "Currency", "label": "Declared Value", "read_only": 1, "in_list_view": 1},
+  {"fieldname": "against_dc_item", "fieldtype": "Data", "label": "Against DC Item", "read_only": 1},
+  {
+   "fieldname": "returned_qty", "fieldtype": "Float", "label": "Returned Quantity (Stock UOM)",
+   "read_only": 1, "no_copy": 1, "allow_on_submit": 1
+  }
+ ],
+ "permissions": [],
+ "actions": [],
+ "links": [],
+ "states": [],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

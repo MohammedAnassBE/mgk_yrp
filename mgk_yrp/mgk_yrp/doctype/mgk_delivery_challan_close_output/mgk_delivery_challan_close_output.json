@@ -1,0 +1,88 @@
+{
+ "doctype": "DocType",
+ "name": "MGK Delivery Challan Close Output",
+ "module": "MGK YRP",
+ "engine": "InnoDB",
+ "istable": 1,
+ "field_order": [
+  "goods_received_note",
+  "goods_received_note_item",
+  "item",
+  "warehouse",
+  "stock_uom",
+  "stock_qty",
+  "output_receipt_sle",
+  "allocated_value",
+  "allocated_rate"
+ ],
+ "fields": [
+  {
+   "fieldname": "goods_received_note",
+   "fieldtype": "Link",
+   "label": "Goods Received Note",
+   "read_only": 1,
+   "options": "MGK Goods Received Note"
+  },
+  {
+   "fieldname": "goods_received_note_item",
+   "fieldtype": "Data",
+   "label": "Goods Received Note Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "label": "Item",
+   "read_only": 1,
+   "options": "Item"
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "label": "Warehouse",
+   "read_only": 1,
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "stock_uom",
+   "fieldtype": "Link",
+   "label": "Stock Uom",
+   "read_only": 1,
+   "options": "UOM"
+  },
+  {
+   "fieldname": "stock_qty",
+   "fieldtype": "Float",
+   "label": "Stock Qty",
+   "read_only": 1,
+   "precision": "6"
+  },
+  {
+   "fieldname": "output_receipt_sle",
+   "fieldtype": "Link",
+   "label": "Output Receipt Sle",
+   "read_only": 1,
+   "options": "YRP Stock Ledger Entry"
+  },
+  {
+   "fieldname": "allocated_value",
+   "fieldtype": "Currency",
+   "label": "Allocated Value",
+   "read_only": 1,
+   "precision": "6"
+  },
+  {
+   "fieldname": "allocated_rate",
+   "fieldtype": "Currency",
+   "label": "Allocated Rate",
+   "read_only": 1,
+   "precision": "6"
+  }
+ ],
+ "permissions": [],
+ "actions": [],
+ "links": [],
+ "states": [],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

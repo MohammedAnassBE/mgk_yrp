@@ -1,0 +1,13 @@
+[
+ {
+  "doctype": "Property Setter",
+  "name": "YRP Stock Valuation Adjustment-adjustment_type-options",
+  "module": "MGK YRP",
+  "doc_type": "YRP Stock Valuation Adjustment",
+  "doctype_or_field": "DocField",
+  "field_name": "adjustment_type",
+  "property": "options",
+  "property_type": "Text",
+  "value": "Purchase Invoice Rate Difference\nWork Order Excess Usage\nReversal\nDelivery Challan Close"
+ }
+]

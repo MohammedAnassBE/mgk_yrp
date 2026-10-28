@@ -1,0 +1,35 @@
+[
+ {
+  "doctype": "Custom Field",
+  "name": "Item-mgk_is_karigan",
+  "dt": "Item",
+  "module": "MGK YRP",
+  "fieldname": "mgk_is_karigan",
+  "fieldtype": "Check",
+  "label": "Is Karigan",
+  "insert_after": "is_stock_item",
+  "default": "0"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Item-mgk_is_salavai_cone",
+  "dt": "Item",
+  "module": "MGK YRP",
+  "fieldname": "mgk_is_salavai_cone",
+  "fieldtype": "Check",
+  "label": "Is Salavai Cone",
+  "insert_after": "mgk_is_karigan",
+  "default": "0"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Item-mgk_gst_tax_slab",
+  "dt": "Item",
+  "module": "MGK YRP",
+  "fieldname": "mgk_gst_tax_slab",
+  "fieldtype": "Link",
+  "label": "GST Tax Slab",
+  "insert_after": "mgk_is_salavai_cone",
+  "options": "YRP Tax Slab"
+ }
+]
