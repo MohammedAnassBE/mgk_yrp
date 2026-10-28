@@ -1,7 +1,28 @@
 import frappe
 from frappe import _
 
-from mgk_yrp.stock.dependencies import StockDependencies
+from mgk_yrp.mgk_yrp.doctype.mgk_goods_received_note.mgk_goods_received_note import get_linking_grns
+from mgk_yrp.stock.dependencies import StockDependencies, get_grn_receipts, validate_reopening_closes
+
+
+def lock_close_submission(close, previous=None):
+	names = sorted(set(filter(None, [previous, close.delivery_challan])))
+	grns = {name for challan in names for name in get_linking_grns(challan, (0, 1))}
+	challans = [frappe.get_doc("MGK Delivery Challan", name) for name in names]
+	graph = StockDependencies(
+		get_grn_receipts(grns),
+		buckets=((row.item, challan.to_warehouse) for challan in challans for row in challan.items),
+		documents={
+			"MGK Delivery Challan": names,
+			"MGK Goods Received Note": grns,
+			close.doctype: [] if close.is_new() else [close.name],
+		},
+	).lock()
+	if set(get_grn_receipts(grns, for_update=True)) != graph.receipts:
+		frappe.throw(_("Stock dependencies changed; retry the operation."))
+	if close.docstatus == 1:
+		validate_reopening_closes(graph, _("submitting a Delivery Challan Close"))
+	return graph
 
 
 def lock_close_dependencies(close):

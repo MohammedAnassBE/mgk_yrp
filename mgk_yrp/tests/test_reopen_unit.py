@@ -5,7 +5,11 @@ from unittest.mock import Mock, patch
 import frappe
 from yrp.yrp_stock.doctype.yrp_stock_valuation_adjustment import yrp_stock_valuation_adjustment as valuation
 
-from mgk_yrp.job_work.dependencies import get_adjustment_blockers, get_downstream_blockers
+from mgk_yrp.job_work.dependencies import (
+	get_adjustment_blockers,
+	get_downstream_blockers,
+	lock_close_submission,
+)
 from mgk_yrp.job_work.reopen import finish_reopen, validate_reopen
 from mgk_yrp.job_work.reopen import get_adjustment_blockers as get_reopen_adjustment_blockers
 from mgk_yrp.purchase.revaluation import lock_invoice_sources
@@ -30,6 +34,8 @@ class TestReopenDependencies(TestCase):
 			self.enterContext(patch(f"{module}._", side_effect=lambda value: value))
 		self.close = SimpleNamespace(
 			doctype="MGK Delivery Challan Close",
+			docstatus=1,
+			is_new=lambda: False,
 			name="upstream",
 			stock_valuation_adjustment="own",
 			outputs=[SimpleNamespace(output_receipt_sle="yarn")],
@@ -195,6 +201,9 @@ class TestReopenDependencies(TestCase):
 	def test_dependency_parents_then_buckets_then_current_ledger_reads(self):
 		self.buckets.side_effect = lambda buckets: self.events.append(("buckets", buckets))
 		get_downstream_blockers(self.close)
+		self.assert_canonical_lock_order()
+
+	def assert_canonical_lock_order(self):
 		phases = [event[0] for event in self.events]
 		self.assertLess(
 			max(i for i, phase in enumerate(phases) if phase == "discover"), phases.index("parent")
@@ -209,6 +218,51 @@ class TestReopenDependencies(TestCase):
 			if event[0] == "parent"
 		]
 		self.assertEqual(parents, sorted(parents, key=lambda row: (LOCK_ORDER.index(row[0]), row[1])))
+
+	def lock_submission(self):
+		challan = SimpleNamespace(items=[SimpleNamespace(item="raw")], to_warehouse="supplier")
+		with (
+			patch(f"{DEPENDENCIES}.get_linking_grns", return_value=["GRN"]),
+			patch(f"{DEPENDENCIES}.frappe.get_doc", return_value=challan),
+		):
+			return lock_close_submission(self.close)
+
+	def test_c60_c67_c68_close_submission_rejects_reachable_reopening_close(self):
+		self.close.outputs = []
+		for status in ("Reversing", "Reopening"):
+			self.downstream.reopen_status = status
+			with (
+				self.subTest(status=status),
+				self.assertRaisesRegex(frappe.ValidationError, "Finish reopening Close deep-close"),
+			):
+				self.lock_submission()
+		self.downstream.reopen_status = "Reopened"
+		self.lock_submission()
+
+	def test_close_submission_discovers_and_locks_all_parents_before_buckets(self):
+		self.buckets.side_effect = lambda buckets: self.events.append(("buckets", buckets))
+		graph = self.lock_submission()
+		self.assert_canonical_lock_order()
+		self.assertIn(("raw", "supplier"), self.buckets.call_args.args[0])
+		self.assertEqual(graph.receipts, {"yarn"})
+
+	def test_close_submission_rechecks_reopen_state_after_lock_wait(self):
+		self.buckets.side_effect = lambda buckets: self.downstream.update(reopen_status="Reversing")
+		with self.assertRaisesRegex(frappe.ValidationError, "Finish reopening Close deep-close"):
+			self.lock_submission()
+
+	def test_close_submission_retries_when_grn_submitted_during_lock_wait(self):
+		with patch(f"{DEPENDENCIES}.get_grn_receipts", side_effect=[["yarn"], ["yarn", "new"]]):
+			with self.assertRaisesRegex(frappe.ValidationError, "dependencies changed"):
+				self.lock_submission()
+
+	def test_c74_c80_pi_deletion_uses_nonblocking_parent_locks(self):
+		invoice = SimpleNamespace(doctype="MGK Purchase Invoice", name="PI", docstatus=0)
+		lock_invoice_sources(invoice, ["GRN"], wait=False)
+		parents = [event for event in self.events if event[0] == "parent"]
+		self.assertTrue(parents)
+		self.assertTrue(all(event[1].endswith("FOR UPDATE NOWAIT") for event in parents))
+		self.assertIn(("GRN",), [event[2] for event in parents])
 
 	def test_graph_growth_after_parent_wait_requires_retry_without_new_parent_locks(self):
 		def add_close(buckets):

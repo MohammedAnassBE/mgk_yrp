@@ -298,7 +298,7 @@ class TestDCClose(CloseTestCase):
 		challan, receipt = self.make_cycle()
 		sequence = Mock()
 		with (
-			patch(f"{CLOSE}.lock_documents", wraps=lock_documents) as locks,
+			patch("mgk_yrp.stock.dependencies.lock_documents", wraps=lock_documents) as locks,
 			patch(
 				f"{CLOSE}.lock_close_buckets",
 				wraps=lock_close_buckets,
@@ -315,12 +315,11 @@ class TestDCClose(CloseTestCase):
 				self.assertEqual(previous[0], "parents")
 				self.assertIn("MGK Delivery Challan Close", previous.args[0])
 		calls = [call.args[0] for call in locks.call_args_list]
-		self.assertIn({"MGK Delivery Challan": [challan.name]}, calls)
 		combined = next(call for call in calls if call.get("MGK Goods Received Note"))
 		self.assertEqual(
 			list(combined), ["MGK Delivery Challan", "MGK Goods Received Note", "MGK Delivery Challan Close"]
 		)
-		self.assertEqual(combined["MGK Goods Received Note"], [receipt.name])
+		self.assertEqual(combined["MGK Goods Received Note"], {receipt.name})
 
 	def test_grn_cancel_blocked_after_close(self):
 		challan, receipt = self.make_cycle()

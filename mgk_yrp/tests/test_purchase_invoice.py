@@ -1,6 +1,7 @@
 from unittest.mock import Mock, patch
 
 import frappe
+from frappe.client import save, set_value
 from frappe.model.document import Document
 
 from mgk_yrp.job_work.reopen import finish_reopen
@@ -163,6 +164,48 @@ class TestPurchaseInvoice(CloseTestCase):
 		with self.assertRaisesRegex(frappe.ValidationError, "already billed"):
 			self.draft_from_rows(stale_rows).insert(ignore_permissions=True)
 		self.assertEqual(receipt.reload().purchase_invoice, first.name)
+
+	def test_c73_c80_grn_billing_link_rejects_api_clear_and_replace(self):
+		receipt, other = self.make_output([]), self.make_output([])
+		invoice = self.make_invoice([receipt], submit=False)
+		replacement = self.make_invoice([other], submit=False)
+		user = frappe.get_doc(
+			{
+				"doctype": "User",
+				"email": f"mgk-billing-{frappe.generate_hash(length=8)}@example.com",
+				"first_name": "MGK Billing Test",
+				"send_welcome_email": 0,
+				"roles": [{"role": "Stock User"}],
+			}
+		).insert(ignore_permissions=True)
+		self.addCleanup(frappe.set_user, frappe.session.user)
+		frappe.set_user(user.name)
+		for value in (None, replacement.name):
+			payload = receipt.reload().as_dict()
+			payload.purchase_invoice = value
+			with (
+				self.subTest(value=value),
+				self.assertRaisesRegex(frappe.ValidationError, "maintained by billing"),
+			):
+				save(frappe.as_json(payload))
+			with (
+				self.subTest(set_value=value),
+				self.assertRaisesRegex(frappe.ValidationError, "maintained by billing"),
+			):
+				set_value(receipt.doctype, receipt.name, "purchase_invoice", value)
+			self.assertEqual(receipt.reload().purchase_invoice, invoice.name)
+
+	def test_c73_c80_active_pi_child_blocks_billing_even_with_missing_grn_link(self):
+		for submitted in (False, True):
+			receipt = self.make_output([])
+			rows = get_grn_rows([receipt.name])
+			invoice = self.make_invoice([receipt], submit=submitted)
+			receipt.db_set("purchase_invoice", None, update_modified=False)
+			with (
+				self.subTest(submitted=submitted),
+				self.assertRaisesRegex(frappe.ValidationError, invoice.name),
+			):
+				self.draft_from_rows(rows).insert(ignore_permissions=True)
 
 	def test_grn_list_billing_status_tracks_invoice_submission(self):
 		receipt = self.make_output([])

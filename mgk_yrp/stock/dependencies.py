@@ -34,13 +34,13 @@ class StockDependencies:
 	def close_names(self):
 		return {row.voucher_no for row in self.outgoing.values() if row.voucher_type == CLOSE}
 
-	def lock(self):
+	def lock(self, *, wait=True):
 		self.scan()
 		self.documents.setdefault(CLOSE, set()).update(self.close_names)
 		self.add_close_sources()
 		buckets = self.buckets | set(self.get_buckets())
 		known_nodes, known_closes = set(self.nodes), set(self.close_names)
-		lock_documents(self.documents)
+		lock_documents(self.documents, wait=wait)
 		lock_stock_buckets(buckets)
 		self.scan(for_update=True, allowed=known_nodes)
 		if not self.nodes <= known_nodes or not self.close_names <= known_closes:
@@ -77,6 +77,26 @@ class StockDependencies:
 			WHERE name IN %(nodes)s""",
 			{"nodes": tuple(sorted(self.nodes))},
 		)
+
+
+def get_grn_receipts(grns, *, for_update=False):
+	if not grns:
+		return []
+	locking_clause = "FOR UPDATE" if for_update else ""
+	return frappe.db.sql(
+		f"""SELECT name FROM `tabYRP Stock Ledger Entry`
+		WHERE voucher_type = 'MGK Goods Received Note' AND voucher_no IN %(grns)s
+			AND qty > 0 AND is_cancelled = 0 ORDER BY name {locking_clause}""",
+		{"grns": tuple(sorted(set(grns)))},
+		pluck=True,
+	)
+
+
+def validate_reopening_closes(graph, operation):
+	for name in sorted(graph.close_names):
+		status = frappe.db.get_value(CLOSE, name, "reopen_status", for_update=True)
+		if status in ("Reversing", "Reopening"):
+			frappe.throw(_("Finish reopening Close {0} before {1}.").format(name, operation))
 
 
 def get_linked_grns(challans, *, for_update=False):

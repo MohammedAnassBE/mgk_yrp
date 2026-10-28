@@ -18,10 +18,10 @@ from mgk_yrp.job_work.close_valuation import (
 	lock_close_buckets,
 	validate_outputs,
 )
+from mgk_yrp.job_work.dependencies import lock_close_submission
 from mgk_yrp.job_work.reopen import lock_reopen, start_reopen, validate_reopen
 from mgk_yrp.mgk_yrp.doctype.mgk_goods_received_note.mgk_goods_received_note import get_linking_grns
 from mgk_yrp.stock.ledger import post_stock_entries, validate_stock_dimensions
-from mgk_yrp.stock.locking import lock_documents
 
 
 class MGKDeliveryChallanClose(Document):
@@ -29,7 +29,9 @@ class MGKDeliveryChallanClose(Document):
 		if self.stock_valuation_adjustment:
 			self.set_onload(
 				"valuation_status",
-				frappe.db.get_value("YRP Stock Valuation Adjustment", self.stock_valuation_adjustment, "status"),
+				frappe.db.get_value(
+					"YRP Stock Valuation Adjustment", self.stock_valuation_adjustment, "status"
+				),
 			)
 
 	def load_doc_before_save(self, *, raise_exception=False):
@@ -42,16 +44,7 @@ class MGKDeliveryChallanClose(Document):
 		super().load_doc_before_save(raise_exception=raise_exception)
 
 	def lock_sources(self, previous=None):
-		names = sorted(set(filter(None, [previous, self.delivery_challan])))
-		lock_documents({"MGK Delivery Challan": names})
-		receipts = [name for challan in names for name in get_linking_grns(challan, (0, 1), for_update=True)]
-		lock_documents(
-			{
-				"MGK Delivery Challan": names,
-				"MGK Goods Received Note": receipts,
-				"MGK Delivery Challan Close": [self.name],
-			}
-		)
+		return lock_close_submission(self, previous)
 
 	def get_open_challan(self):
 		challan = frappe.get_doc("MGK Delivery Challan", self.delivery_challan, for_update=True)

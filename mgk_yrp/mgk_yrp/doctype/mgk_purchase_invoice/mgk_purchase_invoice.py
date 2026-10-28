@@ -47,10 +47,10 @@ class MGKPurchaseInvoice(Document):
 	def linked_grns(self) -> list[str]:
 		return sorted({row.goods_received_note for row in self.items if row.goods_received_note})
 
-	def lock_sources(self, *, previous=None):
+	def lock_sources(self, *, previous=None, wait=True):
 		previous = previous or self.get_doc_before_save()
 		names = self.linked_grns + (previous.linked_grns if previous else [])
-		lock_invoice_sources(self, names)
+		lock_invoice_sources(self, names, wait=wait)
 
 	def validate(self):
 		validate_against(self.against)
@@ -106,8 +106,8 @@ class MGKPurchaseInvoice(Document):
 	def on_update(self):
 		self.sync_grn_links(self.linked_grns)
 
-	def sync_grn_links(self, current):
-		self.lock_sources()
+	def sync_grn_links(self, current, *, wait=True):
+		self.lock_sources(wait=wait)
 		previous = self.get_doc_before_save()
 		names = set(self.linked_grns + (previous.linked_grns if previous else []))
 		for name in sorted(names):
@@ -151,7 +151,13 @@ class MGKPurchaseInvoice(Document):
 		self.sync_grn_links([])
 
 	def on_trash(self):
-		self.sync_grn_links([])
+		try:
+			self.sync_grn_links([], wait=False)
+		except frappe.QueryTimeoutError, frappe.QueryDeadlockError:
+			frappe.throw(
+				_("Purchase Invoice sources are busy; retry deleting this invoice."),
+				exc=frappe.QueryTimeoutError,
+			)
 
 
 def validate_against(against):
@@ -164,15 +170,28 @@ def get_billable_grn(name, supplier=None, against=None, invoice=None):
 	receipt.check_permission("read")
 	if receipt.docstatus != 1:
 		frappe.throw(_("GRN {0} must be submitted.").format(name))
-	if receipt.purchase_invoice and receipt.purchase_invoice != invoice:
-		frappe.throw(
-			_("GRN {0} is already billed by Purchase Invoice {1}.").format(name, receipt.purchase_invoice)
-		)
+	validate_billing_link(receipt, invoice)
 	if supplier and receipt.supplier != supplier:
 		frappe.throw(_("GRN {0} must belong to the same supplier.").format(name))
 	if against and cint(receipt.against_purchase_order) != int(against == "Purchase Order"):
 		frappe.throw(_("GRN {0} does not match the invoice Against type.").format(name))
 	return receipt
+
+
+def validate_billing_link(receipt, invoice):
+	locking_clause = "FOR UPDATE" if invoice else ""
+	references = frappe.db.sql(
+		f"""SELECT DISTINCT invoice.name FROM `tabMGK Purchase Invoice` invoice
+		JOIN `tabMGK Purchase Invoice Item` item ON item.parent = invoice.name
+		WHERE item.goods_received_note = %(grn)s AND invoice.docstatus < 2
+			AND item.parenttype = 'MGK Purchase Invoice' AND item.parentfield = 'items'
+			AND invoice.name != %(invoice)s ORDER BY invoice.name {locking_clause}""",
+		{"grn": receipt.name, "invoice": invoice or ""},
+		pluck=True,
+	)
+	billed_by = references[0] if references else receipt.purchase_invoice
+	if billed_by and billed_by != invoice:
+		frappe.throw(_("GRN {0} is already billed by Purchase Invoice {1}.").format(receipt.name, billed_by))
 
 
 @frappe.whitelist()

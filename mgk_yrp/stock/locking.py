@@ -13,13 +13,14 @@ LOCK_ORDER = (
 )
 
 
-def lock_documents(documents: dict[str, list[str]]) -> None:
+def lock_documents(documents: dict[str, list[str]], *, wait=True) -> None:
 	unknown = documents.keys() - set(LOCK_ORDER)
 	if unknown:
 		raise ValueError(f"Unknown lock doctypes: {', '.join(sorted(unknown))}")
+	locking_clause = "FOR UPDATE" if wait else "FOR UPDATE NOWAIT"
 	for doctype in LOCK_ORDER:
 		for name in sorted(set(filter(None, documents.get(doctype, [])))):
-			frappe.db.sql(f"SELECT name FROM `tab{doctype}` WHERE name = %s FOR UPDATE", (name,))
+			frappe.db.sql(f"SELECT name FROM `tab{doctype}` WHERE name = %s {locking_clause}", (name,))
 
 
 def lock_stock_buckets(buckets) -> None:

@@ -26,6 +26,34 @@ from mgk_yrp.tests.valuation_fixtures import (
 
 
 class TestDCReopen(CloseTestCase):
+	def test_c60_c67_c68_upstream_close_waits_for_downstream_reversal_and_finish(self):
+		first, intermediate = self.make_cycle()
+		upstream = close_dc(first, submit=False)
+		second = self.make_challan(items=[{"item": self.output_item, "qty": 60}])
+		finished_item = make_item(stock_uom=make_uom("Kg"))
+		receipt = self.make_output([second], items=[{"item": finished_item, "qty": 60, "rate": 20}])
+		downstream = close_dc(second)
+		run_adjustments(downstream.doctype, downstream.name)
+		downstream.cancel()
+		with self.assertRaisesRegex(frappe.ValidationError, downstream.name):
+			upstream.submit()
+		run_adjustments(downstream.doctype, downstream.name)
+		self.assertEqual(self.get_overlay(receipt), 0)
+		self.assertTrue(self.get_links(downstream))
+		upstream.reload().set("outputs", [])
+		with self.assertRaisesRegex(frappe.ValidationError, downstream.name):
+			upstream.submit()
+		self.assertEqual(frappe.db.get_value(upstream.doctype, upstream.name, "docstatus"), 0)
+		self.assertFalse(frappe.db.exists("YRP Stock Valuation Adjustment", {"source_name": upstream.name}))
+		self.assertTrue(finish_reopen(downstream.name))
+		upstream.reload().submit()
+		run_adjustments(upstream.doctype, upstream.name)
+		self.assertEqual(self.get_overlay(intermediate), 5000)
+		self.assertEqual(self.get_overlay(receipt), 0)
+		upstream.cancel()
+		run_adjustments(upstream.doctype, upstream.name)
+		self.assertTrue(finish_reopen(upstream.name))
+
 	def test_c59_c69_shared_grn_reopens_both_closes_in_creation_order(self):
 		self.assert_shared_grn_reopens(reverse=False)
 
@@ -437,10 +465,10 @@ class TestDCReopenConcurrency(CloseTestCase):
 		ready, waiting = Event(), Event()
 		site, sites_path = frappe.local.site, frappe.local.sites_path
 
-		def observe_upstream_parents(documents):
+		def observe_upstream_parents(documents, *, wait=True):
 			if upstream.name in documents.get(upstream.doctype, ()):
 				waiting.set()
-			return lock_documents(documents)
+			return lock_documents(documents, wait=wait)
 
 		with ThreadPoolExecutor(max_workers=1) as pool:
 			finisher = pool.submit(

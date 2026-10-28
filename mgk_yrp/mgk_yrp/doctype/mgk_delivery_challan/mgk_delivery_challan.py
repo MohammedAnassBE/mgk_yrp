@@ -226,7 +226,6 @@ class MGKDeliveryChallan(Document):
 @frappe.whitelist()
 def make_delivery_challan_close(source_name: str) -> Document:
 	frappe.has_permission("MGK Delivery Challan Close", "create", throw=True)
-	lock_documents({"MGK Delivery Challan": [source_name]})
 	target = frappe.new_doc("MGK Delivery Challan Close")
 	target.delivery_challan = source_name
 	target.validate()

@@ -30,6 +30,13 @@ class MGKGoodsReceivedNote(Document):
 	def before_validate(self):
 		apply_posting_datetime(self)
 
+	def before_update_after_submit(self):
+		previous = self.get_doc_before_save()
+		if self.purchase_invoice != previous.purchase_invoice:
+			frappe.throw(
+				_("Purchase Invoice is maintained by billing and cannot be changed on a submitted GRN.")
+			)
+
 	def validate(self):
 		if self.against_purchase_order:
 			order = self.validate_purchase_order()
@@ -202,7 +209,9 @@ class MGKGoodsReceivedNote(Document):
 		if invoice_name:
 			status = frappe.db.get_value("MGK Purchase Invoice", invoice_name, "docstatus", for_update=True)
 			if status is None:
-				frappe.throw(_("Purchase Invoice {0} not found.").format(invoice_name), frappe.DoesNotExistError)
+				frappe.throw(
+					_("Purchase Invoice {0} not found.").format(invoice_name), frappe.DoesNotExistError
+				)
 			if status < 2:
 				frappe.throw(_("Cancel Purchase Invoice {0} before this receipt.").format(invoice_name))
 		if self.against_purchase_order:
