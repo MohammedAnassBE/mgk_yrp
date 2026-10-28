@@ -232,21 +232,26 @@ class TestPurchaseInvoice(CloseTestCase):
 				invoice.submit()
 		self.assertFalse(frappe.db.exists("YRP Stock Valuation Adjustment", {"source_name": invoice.name}))
 
-	def test_pi_same_rate_submits_when_setting_off(self):
+	def test_pi_same_rate_rejected_when_setting_off(self):
 		receipt = self.make_output([])
+		invoice = self.make_invoice([receipt], submit=False)
 		with (
 			patch(f"{REVALUATION}.is_stock_adjustment_enabled", return_value=False),
 			patch(f"{ADJUSTMENT}.is_stock_adjustment_enabled", return_value=False),
 		):
-			invoice = self.make_invoice([receipt])
-		self.assertEqual(invoice.docstatus, 1)
+			with self.assertRaisesRegex(frappe.ValidationError, "Enable Apply Stock Adjustment"):
+				invoice.submit()
+		self.assertEqual(frappe.db.get_value(invoice.doctype, invoice.name, "docstatus"), 0)
 		self.assertFalse(frappe.db.exists("YRP Stock Valuation Adjustment", {"source_name": invoice.name}))
 
 	def test_pi_cancel_creates_reversal_even_when_setting_off(self):
 		receipt = self.make_output([])
 		invoice = self.make_invoice([receipt], rates={receipt.items[0].name: 11})
 		run_adjustments(invoice.doctype, invoice.name)
-		with patch(f"{ADJUSTMENT}.is_stock_adjustment_enabled", return_value=False):
+		with (
+			patch(f"{REVALUATION}.is_stock_adjustment_enabled", return_value=False),
+			patch(f"{ADJUSTMENT}.is_stock_adjustment_enabled", return_value=False),
+		):
 			invoice.cancel()
 		self.assertFalse(receipt.reload().purchase_invoice)
 		names = run_adjustments(invoice.doctype, invoice.name)

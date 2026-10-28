@@ -82,6 +82,30 @@ class TestDCClose(CloseTestCase):
 		close.reload()
 		self.assertEqual(sum(row.allocated_value for row in close.outputs), 5000)
 
+	def test_zero_value_close_with_outputs_reopens_immediately(self):
+		make_job_work_grn(
+			supplier=self.owner,
+			warehouse=self.main,
+			items=[{"item": self.raw_item, "qty": 50, "rate": 0}],
+		)
+		challan = self.make_challan()
+		receipts = [self.make_output([challan], quantity=qty) for qty in (10, 10, 12, 13, 15)]
+		close = close_dc(challan)
+		self.assertEqual((close.total_dc_value, close.total_output_qty), (0, 60))
+		self.assertFalse(close.stock_valuation_adjustment)
+		self.assertEqual(len(self.get_links(close)), 5)
+		self.assertEqual(sum(self.get_overlay(receipt) for receipt in receipts), 0)
+		self.assertEqual(get_stock_balance(self.raw_item, self.destination), 0)
+		close.cancel()
+		self.assertEqual(close.reload().reopen_status, "Reopened")
+		self.assertTrue(challan.reload().is_open)
+		self.assertFalse(self.get_links(close))
+		self.assertFalse(get_voucher_sles(close.doctype, close.name))
+		self.assertEqual(get_stock_balance(self.raw_item, self.destination), 50)
+		second = close_dc(challan)
+		self.assertNotEqual(second.name, close.name)
+		self.assertEqual(len(self.get_links(second)), 5)
+
 	def test_close_allocates_own_dc_value_not_bucket_value(self):
 		self.make_input()
 		self.make_input(rate=120)

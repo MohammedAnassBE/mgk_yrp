@@ -3,7 +3,7 @@ from frappe import _
 from frappe.utils import get_datetime, now_datetime
 from yrp.stock.utils import get_combine_datetime
 
-from mgk_yrp.stock.ledger import get_voucher_sles
+from mgk_yrp.stock.locking import lock_stock_buckets
 
 
 def is_backdated(doc) -> bool:
@@ -27,12 +27,13 @@ def has_later_movements(
 	linked_condition = ""
 	locking_clause = "FOR UPDATE" if for_update else ""
 	if linked_only:
-		linked_condition = """
+		linked_condition = f"""
 		AND (
 			(COALESCE(sle.paired_stock_ledger_entry, '') != '' AND sle.qty != 0)
 			OR (sle.qty < 0 AND EXISTS (
 				SELECT 1 FROM `tabYRP Stock Valuation Production Link` production
 				WHERE production.consumption_sle = sle.name AND production.active = 1
+				{locking_clause}
 			))
 		)
 		"""
@@ -58,10 +59,11 @@ def require_stock_manager() -> None:
 
 
 def validate_backdated_posting(doc, buckets) -> None:
+	lock_stock_buckets(buckets)
 	if not is_backdated(doc):
 		return
 	require_stock_manager()
-	validate_linked_movements(doc, buckets)
+	validate_linked_movements(doc, buckets, for_update=True)
 
 
 def validate_linked_movements(doc, buckets, *, for_update=False) -> None:
@@ -70,9 +72,10 @@ def validate_linked_movements(doc, buckets, *, for_update=False) -> None:
 		frappe.throw(_("Backdated stock changes are blocked by later linked movements."))
 
 
-def validate_backdated_cancel(doc, *, for_update=False) -> None:
-	entries = get_voucher_sles(doc.doctype, doc.name)
-	buckets = [(entry.item, entry.warehouse) for entry in entries]
+def validate_backdated_cancel(doc, *, buckets=None, for_update=True) -> None:
+	if buckets is None:
+		buckets = [(entry["item"], entry["warehouse"]) for entry in doc.get_stock_entries()]
+	lock_stock_buckets(buckets)
 	posting_datetime = get_combine_datetime(doc.posting_date, doc.posting_time)
 	if has_later_movements(buckets, posting_datetime, (doc.doctype, doc.name), for_update=for_update):
 		require_stock_manager()

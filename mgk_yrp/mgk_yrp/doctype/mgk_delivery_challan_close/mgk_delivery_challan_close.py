@@ -4,6 +4,7 @@ from frappe.model.document import Document
 from frappe.utils import flt, now_datetime
 from yrp.stock.stock_ledger import enqueue_voucher_repost
 from yrp.yrp_stock.doctype.yrp_stock_valuation_adjustment.yrp_stock_valuation_adjustment import (
+	VALUE_TOLERANCE,
 	create_adjustment,
 	is_stock_adjustment_enabled,
 	register_production_links,
@@ -95,7 +96,7 @@ class MGKDeliveryChallanClose(Document):
 			frappe.throw(_("Enable Apply Stock Adjustment in YRP Settings to close with linked outputs."))
 
 	def on_submit(self):
-		result = post_stock_entries(build_consumption_entries(self, self.items))
+		result = post_stock_entries(self.get_stock_entries())
 		self.record_consumption(result)
 		allocations, links = build_allocations_and_links(self)
 		if links:
@@ -110,6 +111,9 @@ class MGKDeliveryChallanClose(Document):
 			},
 		)
 		enqueue_voucher_repost(self)
+
+	def get_stock_entries(self) -> list[dict]:
+		return build_consumption_entries(self, self.items)
 
 	def record_consumption(self, result):
 		for row in self.items:
@@ -142,7 +146,9 @@ class MGKDeliveryChallanClose(Document):
 			effective_date=self.posting_date,
 			allocations=allocations,
 		)
-		if not self.stock_valuation_adjustment:
+		if not self.stock_valuation_adjustment and any(
+			abs(flt(row["difference"])) > VALUE_TOLERANCE for row in allocations
+		):
 			frappe.throw(_("Close did not create its Stock Valuation Adjustment."))
 
 	def persist_audit(self):

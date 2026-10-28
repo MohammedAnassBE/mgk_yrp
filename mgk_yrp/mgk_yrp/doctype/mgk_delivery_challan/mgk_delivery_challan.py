@@ -26,16 +26,20 @@ from mgk_yrp.stock.warehouse import get_supplier_warehouse
 
 
 class MGKDeliveryChallan(Document):
+	def load_doc_before_save(self, *, raise_exception=False):
+		"""Lock source and return names before Frappe locks this challan."""
+		if not self.is_new():
+			previous = frappe.get_doc(self.doctype, self.name)
+			self.lock_sources(previous=previous)
+		super().load_doc_before_save(raise_exception=raise_exception)
+
 	def before_validate(self):
 		apply_posting_datetime(self)
 
 	def validate(self):
 		if bool(cint(self.is_return)) != bool(self.return_against):
 			frappe.throw(_("A Return must specify Return Against; other Delivery Challans cannot."))
-		if not self.to_warehouse:
-			self.to_warehouse = get_supplier_warehouse(self.to_location)
-		if self.from_warehouse and self.from_warehouse == self.to_warehouse:
-			frappe.throw(_("From Warehouse and To Warehouse must be different."))
+		self.set_warehouses()
 		if self.is_return:
 			self.set_return_rows(self.get_return_source())
 		else:
@@ -47,6 +51,12 @@ class MGKDeliveryChallan(Document):
 		if self.docstatus == 0:
 			self.close_status = ""
 			self.delivery_challan_close = None
+
+	def set_warehouses(self):
+		if not self.to_warehouse:
+			self.to_warehouse = get_supplier_warehouse(self.to_location)
+		if self.from_warehouse and self.from_warehouse == self.to_warehouse:
+			frappe.throw(_("From Warehouse and To Warehouse must be different."))
 
 	@property
 	def is_open(self) -> bool:
@@ -102,8 +112,17 @@ class MGKDeliveryChallan(Document):
 		self.total_qty = sum(flt(row.qty) for row in self.items)
 		self.total_declared_value = sum(flt(row.amount) for row in self.items)
 
-	def lock_sources(self):
-		lock_documents({"MGK Delivery Challan": [self.return_against, self.name]})
+	def lock_sources(self, *, previous=None):
+		previous = previous or self.get_doc_before_save()
+		lock_documents(
+			{
+				"MGK Delivery Challan": [
+					self.return_against,
+					previous.return_against if previous else None,
+					self.name,
+				]
+			}
+		)
 
 	def before_submit(self):
 		validate_stock_dimensions()
@@ -165,8 +184,11 @@ class MGKDeliveryChallan(Document):
 			self.db_set("close_status", "Open")
 
 	def before_cancel(self):
-		validate_stock_dimensions()
 		self.lock_sources()
+		self.flags.for_update = True
+		self.reload()
+		self.docstatus = 2
+		validate_stock_dimensions()
 		if self.is_return:
 			self.get_return_source(for_update=True)
 		else:

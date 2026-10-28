@@ -33,6 +33,17 @@ def get_reopen_blockers(close) -> list[str]:
 
 
 def get_adjustment_blockers(close) -> list[str]:
+	blockers = get_valuation_failure_blockers(close)
+	outputs = tuple(row.output_receipt_sle for row in close.outputs)
+	if outputs and get_pending_output_adjustments(close, outputs):
+		blockers.append(_("Another unfinished valuation owns an output receipt; wait before reopening."))
+	consumptions = tuple(row.consumption_sle for row in close.items if row.consumption_sle)
+	if consumptions and has_other_consumption_adjustment(close, consumptions):
+		blockers.append(_("Consumption is used by another active Stock Valuation Adjustment."))
+	return blockers
+
+
+def get_valuation_failure_blockers(close) -> list[str]:
 	blockers = []
 	status = (
 		frappe.db.get_value(
@@ -43,12 +54,6 @@ def get_adjustment_blockers(close) -> list[str]:
 	)
 	if status in ("Calculation Failed", "Apply Failed"):
 		blockers.append(_("Resolve the Close valuation failure before reopening."))
-	outputs = tuple(row.output_receipt_sle for row in close.outputs)
-	if outputs and get_pending_output_adjustments(close, outputs):
-		blockers.append(_("Another unfinished valuation owns an output receipt; wait before reopening."))
-	consumptions = tuple(row.consumption_sle for row in close.items if row.consumption_sle)
-	if consumptions and has_other_consumption_adjustment(close, consumptions):
-		blockers.append(_("Consumption is used by another active Stock Valuation Adjustment."))
 	return blockers
 
 

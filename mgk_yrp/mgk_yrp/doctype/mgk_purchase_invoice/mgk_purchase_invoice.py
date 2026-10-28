@@ -10,7 +10,7 @@ from yrp.yrp_stock.doctype.yrp_stock_valuation_adjustment.yrp_stock_valuation_ad
 )
 
 from mgk_yrp.purchase.gst import apply_row_gst, get_gst_context
-from mgk_yrp.purchase.revaluation import create_invoice_adjustment
+from mgk_yrp.purchase.revaluation import create_invoice_adjustment, require_stock_adjustment
 from mgk_yrp.stock.ledger import validate_stock_dimensions
 from mgk_yrp.stock.locking import lock_documents
 from mgk_yrp.stock.uom import copy_uom_snapshot, has_uom_snapshot, validate_uom_snapshot
@@ -101,6 +101,7 @@ class MGKPurchaseInvoice(Document):
 	def before_submit(self):
 		self.lock_sources()
 		validate_stock_dimensions()
+		require_stock_adjustment()
 
 	@frappe.whitelist()
 	def preview_taxes(self):

@@ -200,6 +200,20 @@ class TestStockRules(IntegrationTestCase):
 		order = frappe.get_doc("MGK Purchase Order", receipt.purchase_order)
 		self.assertEqual(order.items[0].received_qty, 100)
 
+	def test_cancel_ignores_client_posting_timestamp(self):
+		receipt = self.make_receipt()
+		self.post_transfer()
+		receipt.set("items", [])
+		receipt.edit_posting_date_and_time = 0
+		receipt.posting_date = add_days(nowdate(), 1)
+		receipt.posting_time = "23:59:59"
+		with self.assertRaisesRegex(frappe.ValidationError, "later linked movements"):
+			receipt.cancel()
+		self.assertEqual(str(receipt.posting_date), self.posting_date)
+		self.assertTrue(receipt.items)
+		self.assertEqual(frappe.db.get_value(receipt.doctype, receipt.name, "docstatus"), 1)
+		self.assertTrue(get_voucher_sles(receipt.doctype, receipt.name))
+
 	def test_backdated_cancel_requires_manager_for_later_plain_receipt(self):
 		receipt = self.make_receipt()
 		self.make_receipt("10:00:00")

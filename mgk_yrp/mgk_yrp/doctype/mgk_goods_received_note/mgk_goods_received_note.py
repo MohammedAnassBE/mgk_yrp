@@ -59,12 +59,19 @@ class MGKGoodsReceivedNote(Document):
 		names = self.linked_delivery_challans + (previous.linked_delivery_challans if previous else [])
 		if names:
 			locking.lock_documents({"MGK Delivery Challan": names})
+		self.validate_removed_delivery_challan_links(previous)
+		if self.against_purchase_order and self.delivery_challans:
+			frappe.throw(_("A Purchase Order receipt cannot link Delivery Challans."))
+		self.validate_current_delivery_challan_links()
+
+	def validate_removed_delivery_challan_links(self, previous) -> None:
+		names = previous.linked_delivery_challans if previous else []
 		for name in set(names) - set(self.linked_delivery_challans):
 			challan = frappe.get_doc("MGK Delivery Challan", name, for_update=True)
 			challan.check_permission("read")
 			challan.validate_open(_("remove a GRN link"))
-		if self.against_purchase_order and self.delivery_challans:
-			frappe.throw(_("A Purchase Order receipt cannot link Delivery Challans."))
+
+	def validate_current_delivery_challan_links(self) -> None:
 		for name in self.linked_delivery_challans:
 			challan = frappe.get_doc("MGK Delivery Challan", name, for_update=True)
 			frappe.has_permission("MGK Delivery Challan", "read", doc=challan, throw=True)
@@ -186,8 +193,11 @@ class MGKGoodsReceivedNote(Document):
 			frappe.get_doc("MGK Purchase Order", self.purchase_order, for_update=True).update_received_qty()
 
 	def before_cancel(self):
-		validate_stock_dimensions()
 		self.lock_sources()
+		self.flags.for_update = True
+		self.reload()
+		self.docstatus = 2
+		validate_stock_dimensions()
 		invoice_name = frappe.db.get_value(self.doctype, self.name, "purchase_invoice", for_update=True)
 		if invoice_name:
 			invoice = frappe.get_doc("MGK Purchase Invoice", invoice_name, for_update=True)

@@ -36,6 +36,7 @@ select = [
     "UP",
     "B",
     "RUF",
+    "C90",
 ]
 ignore = [
     "B017", # assertRaises(Exception) - should be more specific
@@ -58,6 +59,9 @@ ignore = [
     "UP040", # Use type aliases instead of type annotations
 ]
 typing-modules = ["frappe.types.DF"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 8
 
 [tool.ruff.format]
 quote-style = "double"

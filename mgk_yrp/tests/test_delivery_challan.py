@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 import frappe
 from frappe.tests import IntegrationTestCase
-from frappe.utils import flt
+from frappe.utils import add_days, flt, get_time, getdate, nowdate
 from yrp.stock.stock_ledger import NegativeStockError
 from yrp.stock.utils import get_stock_balance
 from yrp.yrp_stock.doctype.yrp_stock_valuation_adjustment.yrp_stock_valuation_adjustment import (
@@ -179,7 +179,9 @@ class TestDeliveryChallan(IntegrationTestCase):
 		with patch(f"{CONTROLLER}.lock_documents", wraps=lock_documents) as locks:
 			with self.assertRaisesRegex(frappe.ValidationError, "remaining delivered quantity"):
 				second.submit()
-		self.assertEqual(locks.call_args.args[0], {"MGK Delivery Challan": [challan.name, second.name]})
+		self.assertEqual(
+			locks.call_args.args[0], {"MGK Delivery Challan": [challan.name, challan.name, second.name]}
+		)
 		self.assertFalse(get_voucher_sles(second.doctype, second.name))
 		self.assertEqual(challan.reload().items[0].returned_qty, 40)
 
@@ -343,6 +345,37 @@ class TestDeliveryChallan(IntegrationTestCase):
 			old_names.intersection(entry.name for entry in get_voucher_sles(amended.doctype, amended.name))
 		)
 		self.assertTrue(amended.is_open)
+
+	def test_dc_cancel_ignores_empty_client_items(self):
+		self.make_receipt()
+		challan = self.make_challan()
+		persisted_rows = [row.name for row in challan.items]
+		challan.set("items", [])
+		challan.cancel()
+		self.assertEqual([row.name for row in challan.reload().items], persisted_rows)
+		self.assertEqual(challan.docstatus, 2)
+		self.assertFalse(get_voucher_sles(challan.doctype, challan.name))
+		self.assertEqual(get_stock_balance(self.item, self.main), 50)
+		self.assertEqual(get_stock_balance(self.item, self.destination), 0)
+
+	def test_dc_cancel_ignores_client_posting_timestamp(self):
+		self.make_receipt()
+		challan = self.make_challan()
+		posting = (getdate(challan.posting_date), get_time(challan.posting_time))
+		make_delivery_challan(
+			from_warehouse=self.destination,
+			to_supplier=self.from_supplier,
+			to_warehouse=self.main,
+			process_name=self.process_name,
+			items=[{"item": self.item, "qty": 10}],
+		)
+		challan.posting_date = add_days(nowdate(), 1)
+		challan.posting_time = "23:59:59"
+		with self.assertRaisesRegex(frappe.ValidationError, "later linked movements"):
+			challan.cancel()
+		self.assertEqual((getdate(challan.posting_date), get_time(challan.posting_time)), posting)
+		self.assertEqual(frappe.db.get_value(challan.doctype, challan.name, "docstatus"), 1)
+		self.assertTrue(get_voucher_sles(challan.doctype, challan.name))
 
 	def test_transfer_pair_assertion_rejects_missing_or_corrupt_pairs(self):
 		self.make_receipt()

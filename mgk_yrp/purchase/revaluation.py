@@ -39,11 +39,15 @@ def build_invoice_allocations(invoice) -> list[dict]:
 	return allocations
 
 
+def require_stock_adjustment() -> None:
+	if not is_stock_adjustment_enabled():
+		frappe.throw(_("Enable Apply Stock Adjustment in YRP Settings to submit a Purchase Invoice."))
+
+
 def create_invoice_adjustment(invoice) -> str | None:
+	require_stock_adjustment()
 	allocations = build_invoice_allocations(invoice)
 	has_difference = any(row["difference"] for row in allocations)
-	if has_difference and not is_stock_adjustment_enabled():
-		frappe.throw(_("Enable Apply Stock Adjustment in YRP Settings to submit a rate change."))
 	# Check every target: yrp discards zero rows before checking a mixed revision.
 	if has_difference and any(not row["difference"] for row in allocations):
 		lock_stock_valuation_period(shared=True)

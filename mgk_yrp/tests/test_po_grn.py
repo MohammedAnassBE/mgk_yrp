@@ -221,6 +221,18 @@ class TestPurchaseOrderGRN(IntegrationTestCase):
 		self.assertEqual(order.items[0].received_qty, 100)
 		self.assertEqual(get_stock_balance(self.item, self.warehouse), 100)
 
+	def test_cancel_ignores_empty_client_items(self):
+		order = self.make_order()
+		receipt = make_po_grn(order)
+		persisted_rows = [row.name for row in receipt.items]
+		receipt.set("items", [])
+		receipt.cancel()
+		self.assertEqual([row.name for row in receipt.reload().items], persisted_rows)
+		self.assertEqual(receipt.docstatus, 2)
+		self.assertFalse(get_voucher_sles(receipt.doctype, receipt.name))
+		self.assertEqual(get_stock_balance(self.item, self.warehouse), 0)
+		self.assertEqual(order.reload().items[0].received_qty, 0)
+
 	def test_make_grn_requires_po_read_permission(self):
 		order = self.make_order()
 		user = frappe.get_doc(

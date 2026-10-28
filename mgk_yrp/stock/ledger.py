@@ -70,17 +70,19 @@ def assert_transfer_pairs(voucher_type, voucher_no, *, expected_entries=None) ->
 	if not entries:
 		frappe.throw(_("Stock transfer did not create any ledger entries."))
 	if expected_entries is not None:
-		expected = sorted(transfer_signature(entry) for entry in expected_entries)
-		actual = sorted(transfer_signature(entry) for entry in entries)
-		if actual != expected:
-			frappe.throw(
-				_("Incomplete stock transfer: ledger entries do not match the Delivery Challan rows.")
-			)
+		assert_expected_entries(entries, expected_entries)
 	by_name = {entry.name: entry for entry in entries}
 	for entry in entries:
 		paired = by_name.get(entry.paired_stock_ledger_entry)
 		if not paired or not is_transfer_pair(entry, paired):
 			frappe.throw(_("Incomplete stock transfer pair for ledger entry {0}.").format(entry.name))
+
+
+def assert_expected_entries(entries, expected_entries) -> None:
+	expected = sorted(transfer_signature(entry) for entry in expected_entries)
+	actual = sorted(transfer_signature(entry) for entry in entries)
+	if actual != expected:
+		frappe.throw(_("Incomplete stock transfer: ledger entries do not match the Delivery Challan rows."))
 
 
 def transfer_signature(entry):
