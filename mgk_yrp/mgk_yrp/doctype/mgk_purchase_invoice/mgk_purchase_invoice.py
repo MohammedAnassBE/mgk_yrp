@@ -9,7 +9,7 @@ from yrp.yrp_stock.doctype.yrp_stock_valuation_adjustment.yrp_stock_valuation_ad
 	validate_reversal_allowed,
 )
 
-from mgk_yrp.purchase.gst import apply_row_gst, get_gst_context
+from mgk_yrp.purchase.gst import apply_row_gst, get_gst_context, warn_missing_slabs
 from mgk_yrp.purchase.revaluation import (
 	create_invoice_adjustment,
 	lock_invoice_sources,
@@ -70,6 +70,8 @@ class MGKPurchaseInvoice(Document):
 			)
 			self.set_source_row(row, source)
 			apply_row_gst(row, self.tax_type, use_snapshot=use_snapshot)
+		if not use_snapshot:
+			warn_missing_slabs(self.items, self.tax_type)
 		self.set_totals()
 
 	def validate_full_grns(self, receipts):

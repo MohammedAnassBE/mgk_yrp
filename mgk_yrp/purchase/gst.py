@@ -24,12 +24,10 @@ def get_gst_context(supplier: str) -> frappe._dict:
 	return context
 
 
-def get_item_slab(item: str, tax_type: str) -> tuple[str | None, float]:
+def get_item_slab(item: str) -> tuple[str | None, float]:
 	parent = get_parent_item(item)
 	slab_name = frappe.db.get_value("Item", parent, "mgk_gst_tax_slab") if parent else None
 	if not slab_name:
-		if tax_type != "No Tax":
-			frappe.throw(_("Item {0}: set MGK GST Tax Slab because the supplier has a GSTIN.").format(item))
 		return None, 0
 	slab = frappe.get_doc("YRP Tax Slab", slab_name)
 	slab.check_permission("read")
@@ -44,9 +42,22 @@ def get_item_slab(item: str, tax_type: str) -> tuple[str | None, float]:
 
 def apply_row_gst(row, tax_type: str, *, use_snapshot=False) -> None:
 	if not use_snapshot:
-		row.gst_tax_slab, row.gst_rate = get_item_slab(row.item, tax_type)
+		row.gst_tax_slab, row.gst_rate = get_item_slab(row.item)
 	row.cgst_amount = row.sgst_amount = row.igst_amount = 0
 	if tax_type == "CGST + SGST":
 		row.cgst_amount = row.sgst_amount = flt(flt(row.amount) * flt(row.gst_rate) / 200, 2)
 	elif tax_type == "IGST":
 		row.igst_amount = flt(flt(row.amount) * flt(row.gst_rate) / 100, 2)
+
+
+def warn_missing_slabs(rows, tax_type: str) -> None:
+	missing = sorted({row.item for row in rows if not row.gst_tax_slab})
+	if tax_type == "No Tax" or not missing:
+		return
+	frappe.msgprint(
+		_("No GST charged for these items because they have no MGK GST Tax Slab: {0}").format(
+			", ".join(missing)
+		),
+		title=_("GST Tax Slab Missing"),
+		indicator="orange",
+	)

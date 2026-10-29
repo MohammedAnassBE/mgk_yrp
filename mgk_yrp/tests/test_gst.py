@@ -99,9 +99,17 @@ class TestGST(CloseTestCase):
 			apply_row_gst(row, "IGST")
 			self.assertEqual(row.igst_amount, float(percentage))
 
-	def test_missing_item_slab_with_gstin_rejected(self):
-		with self.assertRaisesRegex(frappe.ValidationError, "MGK GST Tax Slab.*supplier has a GSTIN"):
-			self.make_tax_invoice(items=[{"item": self.output_item, "qty": 1, "rate": 100}])
+	def test_missing_item_slab_with_gstin_warns_and_submits(self):
+		frappe.clear_messages()
+		invoice, _ = self.make_tax_invoice(
+			items=[{"item": self.output_item, "qty": 1, "rate": 100}], submit=True
+		)
+		self.assertEqual(invoice.docstatus, 1)
+		self.assertEqual(invoice.tax_type, "CGST + SGST")
+		row = invoice.items[0]
+		self.assertEqual((row.gst_tax_slab, row.gst_rate, row.cgst_amount, row.sgst_amount), (None, 0, 0, 0))
+		self.assertEqual(invoice.total_tax, 0)
+		self.assertIn("GST Tax Slab Missing", str(frappe.message_log))
 
 	def test_missing_company_gstin_rejected(self):
 		with patch("mgk_yrp.purchase.gst.frappe.get_single") as settings:
