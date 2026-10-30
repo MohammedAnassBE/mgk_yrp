@@ -6,11 +6,12 @@ from yrp.stock.utils import get_stock_balance
 
 from mgk_yrp.job_work.close_valuation import lock_close_buckets, split_by_weight
 from mgk_yrp.mgk_yrp.doctype.mgk_delivery_challan.mgk_delivery_challan import make_delivery_challan_close
-from mgk_yrp.stock.ledger import get_voucher_sles
+from mgk_yrp.stock.ledger import get_dimension_values, get_voucher_sles
 from mgk_yrp.stock.locking import lock_documents
 from mgk_yrp.tests.close_fixtures import CLOSE, CloseTestCase
 from mgk_yrp.tests.fixtures import (
 	close_dc,
+	make_conversion_input,
 	make_delivery_challan,
 	make_item,
 	make_job_work_grn,
@@ -19,6 +20,7 @@ from mgk_yrp.tests.fixtures import (
 	make_uom,
 	make_warehouse,
 	run_adjustments,
+	set_process_outputs,
 )
 
 
@@ -82,6 +84,20 @@ class TestDCClose(CloseTestCase):
 		close.reload()
 		self.assertEqual(sum(row.allocated_value for row in close.outputs), 5000)
 
+	def test_close_consumption_received_type_and_reopen(self):
+		self.make_input()
+		challan = self.make_challan()
+		close = close_dc(challan)
+		entries = get_voucher_sles(close.doctype, close.name)
+		self.assertTrue(entries)
+		for row in entries:
+			entry = frappe.get_doc("YRP Stock Ledger Entry", row.name)
+			for field, value in get_dimension_values(challan.items[0]).items():
+				self.assertEqual(entry.get(field), value)
+		close.cancel()
+		self.assertEqual(close.reload().reopen_status, "Reopened")
+		self.assertFalse(get_voucher_sles(close.doctype, close.name))
+
 	def test_zero_value_close_with_outputs_reopens_immediately(self):
 		make_job_work_grn(
 			supplier=self.owner,
@@ -120,25 +136,32 @@ class TestDCClose(CloseTestCase):
 			(5000, 6000, -1000),
 		)
 
-	def test_close_links_every_consumption_to_every_output(self):
-		second_item = make_item(stock_uom=make_uom("Kg"))
+	def test_close_links_each_consumption_only_to_its_own_outputs(self):
+		second_output = make_item(stock_uom=make_uom("Kg"))
+		_, second_item = make_conversion_input(self.process_name, [(second_output, 1, 1)])
 		self.make_input()
 		self.make_input(item=second_item)
 		challan = self.make_challan(
 			items=[{"item": item, "qty": 50} for item in (self.raw_item, second_item)]
 		)
 		self.make_output(
-			[challan], items=[{"item": self.output_item, "qty": qty, "rate": 10} for qty in (10, 20)]
+			[challan], items=[
+				{"item": self.output_item, "qty": 10, "rate": 10},
+				{"item": second_output, "qty": 20, "rate": 10},
+			],
 		)
 		close = close_dc(challan)
 		links = self.get_links(close)
-		self.assertEqual(len(links), 4)
+		self.assertEqual(len(links), 2)
+		self.assertEqual([row.allocated_value for row in close.outputs], [5000, 5000])
+		self.assertEqual([row.allocated_rate for row in close.outputs], [500, 250])
 		self.assertEqual(
 			{(link.consumption_sle, link.output_receipt_sle) for link in links},
 			{
 				(row.consumption_sle, output.output_receipt_sle)
 				for row in close.items
 				for output in close.outputs
+				if output.input_item == row.item
 			},
 		)
 		for link in links:
@@ -166,20 +189,25 @@ class TestDCClose(CloseTestCase):
 		self.assertFalse(self.get_links(close))
 		self.assertEqual(get_stock_balance(self.raw_item, self.destination), 0)
 
-	def test_close_rejects_mixed_output_stock_uoms(self):
+	def test_close_accepts_mixed_output_stock_uoms(self):
+		pieces = make_item(stock_uom=make_uom("Nos"))
+		_, self.raw_item = make_conversion_input(
+			self.process_name, [(self.output_item, 1, 1), (pieces, 1, 2)]
+		)
 		self.make_input()
 		challan = self.make_challan()
-		pieces = make_item(stock_uom=make_uom("Nos"))
 		self.make_output(
 			[challan], items=[{"item": item, "qty": 10, "rate": 1} for item in (self.output_item, pieces)]
 		)
-		with self.assertRaisesRegex(frappe.ValidationError, "different stock UOMs"):
-			close_dc(challan)
+		close = close_dc(challan)
+		self.assertEqual([row.allocation_weight for row in close.outputs], [10, 5])
+		self.assertEqual(sum(row.allocated_value for row in close.outputs), 5000)
 
 	def test_cutting_uses_same_per_unit_value(self):
+		panels = [make_item(stock_uom=make_uom("Nos")) for _ in range(3)]
+		set_process_outputs(self.raw_item, self.process_name, [(item, 1, 1) for item in panels])
 		self.make_input(quantity=3)
 		challan = self.make_challan(quantity=3)
-		panels = [make_item(stock_uom=make_uom("Nos")) for _ in range(3)]
 		self.make_output(
 			[challan],
 			items=[
@@ -191,19 +219,25 @@ class TestDCClose(CloseTestCase):
 		run_adjustments(close.doctype, close.name)
 		self.assertEqual(sum(row.allocated_value for row in close.outputs), 300)
 
-	def test_close_rejects_cyclic_route(self):
+	def test_cyclic_route_rejected_at_grn_save(self):
+		set_process_outputs(self.raw_item, self.process_name, [(self.raw_item, 1, 1)])
 		for warehouse in (self.main, self.destination):
 			with self.subTest(warehouse=warehouse):
 				self.make_input()
 				challan = self.make_challan()
-				make_job_work_grn(
-					supplier=self.supplier,
-					warehouse=warehouse,
-					items=[{"item": self.raw_item, "qty": 1, "rate": 1}],
-					delivery_challans=[challan.name],
+				message = (
+					"Row 1: Unprocessed goods? Use Return on the DC."
+					if warehouse == self.main else
+					f"Row 1: {self.raw_item} cannot be received into the job worker's warehouse {warehouse}."
 				)
-				with self.assertRaisesRegex(frappe.ValidationError, "Cyclic route"):
-					close_dc(challan)
+				with self.assertRaises(frappe.ValidationError) as raised:
+					make_job_work_grn(
+						supplier=self.supplier,
+						warehouse=warehouse,
+						items=[{"item": self.raw_item, "qty": 1, "rate": 1}],
+						delivery_challans=[challan.name],
+					)
+				self.assertEqual(str(raised.exception), message)
 
 	def test_returns_reduce_dc_value(self):
 		challan, _ = self.make_cycle()
@@ -242,6 +276,7 @@ class TestDCClose(CloseTestCase):
 			process_name=self.process_name,
 		)
 		dyed_item = make_item(stock_uom=make_uom("Kg"))
+		set_process_outputs(self.output_item, self.process_name, [(dyed_item, 1, 1)])
 		dyed = make_job_work_grn(
 			supplier=dyer,
 			warehouse=self.main,

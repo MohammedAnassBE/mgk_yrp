@@ -22,7 +22,7 @@ class TestPurchaseOrder(IntegrationTestCase):
 	def setUp(self):
 		super().setUp()
 		self.supplier = make_supplier()
-		self.warehouse = make_warehouse(supplier=self.supplier)
+		self.warehouse = make_warehouse(supplier=make_supplier(is_company_location=1))
 		self.stock_uom = make_uom("Kg")
 		self.item = make_item(stock_uom=self.stock_uom)
 
@@ -50,6 +50,20 @@ class TestPurchaseOrder(IntegrationTestCase):
 		order.save()
 		self.assertEqual(order.supplier_address, address)
 		self.assertEqual(order.contact_person, contact)
+
+	def test_u6_company_location_supplier_rejected_on_new_and_draft_save(self):
+		order = self.make_order()
+		frappe.db.set_value("Supplier", self.supplier, "is_company_location", 1)
+		for save in (lambda: self.make_order(), order.save):
+			with self.assertRaisesRegex(frappe.ValidationError, "is a company location; use a Delivery Challan"):
+				save()
+
+	def test_u6_legacy_submitted_order_can_save_and_cancel(self):
+		order = self.make_order(submit=True)
+		frappe.db.set_value("Supplier", self.supplier, "is_company_location", 1)
+		order.reload().save()
+		order.cancel()
+		self.assertEqual(order.reload().docstatus, 2)
 
 	def test_po_keeps_user_selected_linked_address_and_contact(self):
 		make_address("Supplier", self.supplier)

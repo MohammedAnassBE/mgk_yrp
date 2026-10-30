@@ -16,7 +16,14 @@ from mgk_yrp.mgk_yrp.doctype.mgk_delivery_challan.mgk_delivery_challan import (
 from mgk_yrp.stock.ledger import get_voucher_sles
 from mgk_yrp.stock.locking import lock_documents
 from mgk_yrp.tests.close_fixtures import ADJUSTMENT, REOPEN, CloseTestCase
-from mgk_yrp.tests.fixtures import close_dc, make_item, make_return, make_uom, run_adjustments
+from mgk_yrp.tests.fixtures import (
+	close_dc,
+	make_item,
+	make_return,
+	make_uom,
+	run_adjustments,
+	set_process_outputs,
+)
 from mgk_yrp.tests.test_stock_concurrency import worker_connection
 from mgk_yrp.tests.valuation_fixtures import (
 	committed_stock_records,
@@ -31,6 +38,7 @@ class TestDCReopen(CloseTestCase):
 		upstream = close_dc(first, submit=False)
 		second = self.make_challan(items=[{"item": self.output_item, "qty": 60}])
 		finished_item = make_item(stock_uom=make_uom("Kg"))
+		set_process_outputs(self.output_item, self.process_name, [(finished_item, 1, 1)])
 		receipt = self.make_output([second], items=[{"item": finished_item, "qty": 60, "rate": 20}])
 		downstream = close_dc(second)
 		run_adjustments(downstream.doctype, downstream.name)

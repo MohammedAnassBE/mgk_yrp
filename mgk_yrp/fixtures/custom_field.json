@@ -1,6 +1,17 @@
 [
  {
   "doctype": "Custom Field",
+  "name": "Supplier-mgk_is_head_office",
+  "dt": "Supplier",
+  "module": "MGK YRP",
+  "fieldname": "mgk_is_head_office",
+  "fieldtype": "Check",
+  "label": "Is Head Office",
+  "insert_after": "is_company_location",
+  "default": "0"
+ },
+ {
+  "doctype": "Custom Field",
   "name": "Item-mgk_is_karigan",
   "dt": "Item",
   "module": "MGK YRP",
@@ -31,5 +42,43 @@
   "label": "GST Tax Slab",
   "insert_after": "mgk_is_salavai_cone",
   "options": "YRP Tax Slab"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Item-mgk_process_conversion_section",
+  "dt": "Item",
+  "module": "MGK YRP",
+  "fieldname": "mgk_process_conversion_section",
+  "fieldtype": "Section Break",
+  "label": "",
+  "insert_after": "variants_section",
+  "no_copy": 1,
+  "depends_on": "eval:doc.has_variants"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Item-mgk_process_conversions",
+  "dt": "Item",
+  "module": "MGK YRP",
+  "fieldname": "mgk_process_conversions",
+  "fieldtype": "Table",
+  "label": "Process Conversions",
+  "options": "MGK Item Process Conversion",
+  "insert_after": "mgk_process_conversion_section",
+  "no_copy": 1,
+  "depends_on": "eval:doc.has_variants"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "YRP Stock Entry-mgk_delivery_challan",
+  "dt": "YRP Stock Entry",
+  "module": "MGK YRP",
+  "fieldname": "mgk_delivery_challan",
+  "fieldtype": "Link",
+  "label": "MGK Delivery Challan",
+  "options": "MGK Delivery Challan",
+  "insert_after": "against_id",
+  "read_only": 1,
+  "no_copy": 1
  }
 ]

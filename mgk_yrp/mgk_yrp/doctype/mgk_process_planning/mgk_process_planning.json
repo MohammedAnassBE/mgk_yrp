@@ -1,0 +1,28 @@
+{
+ "doctype": "DocType",
+ "name": "MGK Process Planning",
+ "module": "MGK YRP",
+ "engine": "InnoDB",
+ "autoname": "field:delivery_challan",
+ "naming_rule": "By fieldname",
+ "in_create": 1,
+ "track_changes": 1,
+ "field_order": ["delivery_challan", "supplier", "process_name", "item_html", "item_details", "items"],
+ "fields": [
+  {"fieldname": "delivery_challan", "fieldtype": "Link", "label": "Delivery Challan", "options": "MGK Delivery Challan", "reqd": 1, "read_only": 1, "unique": 1, "set_only_once": 1, "in_list_view": 1},
+  {"fieldname": "supplier", "fieldtype": "Link", "label": "Supplier", "options": "Supplier", "fetch_from": "delivery_challan.to_location", "read_only": 1, "in_list_view": 1},
+  {"fieldname": "process_name", "fieldtype": "Link", "label": "Process", "options": "YRP Process", "fetch_from": "delivery_challan.process_name", "read_only": 1, "in_list_view": 1},
+  {"fieldname": "item_html", "fieldtype": "HTML", "label": "Items"},
+  {"fieldname": "item_details", "fieldtype": "Long Text", "label": "Item Details", "hidden": 1, "no_copy": 1},
+  {"fieldname": "items", "fieldtype": "Table", "label": "Items", "options": "MGK Process Planning Item", "reqd": 1, "read_only": 1}
+ ],
+ "permissions": [
+  {"role": "Stock User", "read": 1, "select": 1, "create": 1, "write": 1, "delete": 1, "report": 1, "export": 1, "print": 1, "email": 1, "share": 1},
+  {"role": "Stock Manager", "read": 1, "select": 1, "create": 1, "write": 1, "delete": 1, "report": 1, "export": 1, "print": 1, "email": 1, "share": 1}
+ ],
+ "actions": [],
+ "links": [],
+ "states": [],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

@@ -6,9 +6,17 @@
  "field_order": [
   "company",
   "company_gstin",
-  "company_state_code"
+  "company_state_code",
+  "default_location"
  ],
  "fields": [
+  {
+   "fieldname": "default_location",
+   "fieldtype": "Link",
+   "label": "MGK Location",
+   "options": "Supplier",
+   "description": "Our own location: PO delivery location, DC from location, GRN receiving warehouse"
+  },
   {
    "fieldname": "company",
    "fieldtype": "Link",

@@ -8,8 +8,16 @@ from yrp.stock.stock_ledger import enqueue_voucher_repost
 from yrp.stock.utils import apply_posting_datetime
 from yrp.yrp.doctype.yrp_goods_received_note.yrp_goods_received_note import _po_excess_percentage
 
-from mgk_yrp.stock import locking
+from mgk_yrp.job_work.grn_from_dc import (
+	validate_output_route,
+	validate_output_templates,
+	validate_output_tracing,
+	validate_process_name,
+)
+from mgk_yrp.stock import locking, transit
 from mgk_yrp.stock.backdating import validate_backdated_cancel, validate_backdated_posting
+from mgk_yrp.stock.dimensions import prepare_row_dimensions
+from mgk_yrp.stock.item_editor import drop_zero_qty_rows, get_item_details, set_items_from_editor
 from mgk_yrp.stock.ledger import post_stock_entries, receipt_entry, validate_stock_dimensions
 from mgk_yrp.stock.uom import (
 	apply_independent_uom,
@@ -20,6 +28,9 @@ from mgk_yrp.stock.uom import (
 
 
 class MGKGoodsReceivedNote(Document):
+	def onload(self):
+		self.set_onload("item_details", get_item_details(self))
+
 	def load_doc_before_save(self, *, raise_exception=False):
 		"""Lock source parents before Frappe locks this receipt."""
 		if not self.is_new():
@@ -28,6 +39,9 @@ class MGKGoodsReceivedNote(Document):
 		super().load_doc_before_save(raise_exception=raise_exception)
 
 	def before_validate(self):
+		set_items_from_editor(self)
+		drop_zero_qty_rows(self)
+		prepare_row_dimensions(self)
 		apply_posting_datetime(self)
 
 	def before_update_after_submit(self):
@@ -43,6 +57,7 @@ class MGKGoodsReceivedNote(Document):
 			self.set_purchase_order_rows(order)
 		else:
 			self.set_job_work_rows()
+		transit.set_internal_transfer(self)
 		self.validate_delivery_challan_links()
 		self.set_row_values()
 
@@ -62,6 +77,8 @@ class MGKGoodsReceivedNote(Document):
 		)
 
 	def validate_delivery_challan_links(self) -> None:
+		if self.delivery_challans:
+			transit.reject_internal_action(self, _("link Delivery Challans"))
 		previous = self.get_doc_before_save()
 		names = self.linked_delivery_challans + (previous.linked_delivery_challans if previous else [])
 		if names:
@@ -70,6 +87,10 @@ class MGKGoodsReceivedNote(Document):
 		if self.against_purchase_order and self.delivery_challans:
 			frappe.throw(_("A Purchase Order receipt cannot link Delivery Challans."))
 		self.validate_current_delivery_challan_links()
+		validate_process_name(self)
+		validate_output_route(self)
+		validate_output_templates(self)
+		validate_output_tracing(self)
 
 	def validate_removed_delivery_challan_links(self, previous) -> None:
 		names = previous.linked_delivery_challans if previous else []
@@ -98,14 +119,17 @@ class MGKGoodsReceivedNote(Document):
 		if order.docstatus != 1:
 			frappe.throw(_("Purchase Order {0} must be submitted.").format(order.name))
 		self.supplier = order.supplier
-		self.delivery_location = order.delivery_location
+		location = order.receipt_location
+		self.delivery_location = location["location"]
 		if not self.warehouse:
-			self.warehouse = order.warehouse
+			self.warehouse = location["warehouse"]
 		return order
 
 	def set_purchase_order_rows(self, order):
 		source_rows = {row.name: row for row in order.items}
 		for row in self.items:
+			if not row.purchase_order_item:
+				row.purchase_order_item = find_purchase_order_row(order, row).name
 			source = source_rows.get(row.purchase_order_item)
 			if not source or source.item != row.item:
 				frappe.throw(_("Row {0}: Item must map to a row of this Purchase Order.").format(row.idx))
@@ -116,7 +140,11 @@ class MGKGoodsReceivedNote(Document):
 
 	def set_row_values(self):
 		for row in self.items:
-			if flt(row.qty) <= 0 or flt(row.conversion_factor) <= 0:
+			allow_zero = self.docstatus == 0 and (
+				self.against_purchase_order or row.is_prefilled or not row.is_new()
+			)
+			invalid_qty = flt(row.qty) < 0 or (not allow_zero and flt(row.qty) == 0)
+			if invalid_qty or flt(row.conversion_factor) <= 0:
 				frappe.throw(_("Row {0}: Quantity and Conversion Factor must be positive.").format(row.idx))
 			self.validate_row_rate(row)
 			row.stock_qty = flt(row.qty) * flt(row.conversion_factor)
@@ -135,6 +163,8 @@ class MGKGoodsReceivedNote(Document):
 		row.allow_zero_valuation_rate = int(flt(row.rate) == 0)
 
 	def lock_sources(self, *, previous=None):
+		from mgk_yrp.job_work.dc_from_grn import get_linking_challans
+
 		previous = previous or self.get_doc_before_save()
 		documents = {"MGK Goods Received Note": [self.name]}
 		orders = list(
@@ -143,9 +173,13 @@ class MGKGoodsReceivedNote(Document):
 		if orders:
 			documents["MGK Purchase Order"] = orders
 		challans = self.linked_delivery_challans + (previous.linked_delivery_challans if previous else [])
+		downstream = get_linking_challans([self.name]) if self.docstatus == 2 else []
+		challans += downstream
 		if challans:
 			documents["MGK Delivery Challan"] = challans
 		locking.lock_documents(documents)
+		if self.docstatus == 2 and get_linking_challans([self.name], for_update=True) != downstream:
+			frappe.throw(_("Stock dependencies changed; retry the operation."))
 
 	def before_submit(self):
 		validate_stock_dimensions()
@@ -156,9 +190,10 @@ class MGKGoodsReceivedNote(Document):
 			self.validate_receipt_allowance(order)
 		else:
 			self.set_job_work_rows()
+		transit.prepare_submission(self)
 		self.validate_delivery_challan_links()
 		self.set_row_values()
-		validate_backdated_posting(self, [(row.item, self.warehouse) for row in self.items])
+		validate_backdated_posting(self, [(row.item, transit.get_receiving_warehouse(self)) for row in self.items])
 
 	def validate_receipt_allowance(self, order):
 		received = self.get_other_received_quantities()
@@ -191,7 +226,7 @@ class MGKGoodsReceivedNote(Document):
 		return received
 
 	def get_stock_entries(self) -> list[dict]:
-		return [receipt_entry(self, row, self.warehouse) for row in self.items]
+		return [receipt_entry(self, row, transit.get_receiving_warehouse(self)) for row in self.items]
 
 	def on_submit(self):
 		post_stock_entries(self.get_stock_entries())
@@ -218,14 +253,35 @@ class MGKGoodsReceivedNote(Document):
 			frappe.get_doc("MGK Purchase Order", self.purchase_order, for_update=True).check_permission(
 				"read"
 			)
+		challan = frappe.db.get_value(
+			"MGK Delivery Challan",
+			{"goods_received_note": self.name, "docstatus": 1},
+			"name",
+			for_update=True,
+		)
+		row_challans = frappe.db.sql(
+			"""SELECT DISTINCT challan.name FROM `tabMGK Delivery Challan` challan
+			JOIN `tabMGK Delivery Challan Item` detail ON detail.parent = challan.name
+			WHERE challan.docstatus = 1 AND detail.goods_received_note = %s
+				AND detail.parenttype = 'MGK Delivery Challan' AND detail.parentfield = 'items'
+			ORDER BY challan.name FOR UPDATE""", (self.name,), pluck=True,
+		)
+		challan = challan or next(iter(row_challans), None)
+		if challan:
+			frappe.throw(_("Cancel Delivery Challan {0} before this receipt.").format(challan))
 		self.validate_cancellable_delivery_challans()
-		validate_backdated_cancel(self)
+		if self.is_internal_transfer:
+			transit.cancel_completions(self)
+		else:
+			validate_backdated_cancel(self)
 		self.ignore_linked_doctypes = (
 			"YRP Stock Ledger Entry",
 			"YRP Repost Item Valuation",
 			"YRP Stock Valuation Adjustment",
 			"YRP Stock Valuation Production Link",
 			"MGK Delivery Challan Close",
+			"MGK Delivery Challan",
+			"YRP Stock Entry",
 		)
 
 	def validate_cancellable_delivery_challans(self):
@@ -241,9 +297,21 @@ class MGKGoodsReceivedNote(Document):
 
 	def on_cancel(self):
 		post_stock_entries(self.get_stock_entries(), cancel=True)
+		transit.clear_transfer_status(self)
 		enqueue_voucher_repost(self)
 		if self.against_purchase_order:
 			frappe.get_doc("MGK Purchase Order", self.purchase_order, for_update=True).update_received_qty()
+
+
+def find_purchase_order_row(order, row):
+	matches = [source for source in order.items if source.item == row.item]
+	if len(matches) != 1:
+		frappe.throw(
+			_("Row {0}: Expected exactly one Purchase Order row for item {1}; found {2}. Select a source row explicitly.").format(
+				row.idx, row.item, len(matches)
+			)
+		)
+	return matches[0]
 
 
 def get_linking_grns(delivery_challan: str, docstatus: tuple[int, ...], *, for_update=False) -> list[str]:

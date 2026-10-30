@@ -11,13 +11,17 @@
   "contact_person",
   "contact_display",
   "contact_mobile",
+  "deliver_to_supplier",
   "delivery_location",
   "warehouse",
+  "process_name",
   "mgk_agent",
   "goods_routing",
   "handling_supplier",
   "is_karigan_order",
   "is_salavai_cone_order",
+  "item_html",
+  "item_details",
   "items",
   "total_qty",
   "total_amount",
@@ -26,7 +30,20 @@
  ],
  "fields": [
   {
+   "fieldname": "item_html",
+   "fieldtype": "HTML",
+   "label": "Items"
+  },
+  {
+   "fieldname": "item_details",
+   "fieldtype": "Long Text",
+   "label": "Item Details",
+   "hidden": 1,
+   "no_copy": 1
+  },
+  {
    "fieldname": "supplier",
+   "in_standard_filter": 1,
    "fieldtype": "Link",
    "label": "Supplier",
    "options": "Supplier",
@@ -35,6 +52,7 @@
   },
   {
    "fieldname": "po_date",
+   "in_standard_filter": 1,
    "fieldtype": "Date",
    "label": "PO Date",
    "reqd": 1,
@@ -72,7 +90,21 @@
    "read_only": 1
   },
   {
+   "fieldname": "deliver_to_supplier",
+   "fieldtype": "Check",
+   "label": "Deliver to Supplier",
+   "default": "0"
+  },
+  {
+   "fieldname": "process_name",
+   "fieldtype": "Link",
+   "label": "Process",
+   "options": "YRP Process",
+   "mandatory_depends_on": "eval:doc.deliver_to_supplier"
+  },
+  {
    "fieldname": "delivery_location",
+   "in_standard_filter": 1,
    "fieldtype": "Link",
    "label": "Delivery Location",
    "options": "Supplier",
@@ -140,6 +172,7 @@
   },
   {
    "fieldname": "status",
+   "in_standard_filter": 1,
    "fieldtype": "Select",
    "label": "Status",
    "read_only": 1,
@@ -190,10 +223,45 @@
    "submit": 1,
    "cancel": 1,
    "amend": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "print": 1,
+   "email": 1,
+   "export": 1,
+   "role": "Stock User"
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "print": 1,
+   "email": 1,
+   "export": 1,
+   "role": "Stock Manager"
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "print": 1,
+   "email": 1,
+   "export": 1,
+   "role": "Accounts User"
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "print": 1,
+   "email": 1,
+   "export": 1,
+   "role": "Accounts Manager"
   }
  ],
  "actions": [],
- "links": [],
+ "links": [
+  {"link_doctype": "MGK Goods Received Note", "link_fieldname": "purchase_order"},
+  {"link_doctype": "MGK Delivery Challan", "link_fieldname": "purchase_order"}
+ ],
  "states": [],
  "sort_field": "modified",
  "sort_order": "DESC",

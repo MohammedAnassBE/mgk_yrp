@@ -118,8 +118,10 @@ class MGKPurchaseInvoice(Document):
 			if name in current:
 				get_billable_grn(name, self.supplier, self.against, self.name)
 				receipt.db_set("purchase_invoice", self.name, update_modified=False)
+				receipt.notify_update()
 			elif receipt.purchase_invoice == self.name:
 				receipt.db_set("purchase_invoice", None, update_modified=False)
+				receipt.notify_update()
 
 	def before_submit(self):
 		self.lock_sources()

@@ -4,6 +4,8 @@
  "module": "MGK YRP",
  "engine": "InnoDB",
  "field_order": [
+  "row_index",
+  "table_index",
   "item",
   "qty",
   "uom",
@@ -14,9 +16,26 @@
   "stock_rate",
   "amount",
   "allow_zero_valuation_rate",
-  "purchase_order_item"
+  "is_prefilled",
+  "delivery_challan_item",
+  "purchase_order_item", "transferred_qty"
  ],
  "fields": [
+  {"fieldname": "delivery_challan_item", "fieldtype": "Data", "label": "Delivery Challan Item", "read_only": 1, "hidden": 1, "no_copy": 1},
+  {"fieldname": "is_prefilled", "fieldtype": "Check", "label": "Prefilled", "read_only": 1, "hidden": 1, "default": "0"},
+  {"fieldname": "transferred_qty", "fieldtype": "Float", "label": "Transferred Quantity (Row UOM)", "read_only": 1, "no_copy": 1, "depends_on": "eval:parent.is_internal_transfer"},
+  {
+   "fieldname": "row_index",
+   "fieldtype": "Data",
+   "label": "Row Index",
+   "hidden": 1
+  },
+  {
+   "fieldname": "table_index",
+   "fieldtype": "Int",
+   "label": "Table Index",
+   "hidden": 1
+  },
   {
    "fieldname": "item",
    "fieldtype": "Link",

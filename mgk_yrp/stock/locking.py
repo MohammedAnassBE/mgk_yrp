@@ -7,9 +7,11 @@ from yrp.yrp_stock.doctype.yrp_stock_valuation_closing.yrp_stock_valuation_closi
 LOCK_ORDER = (
 	"MGK Purchase Order",
 	"MGK Delivery Challan",
+	"MGK Process Planning",
 	"MGK Goods Received Note",
 	"MGK Purchase Invoice",
 	"MGK Delivery Challan Close",
+	"YRP Stock Entry",
 )
 
 

@@ -9,6 +9,7 @@ from mgk_yrp.mgk_yrp.doctype.mgk_purchase_order.mgk_purchase_order import make_g
 from mgk_yrp.stock.ledger import get_voucher_sles
 from mgk_yrp.stock.locking import lock_documents
 from mgk_yrp.tests.fixtures import (
+	make_conversion_input,
 	make_delivery_challan,
 	make_item,
 	make_job_work_grn,
@@ -31,11 +32,11 @@ class TestJobWorkGRN(IntegrationTestCase):
 		self.supplier = make_supplier()
 		self.main = make_warehouse(supplier=self.owner)
 		self.destination = make_warehouse(supplier=self.supplier)
-		self.raw_item = make_item(stock_uom=make_uom("Kg"))
 		self.output_item = make_item(stock_uom=make_uom("Kg"))
 		self.process_name = make_process()
+		_, self.raw_item = make_conversion_input(self.process_name, [(self.output_item, 1, 1)])
 		self.order = make_purchase_order(
-			supplier=self.owner,
+			supplier=self.supplier,
 			warehouse=self.main,
 			items=[{"item": self.raw_item, "qty": 100, "rate": 100}],
 		)

@@ -105,6 +105,8 @@ def start_reopen(close) -> None:
 	create_reversal(close.doctype, close.name)
 	close.db_set("reopen_status", "Reversing")
 	frappe.db.set_value("MGK Delivery Challan", close.delivery_challan, "close_status", "Reopening")
+	close.notify_update()
+	frappe.get_doc("MGK Delivery Challan", close.delivery_challan).notify_update()
 	if not close.stock_valuation_adjustment:
 		complete_reopen(close)
 
@@ -156,6 +158,9 @@ def complete_reopen(close) -> None:
 		},
 	)
 	close.db_set("reopen_status", "Reopened")
+	close.notify_update()
+	challan.reload()
+	challan.notify_update()
 	enqueue_voucher_repost(close)
 
 

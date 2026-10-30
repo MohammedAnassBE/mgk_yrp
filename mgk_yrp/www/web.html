@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>MGK Operations Workspace</title>
+	<link rel="icon" href="/assets/mgk_yrp/images/mgk.svg" />
+	{% if frontend_css %}<link rel="stylesheet" crossorigin href="{{ frontend_css }}" />{% endif %}
+</head>
+<body>
+	<div id="app">
+		{% if not frontend_js %}<p>The workspace is temporarily unavailable. Contact your administrator, then reload this page.</p>{% endif %}
+	</div>
+	<script>
+		window.csrf_token = {{ csrf_token | tojson }};
+		window.frappe = window.frappe || {};
+		window.frappe.boot = {{ boot | tojson }};
+	</script>
+	{% if frontend_js %}<script type="module" crossorigin src="{{ frontend_js }}"></script>{% endif %}
+</body>
+</html>

@@ -23,11 +23,10 @@ class TestSetup(IntegrationTestCase):
 	def test_custom_fields_and_property_setter_exist(self):
 		self.assertEqual(hooks.required_apps, ["frappe", "erpnext", "yrp"])
 		self.assertEqual(hooks.doc_events["Item"]["validate"], "mgk_yrp.overrides.item.validate")
+		self.assertEqual(hooks.app_include_js, ["mgk_yrp.bundle.js"])
 		self.assertEqual(
-			hooks.doctype_js["MGK Purchase Order"],
-			"mgk_yrp/doctype/mgk_purchase_order_item/mgk_purchase_order_item.js",
+			{fixture["dt"] for fixture in hooks.fixtures}, {"Custom Field", "Property Setter", "YRP UI Layout"}
 		)
-		self.assertEqual({fixture["dt"] for fixture in hooks.fixtures}, {"Custom Field", "Property Setter"})
 		for fieldname in ("mgk_is_karigan", "mgk_is_salavai_cone", "mgk_gst_tax_slab"):
 			field = frappe.get_meta("Item").get_field(fieldname)
 			self.assertIsNotNone(field)

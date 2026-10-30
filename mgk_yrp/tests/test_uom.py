@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from typing import ClassVar
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -22,11 +23,26 @@ from mgk_yrp.stock.uom import (
 INVOICE = "mgk_yrp.mgk_yrp.doctype.mgk_purchase_invoice.mgk_purchase_invoice"
 
 
+class SnapshotRow(BaseDocument):
+	"""Document row without metadata lookups."""
+
+	_table_fieldnames: ClassVar[dict] = {}
+	_non_computed_table_fieldnames: ClassVar[dict] = {}
+
+	def get_valid_columns(self):
+		return ()
+
+
 class TestUOMSnapshots(TestCase):
 	def setUp(self):
-		self.enterContext(patch.object(BaseDocument, "_table_fieldnames", {}))
 		self.enterContext(patch("frappe.translate.get_all_translations", return_value={}))
-		self.source = BaseDocument(
+		self.enterContext(
+			patch(
+				"mgk_yrp.stock.dimensions.get_stock_dimensions",
+				return_value=[{"fieldname": "received_type", "label": "Received Type"}],
+			)
+		)
+		self.source = SnapshotRow(
 			{
 				"doctype": "MGK Purchase Order Item",
 				"name": "source",
@@ -37,6 +53,7 @@ class TestUOMSnapshots(TestCase):
 				"uom": "Bag",
 				"stock_uom": "Kg",
 				"conversion_factor": 50,
+				"received_type": "Accepted",
 			}
 		)
 		self.controllers = (
@@ -52,10 +69,10 @@ class TestUOMSnapshots(TestCase):
 			method(SimpleNamespace(items=[row]), SimpleNamespace(items=[self.source]))
 
 	def make_row(self, source_field, *, is_new=True):
-		return BaseDocument({**self.source.__dict__, source_field: "source", "__islocal": is_new, "idx": 1})
+		return SnapshotRow({**self.source.__dict__, source_field: "source", "__islocal": is_new, "idx": 1})
 
 	def test_copy_snapshot_supports_documents_and_dict_rows(self):
-		for row_type in (BaseDocument, dict, frappe._dict):
+		for row_type in (SnapshotRow, dict, frappe._dict):
 			with self.subTest(row_type=row_type.__name__):
 				row = row_type({"qty": 3, "stock_qty": -1, "idx": 1})
 				copy_uom_snapshot(row, self.source.__dict__)
@@ -95,7 +112,7 @@ class TestUOMSnapshots(TestCase):
 		self.assertEqual([row.get(field) for field in SNAPSHOT_FIELDS], ["Bag", "Kg", 50])
 		self.assertEqual((row.goods_received_note, row.goods_received_note_item), ("receipt", "source"))
 		self.assertEqual((row.qty, row.stock_qty, row.rate, row.grn_rate), (2, 100, 5000, 5000))
-		MGKPurchaseInvoice.set_source_row(None, BaseDocument(row), self.source)
+		MGKPurchaseInvoice.set_source_row(None, SnapshotRow(row), self.source)
 
 	def test_new_linked_rows_fill_partial_snapshot_despite_default_stock_uom(self):
 		for method, source_field in self.controllers:
@@ -127,3 +144,15 @@ class TestUOMSnapshots(TestCase):
 						self.assertRaises(frappe.ValidationError),
 					):
 						self.apply_source(method, row)
+
+	def test_return_dimension_mismatch_rejected_after_filling_partial_uom_snapshot(self):
+		row = self.make_row("against_dc_item")
+		row.uom = None
+		row.received_type = "Rejected"
+		with (
+			patch("frappe.throw", side_effect=frappe.ValidationError) as throw,
+			self.assertRaises(frappe.ValidationError),
+		):
+			self.apply_source(MGKDeliveryChallan.set_return_rows, row)
+		self.assertTrue(has_uom_snapshot(row))
+		self.assertIn("Received Type must match the original Delivery Challan row", throw.call_args.args[0])

@@ -73,14 +73,20 @@ class MGKDeliveryChallanClose(Document):
 		self.set("items", get_dc_item_values(challan))
 		self.set("outputs", get_linked_outputs(challan.name))
 		validate_outputs(challan, self.outputs)
-		self.total_dc_value = flt(sum(row.own_value for row in self.items), 6)
-		self.total_output_qty = sum(row.stock_qty for row in self.outputs)
-		self.output_stock_uom = self.outputs[0].stock_uom if self.outputs else None
-		self.value_per_unit = flt(self.total_dc_value / self.total_output_qty, 6) if self.outputs else 0
-		self.loss_value = 0 if self.outputs else self.total_dc_value
+		self.set_preview_totals()
 		self.total_value_gap = 0
 		self.stock_valuation_adjustment = None
 		self.reopen_status = ""
+
+	def set_preview_totals(self):
+		output_items = {row.input_item for row in self.outputs}
+		self.total_dc_value = flt(sum(row.own_value for row in self.items), 6)
+		self.loss_value = flt(sum(row.own_value for row in self.items if row.item not in output_items), 6)
+		self.total_output_qty = sum(row.stock_qty for row in self.outputs)
+		units = {row.stock_uom for row in self.outputs}
+		self.output_stock_uom = next(iter(units)) if len(units) == 1 else None
+		allocated = self.total_dc_value - self.loss_value
+		self.value_per_unit = flt(allocated / self.total_output_qty, 6) if self.output_stock_uom else 0
 
 	def before_submit(self):
 		self.lock_sources()
@@ -114,6 +120,7 @@ class MGKDeliveryChallanClose(Document):
 			},
 		)
 		enqueue_voucher_repost(self)
+		frappe.get_doc("MGK Delivery Challan", self.delivery_challan).notify_update()
 
 	def get_stock_entries(self) -> list[dict]:
 		return build_consumption_entries(self, self.items)

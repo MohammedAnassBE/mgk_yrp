@@ -25,6 +25,7 @@
  "fields": [
   {
    "fieldname": "against",
+   "in_standard_filter": 1,
    "fieldtype": "Select",
    "label": "Against",
    "options": "Purchase Order\nJob Work",
@@ -33,6 +34,7 @@
   },
   {
    "fieldname": "supplier",
+   "in_standard_filter": 1,
    "fieldtype": "Link",
    "label": "Supplier",
    "options": "Supplier",
@@ -41,6 +43,7 @@
   },
   {
    "fieldname": "posting_date",
+   "in_standard_filter": 1,
    "fieldtype": "Date",
    "label": "Posting Date",
    "reqd": 1,
@@ -49,6 +52,7 @@
   },
   {
    "fieldname": "bill_no",
+   "in_standard_filter": 1,
    "fieldtype": "Data",
    "label": "Supplier Invoice No."
   },

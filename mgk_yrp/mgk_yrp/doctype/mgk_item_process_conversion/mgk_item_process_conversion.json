@@ -1,0 +1,72 @@
+{
+ "doctype": "DocType",
+ "name": "MGK Item Process Conversion",
+ "module": "MGK YRP",
+ "engine": "InnoDB",
+ "istable": 1,
+ "editable_grid": 1,
+ "field_order": [
+  "process_name",
+  "item",
+  "from_uom",
+  "from_qty",
+  "to_uom",
+  "to_qty"
+ ],
+ "fields": [
+  {
+   "fieldname": "process_name",
+   "fieldtype": "Link",
+   "label": "Process",
+   "options": "YRP Process",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "label": "Item",
+   "options": "Item",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "from_uom",
+   "fieldtype": "Link",
+   "label": "From UOM",
+   "options": "UOM",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "from_qty",
+   "fieldtype": "Float",
+   "label": "From Qty",
+   "default": "1",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "to_uom",
+   "fieldtype": "Link",
+   "label": "To UOM",
+   "options": "UOM",
+   "read_only": 1,
+   "fetch_from": "item.stock_uom",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "to_qty",
+   "fieldtype": "Float",
+   "label": "To Qty",
+   "reqd": 1,
+   "in_list_view": 1
+  }
+ ],
+ "permissions": [],
+ "actions": [],
+ "links": [],
+ "states": [],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

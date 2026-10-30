@@ -1,7 +1,7 @@
 import frappe
 from frappe import _
 from frappe.utils import flt
-from yrp.stock.dimensions import get_dimension_fieldnames
+from yrp.stock.dimensions import get_dimension_fieldnames, get_stock_dimensions
 from yrp.stock.stock_ledger import make_sl_entries
 
 
@@ -11,17 +11,22 @@ def post_stock_entries(entries: list[dict], *, cancel: bool = False) -> dict:
 
 
 def validate_stock_dimensions() -> None:
-	dimensions = get_dimension_fieldnames()
-	if dimensions:
-		frappe.throw(
-			_("Stock dimensions are configured ({0}); MGK YRP does not support them.").format(
-				", ".join(dimensions)
+	for dimension in get_stock_dimensions():
+		if dimension["in_valuation"] or dimension["is_production_group"]:
+			frappe.throw(
+				_(
+					"Stock dimension {0}: MGK DC Close does not support valuation or production-group dimensions."
+				).format(dimension["fieldname"])
 			)
-		)
+
+
+def get_dimension_values(row) -> dict:
+	return {fieldname: row.get(fieldname) for fieldname in get_dimension_fieldnames()}
 
 
 def receipt_entry(doc, row, warehouse: str) -> dict:
 	return {
+		**get_dimension_values(row),
 		"item": row.item,
 		"uom": row.stock_uom,
 		"voucher_type": doc.doctype,

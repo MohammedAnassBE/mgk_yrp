@@ -37,7 +37,7 @@ class TestStockRules(IntegrationTestCase):
 	def setUp(self):
 		super().setUp()
 		self.supplier = make_supplier()
-		self.warehouse = make_warehouse(supplier=self.supplier)
+		self.warehouse = make_warehouse(supplier=make_supplier(is_company_location=1))
 		self.destination = make_warehouse()
 		self.item = make_item(stock_uom=make_uom("Kg"))
 		self.posting_date = add_days(nowdate(), -1)
@@ -122,12 +122,18 @@ class TestStockRules(IntegrationTestCase):
 
 	def test_stock_dimensions_rejected(self):
 		receipt = make_po_grn(self.make_order(), submit=False)
-		with patch("mgk_yrp.stock.ledger.get_dimension_fieldnames", return_value=["lot"]):
-			with self.assertRaisesRegex(frappe.ValidationError, r"Stock dimensions are configured \(lot\)"):
+		with patch(
+			"mgk_yrp.stock.ledger.get_stock_dimensions",
+			return_value=[{"fieldname": "lot", "in_valuation": 1, "is_production_group": 0}],
+		):
+			with self.assertRaisesRegex(frappe.ValidationError, "Stock dimension lot"):
 				receipt.submit()
 		self.assertFalse(get_voucher_sles(receipt.doctype, receipt.name))
 		receipt.reload().submit()
-		with patch("mgk_yrp.stock.ledger.get_dimension_fieldnames", return_value=["lot"]):
+		with patch(
+			"mgk_yrp.stock.ledger.get_stock_dimensions",
+			return_value=[{"fieldname": "lot", "in_valuation": 1, "is_production_group": 0}],
+		):
 			with self.assertRaisesRegex(frappe.ValidationError, "does not support"):
 				receipt.cancel()
 		self.assertTrue(get_voucher_sles(receipt.doctype, receipt.name))

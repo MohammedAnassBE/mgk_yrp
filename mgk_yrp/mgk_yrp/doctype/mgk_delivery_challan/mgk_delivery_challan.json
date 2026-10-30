@@ -9,13 +9,54 @@
  "track_changes": 1,
  "field_order": [
   "posting_date", "posting_time", "edit_posting_date_and_time", "is_return", "return_against",
-  "from_location", "from_warehouse", "to_location", "to_warehouse", "process_name", "dc_number",
-  "vehicle_number", "items", "total_qty", "total_declared_value", "close_status",
-  "delivery_challan_close", "amended_from"
+  "from_location", "from_warehouse", "to_location", "to_warehouse", "is_internal_transfer", "transit_warehouse", "transfer_status", "process_name", "dc_number",
+  "vehicle_number", "item_html", "item_details", "items", "total_qty", "total_declared_value", "close_status",
+  "delivery_challan_close", "mgk_process_planning", "amended_from", "receipt_source_section", "purchase_order", "goods_received_note"
  ],
  "fields": [
+  {"fieldname": "is_internal_transfer", "fieldtype": "Check", "label": "Internal Transfer", "read_only": 1, "no_copy": 1, "depends_on": "eval:doc.is_internal_transfer"},
+  {"fieldname": "transit_warehouse", "fieldtype": "Link", "label": "Transit Warehouse", "options": "Warehouse", "read_only": 1, "no_copy": 1, "depends_on": "eval:doc.is_internal_transfer"},
+  {"fieldname": "transfer_status", "fieldtype": "Select", "label": "Transfer Status", "options": "\nIn Transit\nPartly Transferred\nTransferred\nReturned", "read_only": 1, "no_copy": 1, "in_list_view": 1, "in_standard_filter": 1, "depends_on": "eval:doc.is_internal_transfer"},
+  {
+   "fieldname": "receipt_source_section",
+   "fieldtype": "Section Break",
+   "label": "Purchase Receipt",
+   "collapsible": 1,
+   "depends_on": "eval:doc.purchase_order || doc.goods_received_note"
+  },
+  {
+   "fieldname": "purchase_order",
+   "fieldtype": "Link",
+   "label": "Purchase Order",
+   "options": "MGK Purchase Order",
+   "read_only": 1,
+   "no_copy": 1,
+   "depends_on": "eval:doc.purchase_order"
+  },
+  {
+   "fieldname": "goods_received_note",
+   "fieldtype": "Link",
+   "label": "Goods Received Note",
+   "options": "MGK Goods Received Note",
+   "read_only": 1,
+   "no_copy": 1,
+   "depends_on": "eval:doc.goods_received_note"
+  },
+  {
+   "fieldname": "item_html",
+   "fieldtype": "HTML",
+   "label": "Items"
+  },
+  {
+   "fieldname": "item_details",
+   "fieldtype": "Long Text",
+   "label": "Item Details",
+   "hidden": 1,
+   "no_copy": 1
+  },
   {
    "fieldname": "posting_date",
+   "in_standard_filter": 1,
    "fieldtype": "Date",
    "label": "Posting Date",
    "default": "Today",
@@ -55,6 +96,7 @@
   },
   {
    "fieldname": "from_location",
+   "in_standard_filter": 1,
    "fieldtype": "Link",
    "label": "From Location",
    "options": "Supplier",
@@ -71,6 +113,7 @@
   },
   {
    "fieldname": "to_location",
+   "in_standard_filter": 1,
    "fieldtype": "Link",
    "label": "To Location",
    "options": "Supplier",
@@ -88,6 +131,7 @@
   },
   {
    "fieldname": "process_name",
+   "in_standard_filter": 1,
    "fieldtype": "Link",
    "label": "Process",
    "options": "YRP Process",
@@ -113,6 +157,7 @@
   },
   {
    "fieldname": "close_status",
+   "in_standard_filter": 1,
    "fieldtype": "Select",
    "label": "Close Status",
    "options": "\nOpen\nClosed\nReopening",
@@ -126,6 +171,15 @@
    "fieldtype": "Link",
    "label": "Delivery Challan Close",
    "options": "MGK Delivery Challan Close",
+   "read_only": 1,
+   "no_copy": 1,
+   "allow_on_submit": 1
+  },
+  {
+   "fieldname": "mgk_process_planning",
+   "fieldtype": "Link",
+   "label": "Process Planning",
+   "options": "MGK Process Planning",
    "read_only": 1,
    "no_copy": 1,
    "allow_on_submit": 1

@@ -17,6 +17,7 @@ from mgk_yrp.purchase.revaluation import create_invoice_adjustment
 from mgk_yrp.stock.backdating import validate_backdated_cancel, validate_backdated_posting
 from mgk_yrp.stock.ledger import assert_transfer_pairs
 from mgk_yrp.stock.locking import lock_stock_buckets
+from mgk_yrp.tests.test_item_editor import EditorDocument
 
 BACKDATING = "mgk_yrp.stock.backdating"
 LOCKING = "mgk_yrp.stock.locking"
@@ -38,6 +39,9 @@ class TestReviewUnit(TestCase):
 
 	def setUp(self):
 		self.database = Mock()
+		self.database.sql.return_value = []
+		self.enterContext(patch(f"{LEDGER}.get_dimension_fieldnames", return_value=[]))
+		self.enterContext(patch(f"{LEDGER}.get_stock_dimensions", return_value=[]))
 		for target, value in (("frappe.db", self.database), ("frappe.throw", throw_validation)):
 			mocked = patch(target, value, create=True)
 			mocked.start()
@@ -128,6 +132,7 @@ class TestReviewUnit(TestCase):
 			to_warehouse="supplier",
 			against_purchase_order=0,
 			is_return=1,
+			is_internal_transfer=0,
 			lock_sources=sequence.sources,
 			get_return_source=Mock(),
 			validate_cancellable_delivery_challans=Mock(),
@@ -141,6 +146,7 @@ class TestReviewUnit(TestCase):
 		doc.reload = sequence.reload
 		doc.reload.side_effect = reload_document
 		doc.get_stock_entries = lambda: controller.get_stock_entries(doc)
+		doc.get = lambda field: getattr(doc, field, None)
 		self.database.get_value.return_value = None
 		with (
 			patch(f"{module}.validate_stock_dimensions"),
@@ -165,8 +171,17 @@ class TestReviewUnit(TestCase):
 
 	def test_return_locks_current_and_persisted_sources_before_frappe(self):
 		doc = object.__new__(MGKDeliveryChallan)
-		doc.__dict__.update(doctype="MGK Delivery Challan", name="C-return", return_against="B-current")
-		previous = SimpleNamespace(return_against="A-persisted")
+		doc.__dict__.update(
+			doctype="MGK Delivery Challan",
+			name="C-return",
+			return_against="B-current",
+			purchase_order=None,
+			goods_received_note=None,
+			items=[],
+		)
+		previous = EditorDocument(
+			return_against="A-persisted", purchase_order=None, goods_received_note=None, items=[]
+		)
 		sequence = Mock()
 		with (
 			patch.object(doc, "is_new", return_value=False),
@@ -252,6 +267,7 @@ class TestReviewUnit(TestCase):
 
 	def test_po_cancel_ignores_receipt_links_only_after_order_guard_passes(self):
 		doc = SimpleNamespace(doctype="MGK Purchase Order", name="PO-1")
+		self.database.get_value.return_value = None
 		self.database.sql.return_value = [("GRN-1",)]
 		with patch(f"{ORDER}.lock_documents"):
 			with self.assertRaisesRegex(
@@ -261,7 +277,7 @@ class TestReviewUnit(TestCase):
 			self.assertFalse(hasattr(doc, "ignore_linked_doctypes"))
 			self.database.sql.return_value = []
 			MGKPurchaseOrder.before_cancel(doc)
-		self.assertEqual(doc.ignore_linked_doctypes, ("MGK Goods Received Note",))
+		self.assertEqual(doc.ignore_linked_doctypes, ("MGK Goods Received Note", "MGK Delivery Challan"))
 
 	def test_grn_cancel_still_names_invoice_before_skipping_generated_links(self):
 		doc = SimpleNamespace(
@@ -335,12 +351,19 @@ class TestReviewUnit(TestCase):
 			delivery_challans=[frappe._dict(delivery_challan="new")],
 			against_purchase_order=0,
 			supplier="supplier",
+			process_name=None,
+			warehouse="main",
+			items=[],
 		)
 		previous = SimpleNamespace(linked_delivery_challans=["old"])
-		removed, current = Mock(), Mock(docstatus=1, is_return=0, to_location="supplier")
+		removed, current = Mock(), Mock(
+			docstatus=1, is_return=0, to_location="supplier", process_name="Process", items=[]
+		)
 		with (
 			patch.object(doc, "get_doc_before_save", return_value=previous),
-			patch(f"{GRN}.frappe.get_doc", side_effect=[removed, current]),
+			patch(f"{GRN}.frappe.get_doc", side_effect=lambda doctype, name, **kwargs: {
+				"old": removed, "new": current,
+			}[name]),
 			patch(f"{GRN}.frappe.has_permission"),
 			patch(f"{GRN}.locking.lock_documents") as locks,
 		):

@@ -1,0 +1,57 @@
+[
+ {
+  "config": "{\"schema_version\": 1, \"screens\": {\"home\": {\"blocks\": [{\"id\": \"purchase-order\", \"type\": \"mgk-purchase-order\"}, {\"id\": \"billing\", \"type\": \"mgk-billing\"}, {\"id\": \"delivery-challan\", \"type\": \"mgk-delivery-challan\"}, {\"id\": \"goods-received-note\", \"type\": \"mgk-goods-received-note\"}]}}}",
+  "description": "Purchase Order, Billing, Delivery Challan and Goods Received Note books.",
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "YRP UI Layout",
+  "experience_key": null,
+  "layout_name": "MGK Workspace",
+  "name": "MGK Workspace",
+  "render_mode": "Configurable Layout"
+ },
+ {
+  "config": "{\"schema_version\": 1, \"screens\": {\"home\": {\"blocks\": [{\"id\": \"delivery-challan\", \"type\": \"mgk-delivery-challan\"}, {\"id\": \"goods-received-note\", \"type\": \"mgk-goods-received-note\"}]}}}",
+  "description": "Delivery Challan and Goods Received Note books for stock users.",
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "YRP UI Layout",
+  "experience_key": null,
+  "layout_name": "Stock Users",
+  "name": "Stock Users",
+  "render_mode": "Configurable Layout"
+ },
+ {
+  "config": "{\"schema_version\": 1, \"screens\": {\"home\": {\"blocks\": [{\"id\": \"billing\", \"type\": \"mgk-billing\"}]}}}",
+  "description": "Billing book only.",
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "YRP UI Layout",
+  "experience_key": null,
+  "layout_name": "Billing",
+  "name": "Billing",
+  "render_mode": "Configurable Layout"
+ },
+ {
+  "config": "{\"schema_version\": 1, \"screens\": {\"home\": {\"blocks\": [{\"id\": \"purchase-order\", \"type\": \"mgk-purchase-order\"}]}}}",
+  "description": "Purchase Order book only.",
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "YRP UI Layout",
+  "experience_key": null,
+  "layout_name": "Purchase",
+  "name": "Purchase",
+  "render_mode": "Configurable Layout"
+ },
+ {
+  "config": "{\"schema_version\": 1, \"screens\": {\"home\": {\"blocks\": [{\"id\": \"purchase-order\", \"type\": \"mgk-purchase-order\"}, {\"id\": \"billing\", \"type\": \"mgk-billing\"}]}}}",
+  "description": "Purchase Order and Billing books.",
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "YRP UI Layout",
+  "experience_key": null,
+  "layout_name": "PO and Bills",
+  "name": "PO and Bills",
+  "render_mode": "Configurable Layout"
+ }
+]

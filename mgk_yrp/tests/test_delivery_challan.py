@@ -3,6 +3,7 @@ from unittest.mock import patch
 import frappe
 from frappe.tests import IntegrationTestCase
 from frappe.utils import add_days, flt, get_time, getdate, nowdate
+from yrp.stock.dimensions import get_dimension_fieldnames
 from yrp.stock.stock_ledger import NegativeStockError
 from yrp.stock.utils import get_stock_balance
 from yrp.yrp_stock.doctype.yrp_stock_valuation_adjustment.yrp_stock_valuation_adjustment import (
@@ -18,6 +19,7 @@ from mgk_yrp.tests.fixtures import (
 	make_po_grn,
 	make_process,
 	make_purchase_order,
+	make_received_type,
 	make_return,
 	make_supplier,
 	make_uom,
@@ -43,7 +45,7 @@ class TestDeliveryChallan(IntegrationTestCase):
 
 	def make_receipt(self, *, item=None, quantity=50, rate=100, submit=True):
 		order = make_purchase_order(
-			supplier=self.from_supplier,
+			supplier=self.to_supplier,
 			warehouse=self.main,
 			items=[{"item": item or self.item, "qty": quantity, "rate": rate}],
 		)
@@ -186,6 +188,68 @@ class TestDeliveryChallan(IntegrationTestCase):
 		)
 		self.assertFalse(get_voucher_sles(second.doctype, second.name))
 		self.assertEqual(challan.reload().items[0].returned_qty, 40)
+
+	def test_return_received_type_copies_source_and_rejects_changes(self):
+		if "received_type" not in get_dimension_fieldnames():
+			self.skipTest("Received Type dimension is not configured")
+		self.make_receipt()
+		challan = self.make_challan()
+		returned = make_return_delivery_challan(challan.name)
+		self.assertEqual(returned.items[0].get("received_type"), challan.items[0].get("received_type"))
+		returned.items[0].received_type = make_received_type(
+			f"MGK Test Type {frappe.generate_hash(length=8)}"
+		)
+		with self.assertRaisesRegex(frappe.ValidationError, "Received Type must match"):
+			returned.insert(ignore_permissions=True)
+
+	def test_dc_posts_two_received_types_and_enforces_each_source_bucket(self):
+		if "received_type" not in get_dimension_fieldnames():
+			self.skipTest("Received Type dimension is not configured")
+		types = [make_received_type(value) for value in ("Accepted", "Rejected")]
+		order = make_purchase_order(
+			supplier=self.to_supplier,
+			warehouse=self.main,
+			items=[{"item": self.item, "qty": 10, "rate": 100, "received_type": value} for value in types],
+		)
+		make_po_grn(order)
+		challan = make_delivery_challan(
+			from_warehouse=self.main,
+			to_supplier=self.to_supplier,
+			to_warehouse=self.destination,
+			process_name=self.process_name,
+			items=[
+				{"item": self.item, "qty": qty, "received_type": value}
+				for qty, value in zip((6, 4), types, strict=True)
+			],
+		)
+		for row in challan.items:
+			entries = [
+				entry
+				for entry in get_voucher_sles(challan.doctype, challan.name)
+				if entry.voucher_detail_no == row.name
+			]
+			self.assertEqual(len(entries), 2)
+			for entry in entries:
+				self.assertEqual(
+					frappe.db.get_value("YRP Stock Ledger Entry", entry.name, "received_type"),
+					row.received_type,
+				)
+			self.assertEqual(
+				get_stock_balance(self.item, self.main, received_type=row.received_type), 10 - row.qty
+			)
+			self.assertEqual(
+				get_stock_balance(self.item, self.destination, received_type=row.received_type), row.qty
+			)
+		overdraw = make_delivery_challan(
+			from_warehouse=self.main,
+			to_supplier=self.to_supplier,
+			to_warehouse=self.destination,
+			process_name=self.process_name,
+			submit=False,
+			items=[{"item": self.item, "qty": 5, "received_type": types[0]}],
+		)
+		with self.assertRaises(NegativeStockError):
+			overdraw.submit()
 
 	def test_return_cap_sums_duplicate_rows_and_ignores_cached_balance(self):
 		self.make_receipt()

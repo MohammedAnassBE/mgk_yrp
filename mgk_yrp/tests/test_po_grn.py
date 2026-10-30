@@ -3,15 +3,17 @@ from unittest.mock import patch
 import frappe
 from frappe.tests import IntegrationTestCase
 from frappe.utils import get_time, getdate
+from yrp.stock.dimensions import get_dimension_fieldnames
 from yrp.stock.utils import get_stock_balance
 
 from mgk_yrp.mgk_yrp.doctype.mgk_purchase_order.mgk_purchase_order import make_goods_received_note
-from mgk_yrp.stock.ledger import get_voucher_sles
+from mgk_yrp.stock.ledger import get_dimension_values, get_voucher_sles
 from mgk_yrp.stock.locking import lock_documents
 from mgk_yrp.tests.fixtures import (
 	make_item,
 	make_po_grn,
 	make_purchase_order,
+	make_received_type,
 	make_supplier,
 	make_uom,
 	make_warehouse,
@@ -24,7 +26,7 @@ class TestPurchaseOrderGRN(IntegrationTestCase):
 	def setUp(self):
 		super().setUp()
 		self.supplier = make_supplier()
-		self.warehouse = make_warehouse(supplier=self.supplier)
+		self.warehouse = make_warehouse(supplier=make_supplier(is_company_location=1))
 		self.item = make_item(stock_uom=make_uom("Kg"))
 
 	def make_order(self, *, item=None, quantities=(100,), **header):
@@ -57,6 +59,39 @@ class TestPurchaseOrderGRN(IntegrationTestCase):
 		remaining = make_goods_received_note(order.name)
 		self.assertEqual(len(remaining.items), 1)
 		self.assertEqual(remaining.items[0].qty, 50)
+
+	def test_grn_received_type_copies_po_and_remains_editable(self):
+		order = self.make_order()
+		receipt = make_goods_received_note(order.name)
+		self.assertEqual(receipt.items[0].get("received_type"), order.items[0].get("received_type"))
+		receipt.items[0].received_type = make_received_type(f"MGK Test Type {frappe.generate_hash(length=8)}")
+		receipt.insert(ignore_permissions=True).submit()
+		entry = frappe.get_doc(
+			"YRP Stock Ledger Entry", get_voucher_sles(receipt.doctype, receipt.name)[0].name
+		)
+		for field, value in get_dimension_values(receipt.items[0]).items():
+			self.assertEqual(entry.get(field), value)
+
+	def test_one_po_row_received_as_accepted_and_rejected_with_combined_cap(self):
+		if "received_type" not in get_dimension_fieldnames():
+			self.skipTest("Received Type dimension is not configured")
+		accepted, rejected = (make_received_type(value) for value in ("Accepted", "Rejected"))
+		order = self.make_order(quantities=(10,))
+		receipt = make_goods_received_note(order.name)
+		receipt.items[0].qty = 6
+		receipt.items[0].received_type = accepted
+		receipt.append("items", {"item": self.item, "qty": 5, "received_type": rejected})
+		receipt.insert(ignore_permissions=True)
+		self.assertEqual([row.purchase_order_item for row in receipt.items], [order.items[0].name] * 2)
+		with self.assertRaisesRegex(frappe.ValidationError, "exceeds the allowed quantity"):
+			receipt.submit()
+		receipt.reload()
+		receipt.items[1].qty = 4
+		receipt.save().submit()
+		self.assertEqual(order.reload().items[0].received_qty, 10)
+		self.assertEqual(order.items[0].pending_qty, 0)
+		for value, quantity in ((accepted, 6), (rejected, 4)):
+			self.assertEqual(get_stock_balance(self.item, self.warehouse, received_type=value), quantity)
 
 	def test_po_grn_rate_cannot_be_overridden(self):
 		order = self.make_order()
@@ -241,13 +276,31 @@ class TestPurchaseOrderGRN(IntegrationTestCase):
 				"email": f"mgk-grn-{frappe.generate_hash(length=8)}@example.com",
 				"first_name": "MGK GRN Test",
 				"send_welcome_email": 0,
-				"roles": [{"role": "Stock User"}],
+				"roles": [{"role": "Item Manager"}],
 			}
 		).insert(ignore_permissions=True)
 		self.addCleanup(frappe.set_user, frappe.session.user)
 		frappe.set_user(user.name)
 		with self.assertRaises(frappe.PermissionError):
 			make_goods_received_note(order.name)
+
+	def test_stock_user_can_load_po_linked_grn_editor_details(self):
+		from mgk_yrp.stock.item_editor import get_item_details
+
+		order = self.make_order()
+		receipt = make_po_grn(order)
+		user = frappe.get_doc({
+			"doctype": "User", "email": f"mgk-stock-{frappe.generate_hash(length=8)}@example.com",
+			"first_name": "MGK Stock Test", "send_welcome_email": 0,
+			"roles": [{"role": "Stock User"}],
+		}).insert(ignore_permissions=True)
+		self.addCleanup(frappe.set_user, frappe.session.user)
+		frappe.set_user(user.name)
+		receipt = frappe.get_doc(receipt.doctype, receipt.name)
+		receipt.check_permission("read")
+		self.assertTrue(get_item_details(receipt))
+		receipt.onload()
+		self.assertTrue(receipt.get_onload().item_details)
 
 	def test_po_grn_controller_requires_po_read_permission(self):
 		receipt = make_goods_received_note(self.make_order().name)
@@ -275,8 +328,23 @@ class TestPurchaseOrderGRN(IntegrationTestCase):
 		order.reload().cancel()
 		self.assertEqual(order.status, "Cancelled")
 
-	def test_grn_rejects_nonpositive_quantity(self):
+	def test_grn_rejects_negative_quantity(self):
 		order = self.make_order()
-		for quantity in (0, -1):
-			with self.subTest(quantity=quantity), self.assertRaisesRegex(frappe.ValidationError, "positive"):
-				make_po_grn(order, {order.items[0].name: quantity}, submit=False)
+		with self.assertRaisesRegex(frappe.ValidationError, "positive"):
+			make_po_grn(order, {order.items[0].name: -1}, submit=False)
+
+	def test_grn_keeps_zero_draft_rows_and_drops_them_at_submit(self):
+		order = self.make_order(quantities=(100, 40))
+		receipt = make_po_grn(order, {order.items[0].name: 0, order.items[1].name: 10}, submit=False)
+		self.assertEqual([row.qty for row in receipt.reload().items], [0, 10])
+		receipt.submit()
+		self.assertEqual([row.qty for row in receipt.items], [10])
+		self.assertEqual(receipt.items[0].purchase_order_item, order.items[1].name)
+		self.assertEqual([row.qty for row in get_voucher_sles(receipt.doctype, receipt.name)], [10])
+
+	def test_grn_rejects_submit_with_only_zero_rows(self):
+		order = self.make_order()
+		receipt = make_po_grn(order, {order.items[0].name: 0}, submit=False)
+		with self.assertRaisesRegex(frappe.ValidationError, "positive quantity"):
+			receipt.submit()
+		self.assertFalse(get_voucher_sles(receipt.doctype, receipt.name))

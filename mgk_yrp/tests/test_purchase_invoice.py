@@ -21,6 +21,7 @@ from mgk_yrp.tests.fixtures import (
 	make_supplier,
 	make_uom,
 	run_adjustments,
+	set_process_outputs,
 )
 
 INVOICE = "mgk_yrp.mgk_yrp.doctype.mgk_purchase_invoice.mgk_purchase_invoice"
@@ -56,6 +57,7 @@ class TestPurchaseInvoice(CloseTestCase):
 		run_adjustments(upstream.doctype, upstream.name)
 		second = self.make_challan(items=[{"item": self.output_item, "qty": 60}])
 		finished = make_item(stock_uom=make_uom("Kg"))
+		set_process_outputs(self.output_item, self.process_name, [(finished, 1, 1)])
 		receipt = self.make_output([second], items=[{"item": finished, "qty": 60, "rate": 1}])
 		downstream = close_dc(second)
 		run_adjustments(downstream.doctype, downstream.name)
@@ -70,7 +72,7 @@ class TestPurchaseInvoice(CloseTestCase):
 		downstream, intermediate, receipt = self.make_reopening_chain()
 		invoice = self.make_invoice(
 			[purchase],
-			supplier=self.owner,
+			supplier=self.purchase_supplier,
 			against="Purchase Order",
 			rates={purchase.items[0].name: 90},
 			submit=False,
@@ -89,7 +91,7 @@ class TestPurchaseInvoice(CloseTestCase):
 	def test_c67_c82_downward_pi_cancellation_waits_between_reversal_and_finish(self):
 		purchase = self.make_input()
 		invoice = self.make_invoice(
-			[purchase], supplier=self.owner, against="Purchase Order", rates={purchase.items[0].name: 110}
+			[purchase], supplier=self.purchase_supplier, against="Purchase Order", rates={purchase.items[0].name: 110}
 		)
 		run_adjustments(invoice.doctype, invoice.name)
 		downstream, intermediate, receipt = self.make_reopening_chain()
@@ -115,7 +117,7 @@ class TestPurchaseInvoice(CloseTestCase):
 			items=[{"item": self.output_item, "qty": 1, "rate": 10}],
 		)
 		self.assertEqual(
-			[row.name for row in get_unbilled_grns(self.owner, "Purchase Order")], [purchase.name]
+			[row.name for row in get_unbilled_grns(self.purchase_supplier, "Purchase Order")], [purchase.name]
 		)
 		self.assertEqual([row.name for row in get_unbilled_grns(self.supplier, "Job Work")], [job.name])
 		self.assertFalse(get_unbilled_grns(self.supplier, "Purchase Order"))
@@ -294,7 +296,7 @@ class TestPurchaseInvoice(CloseTestCase):
 	def test_pi_rate_change_creates_adjustment(self):
 		receipt = self.make_input(quantity=100)
 		invoice = self.make_invoice(
-			[receipt], supplier=self.owner, against="Purchase Order", rates={receipt.items[0].name: 110}
+			[receipt], supplier=self.purchase_supplier, against="Purchase Order", rates={receipt.items[0].name: 110}
 		)
 		adjustments = run_adjustments(invoice.doctype, invoice.name)
 		self.assertEqual(len(adjustments), 1)
@@ -427,7 +429,7 @@ class TestPurchaseInvoice(CloseTestCase):
 		close = close_dc(challan)
 		run_adjustments(close.doctype, close.name)
 		invoice = self.make_invoice(
-			[purchase], supplier=self.owner, against="Purchase Order", rates={purchase.items[0].name: 110}
+			[purchase], supplier=self.purchase_supplier, against="Purchase Order", rates={purchase.items[0].name: 110}
 		)
 		run_adjustments(invoice.doctype, invoice.name)
 		self.assertAlmostEqual(self.get_overlay(receipt), 5500, places=5)

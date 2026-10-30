@@ -4,6 +4,8 @@
  "module": "MGK YRP",
  "engine": "InnoDB",
  "field_order": [
+  "row_index",
+  "table_index",
   "item",
   "qty",
   "uom",
@@ -16,6 +18,18 @@
   "pending_qty"
  ],
  "fields": [
+  {
+   "fieldname": "row_index",
+   "fieldtype": "Data",
+   "label": "Row Index",
+   "hidden": 1
+  },
+  {
+   "fieldname": "table_index",
+   "fieldtype": "Int",
+   "label": "Table Index",
+   "hidden": 1
+  },
   {
    "fieldname": "item",
    "fieldtype": "Link",

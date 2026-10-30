@@ -1,7 +1,22 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import nowdate
-from yrp.yrp.doctype.yrp_item.yrp_item import create_variant, ensure_global_attribute_values
+from yrp.yrp.doctype.yrp_item.yrp_item import (
+	create_variant,
+	ensure_global_attribute_values,
+	get_parent_item,
+)
+
+from mgk_yrp.stock.dimensions import get_dimension_defaults
+
+
+def make_received_type(name=None) -> str:
+	name = name or get_dimension_defaults().get("received_type") or "Accepted"
+	if frappe.db.exists("YRP Received Type", name):
+		return name
+	return frappe.get_doc(
+		{"doctype": "YRP Received Type", "received_type_name": name}
+	).insert(ignore_permissions=True).name
 
 
 def make_uom(name) -> str:
@@ -90,6 +105,39 @@ def make_item_attribute():
 	return {"attribute": name, "mapping": mapping.name}, value
 
 
+def make_template_item(stock_uom="Kg"):
+	attribute, value = make_item_attribute()
+	name = f"MGK Conversion Template {frappe.generate_hash(length=8)}"
+	template = frappe.get_doc({
+		"doctype": "Item", "item_code": name, "item_name": name,
+		"item_group": make_item_group(), "stock_uom": make_uom(stock_uom),
+		"is_stock_item": 1, "has_variants": 1,
+		"primary_attribute": attribute["attribute"], "attributes": [attribute],
+	}).insert(ignore_permissions=True)
+	return template, {attribute["attribute"]: value}
+
+
+def make_conversion_input(process, outputs, stock_uom="Kg"):
+	template, attributes = make_template_item(stock_uom)
+	set_process_outputs(template.name, process, outputs)
+	variant = create_variant(template.name, attributes).insert(ignore_permissions=True)
+	return template.reload(), variant.name
+
+
+def set_process_outputs(item, process, outputs):
+	"""Replace one template's routes for a test process."""
+	template = frappe.get_doc("Item", get_parent_item(item))
+	template.set("mgk_process_conversions", [
+		row for row in template.mgk_process_conversions if row.process_name != process
+	])
+	for output, from_qty, to_qty in outputs:
+		template.append("mgk_process_conversions", {
+			"process_name": process, "item": get_parent_item(output),
+			"from_qty": from_qty, "to_qty": to_qty,
+		})
+	template.save(ignore_permissions=True)
+
+
 def make_item_with_purchase_uom(item, purchase_uom) -> str:
 	primary, primary_value = make_item_attribute()
 	dependent, dependent_value = make_item_attribute()
@@ -176,15 +224,19 @@ def set_mgk_settings(company_gstin="33AAAAA0000A1Z5") -> None:
 
 
 def make_purchase_order(*, supplier, warehouse, items: list[dict], submit=True, **header) -> Document:
+	location = frappe.db.get_value("Warehouse", warehouse, "supplier") if warehouse else None
+	location = location or supplier
+	if not header.get("deliver_to_supplier") and "delivery_location" not in header:
+		frappe.db.set_value("Supplier", location, "is_company_location", 1)
 	order = frappe.get_doc(
 		{
 			"doctype": "MGK Purchase Order",
 			"supplier": supplier,
 			"warehouse": warehouse,
-			"delivery_location": supplier,
+			"delivery_location": location,
 			"po_date": nowdate(),
 			"goods_routing": "Direct",
-			"items": items,
+			"items": dimensioned_items(items),
 			**header,
 		}
 	).insert(ignore_permissions=True)
@@ -207,14 +259,17 @@ def make_po_grn(po, quantities: dict[str, float] | None = None, submit=True) -> 
 	return receipt
 
 
-def make_job_work_grn(*, supplier, warehouse, items, delivery_challans=(), submit=True) -> Document:
+def make_job_work_grn(
+	*, supplier, warehouse, items, delivery_challans=(), process_name=None, submit=True
+) -> Document:
 	receipt = frappe.get_doc(
 		{
 			"doctype": "MGK Goods Received Note",
 			"against_purchase_order": 0,
+			"process_name": process_name,
 			"supplier": supplier,
 			"warehouse": warehouse,
-			"items": items,
+			"items": dimensioned_items(items),
 			"delivery_challans": [{"delivery_challan": name} for name in delivery_challans],
 		}
 	).insert(ignore_permissions=True)
@@ -234,13 +289,20 @@ def make_delivery_challan(
 			"to_location": to_supplier,
 			"to_warehouse": to_warehouse,
 			"process_name": process_name or make_process(),
-			"items": items,
+			"items": dimensioned_items(items),
 			**header,
 		}
 	).insert(ignore_permissions=True)
 	if submit:
 		challan.submit()
 	return challan
+
+
+def dimensioned_items(items):
+	defaults = get_dimension_defaults()
+	if "received_type" in defaults:
+		make_received_type(defaults["received_type"])
+	return [{**defaults, **row} for row in items]
 
 
 def make_return(dc, quantities: dict[str, float], submit=True) -> Document:

@@ -8,9 +8,11 @@
   "goods_received_note",
   "goods_received_note_item",
   "item",
+  "input_item",
   "warehouse",
   "stock_uom",
   "stock_qty",
+  "allocation_weight",
   "output_receipt_sle",
   "allocated_value",
   "allocated_rate"
@@ -39,6 +41,20 @@
    "options": "Item",
    "in_list_view": 1,
    "columns": 2
+  },
+  {
+   "fieldname": "input_item",
+   "fieldtype": "Link",
+   "label": "Input Item",
+   "read_only": 1,
+   "options": "Item"
+  },
+  {
+   "fieldname": "allocation_weight",
+   "fieldtype": "Float",
+   "label": "Input Equivalent Qty",
+   "read_only": 1,
+   "precision": "9"
   },
   {
    "fieldname": "warehouse",

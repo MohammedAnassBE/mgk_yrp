@@ -9,6 +9,7 @@ from yrp.yrp_stock.doctype.yrp_stock_valuation_adjustment.yrp_stock_valuation_ad
 from mgk_yrp.stock.ledger import get_voucher_sles
 from mgk_yrp.tests.fixtures import (
 	close_dc,
+	make_conversion_input,
 	make_delivery_challan,
 	make_item,
 	make_job_work_grn,
@@ -19,6 +20,7 @@ from mgk_yrp.tests.fixtures import (
 	make_uom,
 	make_warehouse,
 	run_adjustments,
+	set_process_outputs,
 )
 
 ADJUSTMENT = "yrp.yrp_stock.doctype.yrp_stock_valuation_adjustment.yrp_stock_valuation_adjustment"
@@ -39,15 +41,16 @@ class CloseTestCase(IntegrationTestCase):
 			self.addCleanup(setting.stop)
 		self.owner = make_supplier(is_company_location=1)
 		self.supplier = make_supplier()
+		self.purchase_supplier = make_supplier()
 		self.main = make_warehouse(supplier=self.owner)
 		self.destination = make_warehouse(supplier=self.supplier)
-		self.raw_item = make_item(stock_uom=make_uom("Kg"))
-		self.output_item = make_item(stock_uom=make_uom("Kg"))
 		self.process_name = make_process()
+		_, self.output_item = make_conversion_input(self.process_name, [])
+		_, self.raw_item = make_conversion_input(self.process_name, [(self.output_item, 1, 1)])
 
 	def make_input(self, quantity=50, rate=100, item=None):
 		order = make_purchase_order(
-			supplier=self.owner,
+			supplier=self.purchase_supplier,
 			warehouse=self.main,
 			items=[
 				{
@@ -92,6 +95,7 @@ class CloseTestCase(IntegrationTestCase):
 		run_adjustments(upstream.doctype, upstream.name)
 		second = self.make_challan(items=[{"item": self.output_item, "qty": 60}])
 		finished_item = make_item(stock_uom=make_uom("Kg"))
+		set_process_outputs(self.output_item, self.process_name, [(finished_item, 1, 1)])
 		receipt = self.make_output([second], items=[{"item": finished_item, "qty": 60, "rate": 20}])
 		downstream = close_dc(second)
 		run_adjustments(downstream.doctype, downstream.name)

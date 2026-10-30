@@ -1,5 +1,16 @@
 frappe.ui.form.on("MGK Goods Received Note", {
+	async onload(frm) {
+		if (frm.doc.docstatus !== 0 || frm.doc.against_purchase_order) return;
+		const { message } = await frappe.call({ method: "mgk_yrp.party_defaults.get_own_location" });
+		frm._mgk_own_location = message.location;
+		if (frm.is_new() && !frm.doc.against_purchase_order && !frm.doc.delivery_location && !frm.doc.warehouse) {
+			await frm.set_value("warehouse", message.warehouse);
+		}
+	},
 	setup(frm) {
+		frm.set_query("warehouse", () => ({ filters: {
+			supplier: frm.doc.delivery_location || frm._mgk_own_location || "", disabled: 0, is_group: 0,
+		} }));
 		frm.set_query("purchase_order", () => ({
 			filters: { docstatus: 1, status: ["in", ["To Receive", "Partially Received"]] },
 		}));
@@ -11,81 +22,78 @@ frappe.ui.form.on("MGK Goods Received Note", {
 	},
 	refresh(frm) {
 		frm.ignore_doctypes_on_cancel_all = [
-			"MGK Purchase Invoice", "MGK Delivery Challan Close", "YRP Stock Ledger Entry",
-			"YRP Repost Item Valuation", "YRP Stock Valuation Adjustment", "YRP Stock Valuation Production Link",
+			"MGK Purchase Invoice", "MGK Delivery Challan", "MGK Delivery Challan Close", "YRP Stock Ledger Entry",
+			"YRP Repost Item Valuation", "YRP Stock Valuation Adjustment", "YRP Stock Valuation Production Link", "YRP Stock Entry",
 		];
 		set_purchase_order_fields(frm);
+		frappe.mgk_yrp?.refresh_transfer(frm);
+		frappe.mgk_yrp.refresh_job_work_receipt(frm);
+		return frappe.mgk_yrp?.mount_item_editor(frm);
+	},
+	validate(frm) {
+		frappe.mgk_yrp?.sync_item_editor(frm);
+	},
+	async delivery_location(frm) {
+		if (frm.doc.against_purchase_order) return;
+		await frm.set_value("warehouse", null);
+		const supplier = frm.doc.delivery_location;
+		if (!supplier) {
+			const { message } = await frappe.call({ method: "mgk_yrp.party_defaults.get_own_location" });
+			frm._mgk_own_location = message.location;
+			if (!frm.doc.delivery_location && !frm.doc.against_purchase_order && !frm.doc.warehouse) {
+				await frm.set_value("warehouse", message.warehouse);
+			}
+			return;
+		}
+		const { message } = await frappe.call({
+			method: "mgk_yrp.party_defaults.get_party_defaults", args: { supplier },
+		});
+		if (frm.doc.delivery_location === supplier && !frm.doc.warehouse && !frm.doc.against_purchase_order) {
+			await frm.set_value("warehouse", message.warehouse);
+		}
 	},
 	supplier(frm) {
 		frm.clear_table("delivery_challans");
 		frm.refresh_field("delivery_challans");
 	},
 	against_purchase_order(frm) {
+		frm._mgk_po_request = (frm._mgk_po_request || 0) + 1;
 		set_purchase_order_fields(frm);
 		frm.clear_table("items");
+		frappe.mgk_yrp?.load_item_editor(frm);
 		frm.clear_table("delivery_challans");
 		frm.refresh_fields();
 		return frm.set_value({ purchase_order: "", total_qty: 0, total_amount: 0 });
 	},
 	async purchase_order(frm) {
-		if (!frm.doc.against_purchase_order || !frm.doc.purchase_order) return;
-		const source_name = frm.doc.purchase_order;
+		const doc = frm.doc;
+		const request = frm._mgk_po_request = (frm._mgk_po_request || 0) + 1;
+		const source_name = doc.purchase_order;
+		frm.clear_table("items");
+		frappe.mgk_yrp?.load_item_editor(frm);
+		await frm.set_value({ total_qty: 0, total_amount: 0 });
+		if (!source_name || !is_current_purchase_order_request(frm, doc, request, source_name)) return;
 		const { message } = await frappe.call({
 			method: "mgk_yrp.mgk_yrp.doctype.mgk_purchase_order.mgk_purchase_order.make_goods_received_note",
 			args: { source_name },
 		});
-		if (frm.doc.purchase_order !== source_name || !frm.doc.against_purchase_order) return;
-		frm.clear_table("items");
-		for (const row of message.items || []) {
-			const values = {};
-			for (const field of ["item", "qty", "uom", "stock_uom", "conversion_factor", "stock_qty",
-				"rate", "stock_rate", "amount", "purchase_order_item"]) values[field] = row[field];
-			frm.add_child("items", values);
-		}
+		if (!is_current_purchase_order_request(frm, doc, request, source_name)) return;
 		await frm.set_value({
 			supplier: message.supplier, delivery_location: message.delivery_location,
 			warehouse: message.warehouse, total_qty: message.total_qty, total_amount: message.total_amount,
 		});
-		frm.refresh_field("items");
+		if (is_current_purchase_order_request(frm, doc, request, source_name)) {
+			frappe.mgk_yrp?.load_item_editor(frm, message.__onload.item_details);
+		}
 	},
 });
+
+function is_current_purchase_order_request(frm, doc, request, source_name) {
+	return frm.doc === doc && frm._mgk_po_request === request
+		&& doc.purchase_order === source_name && doc.against_purchase_order;
+}
 
 function set_purchase_order_fields(frm) {
 	const against_order = Boolean(frm.doc.against_purchase_order);
 	for (const field of ["supplier", "delivery_location"]) frm.set_df_property(field, "read_only", against_order);
-	const grid = frm.fields_dict.items.grid;
-	grid.update_docfield_property("rate", "read_only", against_order);
-	grid.update_docfield_property("item", "read_only", against_order);
-	grid.cannot_add_rows = against_order;
-	grid.refresh();
-}
-
-frappe.ui.form.on("MGK Goods Received Note Item", {
-	qty(frm, cdt, cdn) {
-		return update_receipt_row(frm, cdt, cdn);
-	},
-	rate(frm, cdt, cdn) {
-		return update_receipt_row(frm, cdt, cdn);
-	},
-	items_remove(frm) {
-		update_receipt_totals(frm);
-	},
-});
-
-async function update_receipt_row(frm, cdt, cdn) {
-	const row = locals[cdt][cdn];
-	await frappe.model.set_value(cdt, cdn, {
-		stock_qty: flt(row.qty) * flt(row.conversion_factor),
-		stock_rate: flt(row.conversion_factor) > 0 ? flt(row.rate) / flt(row.conversion_factor) : 0,
-		amount: flt(row.qty) * flt(row.rate),
-	});
-	return update_receipt_totals(frm);
-}
-
-function update_receipt_totals(frm) {
-	const rows = frm.doc.items || [];
-	return frm.set_value({
-		total_qty: rows.reduce((total, row) => total + flt(row.qty), 0),
-		total_amount: rows.reduce((total, row) => total + flt(row.qty) * flt(row.rate), 0),
-	});
 }
