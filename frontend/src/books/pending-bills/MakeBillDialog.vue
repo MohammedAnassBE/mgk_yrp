@@ -8,6 +8,7 @@ import DateInput from "../../shared/DateInput.vue"
 import { callMethod } from "../../api/client.js"
 import { toIsoDate } from "../../shared/formatDate.js"
 import { money } from "../../documents/previewValues.js"
+import { notify } from "../../shared/notify.js"
 import { billPayload, blockTotals, buildBlocks, draftGroups, failedSupplier, method, setDraftRate, typeLabel, validateBlocks } from "./pendingBills.js"
 
 const props = defineProps({ visible: Boolean, groups: { type: Array, default: () => [] } })
@@ -56,6 +57,7 @@ async function submit() {
 		const block = blocks.value.find((entry) => entry.supplier === supplier)
 		if (block) block.error = cause.message
 		else error.value = cause.message
+		notify.error(cause.message)
 	} finally { saving.value = false }
 }
 </script>

@@ -650,10 +650,13 @@ for (const [doctype, header, mode, link] of [
 	});
 }
 
-test("PO picker filters exist on Item and do not filter order books", () => {
-	const { form } = refreshForm('MGK Purchase Order', { docstatus: 0, is_karigan_order: 1 });
+test("PO picker filters exist on Item and follow the order item group", () => {
+	const { form } = refreshForm('MGK Purchase Order', { docstatus: 0 });
 	const filters = JSON.parse(vm.runInContext('JSON.stringify(itemFilters())', form.itemEditor.app.context));
 	assert.deepEqual(filters, { is_stock_item: 1, disabled: 0, variant_of: ['is', 'not set'] });
+	form.doc.item_group = 'Karigan Items';
+	assert.deepEqual(JSON.parse(vm.runInContext('JSON.stringify(itemFilters())', form.itemEditor.app.context)),
+		{ ...filters, item_group: 'Karigan Items' });
 	const item = JSON.parse(readFileSync(resolve(__dirname,
 		'../../../erpnext/erpnext/stock/doctype/item/item.json')));
 	for (const field of Object.keys(filters)) assert.ok(item.fields.some(row => row.fieldname === field));

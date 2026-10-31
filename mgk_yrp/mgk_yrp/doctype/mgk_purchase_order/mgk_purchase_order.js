@@ -29,6 +29,7 @@ frappe.ui.form.on("MGK Purchase Order", {
 		} }));
 		frm.set_query("supplier", () => ({ filters: { disabled: 0, is_company_location: 0 } }));
 		frm.set_query("handling_supplier", () => ({ filters: { disabled: 0 } }));
+		frm.set_query("item_group", () => ({ filters: { is_group: 0 } }));
 		frm.set_query("supplier_address", () => frm.doc.supplier ? ({
 			query: "frappe.contacts.doctype.address.address.address_query",
 			filters: { link_doctype: "Supplier", link_name: frm.doc.supplier, disabled: 0 },
@@ -96,12 +97,6 @@ frappe.ui.form.on("MGK Purchase Order", {
 	},
 	goods_routing(frm) {
 		if (frm.doc.goods_routing === "Direct") return frm.set_value("handling_supplier", "");
-	},
-	is_karigan_order(frm) {
-		if (frm.doc.is_karigan_order) return frm.set_value("is_salavai_cone_order", 0);
-	},
-	is_salavai_cone_order(frm) {
-		if (frm.doc.is_salavai_cone_order) return frm.set_value("is_karigan_order", 0);
 	},
 });
 

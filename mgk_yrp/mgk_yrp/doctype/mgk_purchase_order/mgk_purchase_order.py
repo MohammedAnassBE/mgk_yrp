@@ -18,6 +18,9 @@ from mgk_yrp.stock.locking import lock_documents
 from mgk_yrp.stock.uom import apply_independent_uom, copy_uom_snapshot
 from mgk_yrp.stock.warehouse import get_supplier_warehouse
 
+KARIGAN_ITEM_GROUP = "Karigan Items"
+SALAVAI_CONE_ITEM_GROUP = "Salavai Cone Items"
+
 
 class MGKPurchaseOrder(Document):
 	def onload(self):
@@ -113,8 +116,8 @@ class MGKPurchaseOrder(Document):
 			self.handling_supplier = None
 
 	def validate_order_book(self):
-		if self.is_karigan_order and self.is_salavai_cone_order:
-			frappe.throw(_("A Purchase Order cannot belong to both the Karigan and Salavai Cone books."))
+		self.is_karigan_order = int(self.item_group == KARIGAN_ITEM_GROUP)
+		self.is_salavai_cone_order = int(self.item_group == SALAVAI_CONE_ITEM_GROUP)
 		for row in self.items:
 			frappe.get_doc("Item", row.item).check_permission("read")
 			parent = get_parent_item(row.item)
@@ -122,17 +125,12 @@ class MGKPurchaseOrder(Document):
 				frappe.throw(_("Row {0}: Item {1} does not exist.").format(row.idx, row.item))
 			item = frappe.get_cached_doc("Item", parent)
 			item.check_permission("read")
-			if not self.is_item_allowed(item):
+			if self.item_group and item.item_group != self.item_group:
 				frappe.throw(
-					_("Row {0}: Item {1} does not match the Purchase Order book.").format(row.idx, parent)
+					_("Row {0}: Item {1} belongs to Item Group {2}, not {3}.").format(
+						row.idx, parent, item.item_group, self.item_group
+					)
 				)
-
-	def is_item_allowed(self, item):
-		if self.is_karigan_order:
-			return bool(item.mgk_is_karigan)
-		if self.is_salavai_cone_order:
-			return bool(item.mgk_is_salavai_cone)
-		return not item.mgk_is_karigan and not item.mgk_is_salavai_cone
 
 	def set_item_values(self):
 		for row in self.items:

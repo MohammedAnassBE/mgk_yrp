@@ -50,3 +50,10 @@ export function recalculate(groups, mode) {
 	}
 	return { total_qty: quantity, [mode.startsWith("dc") ? "total_declared_value" : "total_amount"]: amount }
 }
+
+export function itemFilters(mode, { poEntries = [], itemGroup = "" } = {}) {
+	const filters = { is_stock_item: 1, disabled: 0, variant_of: ["is", "not set"] }
+	if (mode === "grn_po") filters.name = ["in", poEntries.map((entry) => entry.name)]
+	if (mode === "po" && itemGroup) filters.item_group = itemGroup
+	return filters
+}

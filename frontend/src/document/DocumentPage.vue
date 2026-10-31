@@ -7,6 +7,7 @@ import Breadcrumbs from "../shell/Breadcrumbs.vue"
 import NoAccess from "../shared/NoAccess.vue"
 import DocumentHeader from "./DocumentHeader.vue"
 import DocumentActions from "./DocumentActions.vue"
+import { notify } from "../shared/notify.js"
 import ActionHost from "./ActionHost.vue"
 import DetailsPanel from "./DetailsPanel.vue"
 import ActivityPanel from "./ActivityPanel.vue"
@@ -76,7 +77,7 @@ function fieldValue(field) {
 						:extra-actions="extraActions"
 						:editing="editing"
 						@action="action"
-						@discard="reload()"
+						@discard="reload().then(() => notify.success('Changes discarded'))"
 					/>
 			</DocumentHeader>
 			<Message v-if="intro" :severity="intro.severity" :closable="false" class="form-banner">{{ intro.text }}</Message>

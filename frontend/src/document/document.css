@@ -108,7 +108,8 @@
 .stock-grid-editor .numeric { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .last-rate { display: block; margin-top: 3px; color: var(--color-muted); font-size: var(--type-caption); white-space: nowrap; }
 .stock-grid-editor .cell-extra { margin-top: 4px; }
-.editor-actions { display: flex; gap: 8px; margin-top: 12px; }
+.editor-actions { display: flex; gap: 8px; margin-top: 12px; justify-content: flex-end; }
+.editor-actions .editor-commit { min-width: 140px; min-height: 40px; font-weight: 600; }
 .stock-add-form { border-top: 1px solid var(--color-inner-line); padding-top: 16px; }
 .stock-add-form h4 { margin: 0 0 14px; font-size: 15px; }
 .book-entry .stock-add-form .form-grid { padding: 0; margin-bottom: 18px; }

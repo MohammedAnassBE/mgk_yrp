@@ -18,7 +18,8 @@ const meta = { name: purchaseOrder.doctype, fields: [
 	{ fieldname: "supplier", label: "Supplier", fieldtype: "Link", options: "Supplier", in_standard_filter: 1 },
 	{ fieldname: "po_date", label: "PO Date", fieldtype: "Date", in_standard_filter: 1 },
 	{ fieldname: "status", label: "Status", fieldtype: "Select", read_only: 1 },
-	{ fieldname: "is_karigan_order", label: "Karigan", fieldtype: "Check" },
+	{ fieldname: "item_group", label: "Item Group", fieldtype: "Link", options: "Item Group" },
+	{ fieldname: "is_karigan_order", label: "Karigan", fieldtype: "Check", read_only: 1, hidden: 1 },
 ] }
 
 async function settle() { await nextTick(); await new Promise(setImmediate); await nextTick() }
@@ -191,7 +192,7 @@ test("New stages the active tab defaults, URL tab changes refetch, and create pe
 	try {
 		list.model.create(); await settle()
 		const token = list.router.currentRoute.value.query.defaults
-		assert.deepEqual(readNewDefaults(token, purchaseOrder.doctype, list.storage).defaults, { is_karigan_order: 1 })
+		assert.deepEqual(readNewDefaults(token, purchaseOrder.doctype, list.storage).defaults, { item_group: "Karigan Items" })
 		await list.router.push("/purchase-order?tab=salavai-cone"); await settle()
 		assert.equal(list.model.query.tab, "salavai-cone")
 	} finally { list.close() }

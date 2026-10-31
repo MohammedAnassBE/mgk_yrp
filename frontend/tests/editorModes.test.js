@@ -53,3 +53,13 @@ test("PO rate validation and totals preserve dimensions and cell metadata", () =
 	assert.throws(() => validateItem(entry, "po"), /greater than zero/)
 	assert.equal(validateItem(entry, "grn_job"), true)
 })
+
+test("PO item picker follows the order item group and other modes ignore it", async () => {
+	const { itemFilters } = await import("../src/item-editor/editorModes.js")
+	const base = { is_stock_item: 1, disabled: 0, variant_of: ["is", "not set"] }
+	assert.deepEqual(itemFilters("po"), base)
+	assert.deepEqual(itemFilters("po", { itemGroup: "" }), base)
+	assert.deepEqual(itemFilters("po", { itemGroup: "Karigan Items" }), { ...base, item_group: "Karigan Items" })
+	assert.deepEqual(itemFilters("dc", { itemGroup: "Karigan Items" }), base)
+	assert.deepEqual(itemFilters("grn_po", { poEntries: [{ name: "A" }], itemGroup: "Karigan Items" }), { ...base, name: ["in", ["A"]] })
+})

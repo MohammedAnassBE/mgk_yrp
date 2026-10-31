@@ -133,3 +133,12 @@ test("Address linked parties are a display-only selectable list column, and the 
 	assert.equal(columns[0].clientOnly, true)
 	assert.equal(meta.fields[0].fieldtype, "Table")
 })
+
+test("Item form shows Item Group in identity and no Karigan/Salavai checkboxes", () => {
+	const config = getMaster("items")
+	assert.ok(config.formGroups[0].fields.includes("item_group"))
+	assert.equal(config.formGroups[0].label, "Item identity")
+	assert.equal(hiddenItemFields.includes("item_group"), false)
+	assert.equal(config.defaults.item_group, "Products")
+	for (const name of ["mgk_is_karigan", "mgk_is_salavai_cone"]) assert.equal([...stockItemFields, ...hiddenItemFields].includes(name), false)
+})

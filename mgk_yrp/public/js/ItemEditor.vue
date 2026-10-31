@@ -62,6 +62,7 @@ const args = {
 function itemFilters() {
     const filters = { is_stock_item: 1, disabled: 0, variant_of: ['is', 'not set'] };
     if (props.mode === 'grn_po') filters.name = ['in', context.value.po_entries.map(entry => entry.name)];
+    if (props.mode === 'po' && props.frm.doc.item_group) filters.item_group = props.frm.doc.item_group;
     return filters;
 }
 

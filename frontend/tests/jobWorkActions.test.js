@@ -56,12 +56,13 @@ test("job-work DC action visibility matches Desk and plan requires write rather 
 	assert.deepEqual(keys(source, (doctype, permission) => doctype === receipt.doctype && permission === "create").map((action) => action.key), ["create-grn"])
 })
 
-test("Create DC matches submitted non-internal Desk visibility and create permission", () => {
+test("Create DC matches submitted non-internal Desk visibility and needs create and submit", () => {
 	const doc = { doctype: receipt.doctype, docstatus: 1 }
 	const keys = (record, can = () => true) => receiptActions(record, can).filter((action) => action.key === "create-dc")
 	for (const flags of [{ docstatus: 0 }, { docstatus: 2 }, { is_internal_transfer: 1 }]) assert.deepEqual(keys({ ...doc, ...flags }), [])
 	assert.deepEqual(keys(doc, (doctype, permission) => doctype === challan.doctype && permission === "write"), [])
-	assert.equal(keys(doc, (doctype, permission) => doctype === challan.doctype && permission === "create").length, 1)
+	assert.deepEqual(keys(doc, (doctype, permission) => doctype === challan.doctype && permission === "create"), [])
+	assert.equal(keys(doc, (doctype, permission) => doctype === challan.doctype && ["create", "submit"].includes(permission)).length, 1)
 })
 
 test("Create GRN maps source_name to a job-work draft with plan/conversion prefill intact", async () => {
@@ -121,7 +122,11 @@ test("plan save payload is a JSON string and dispatch payload forces move and re
 			assert.equal(method, jobWorkMethods.createDc)
 			assert.deepEqual(args, { source_names: ["GRN-1", "GRN-2"], process_name: "Dyeing", supplier: "Worker", move_to_head_office: 1 })
 			return { delivery_challan: "DC/2", stock_entries: ["STE-1", "STE-2"] }
-		})
+		}, () => true)
+	const denied = (doctype, permission) => !(doctype === "YRP Stock Entry" && permission === "submit")
+	for (const [selection, move_to_head_office] of [[{ source_names: ["GRN-1"], is_forced: true }, false], [{ source_names: ["GRN-1"] }, true]]) {
+		await assert.rejects(createDcFromSelection(selection, { move_to_head_office }, async () => assert.fail("must not call"), denied), /YRP Stock Entry/)
+	}
 	assert.deepEqual(dispatch.links, [{ label: "DC/2", to: "/delivery-challan/DC%2F2" }])
 	assert.equal(dispatch.message, "Dispatch submitted (Stock Entries: STE-1, STE-2):")
 	assert.equal(dispatch.message.includes("DC/2"), false)
@@ -175,6 +180,8 @@ test("Update Plan item and received-type inputs share the document editor style 
 })
 
 test("Create DC dialog forces and locks move for two warehouses and leaves one warehouse editable and off", async () => {
+	const original = globalThis.window
+	globalThis.window = { frappe: { boot: { user: { can_create: ["YRP Stock Entry"], can_submit: ["YRP Stock Entry"] } } } }
 	for (const warehouses of [["Main"], ["Main", "Main"], ["Main", "Other"]]) {
 		const network = mockNetwork()
 		const page = await mountComponent("../../src/documents/goods-received-note/CreateDcDialog.vue", {
@@ -190,6 +197,17 @@ test("Create DC dialog forces and locks move for two warehouses and leaves one w
 			assert.equal(button(page.root, "Create DC").props.disabled, true)
 		} finally { page.close(); network.close() }
 	}
+	globalThis.window = { frappe: { boot: { user: {} } } }
+	for (const warehouses of [["Main"], ["Main", "Other"]]) {
+		const page = await mountComponent("../../src/documents/goods-received-note/CreateDcDialog.vue", {
+			names: warehouses.map((_, index) => `GRN-${index}`), rows: warehouses.map((warehouse) => ({ warehouse })) })
+		try {
+			const is_forced = warehouses.length > 1
+			assert.equal(Boolean(input(page.root, "Move stock to Head Office")), is_forced)
+			assert.equal(textContent(page.root).includes("permission on YRP Stock Entry"), is_forced)
+		} finally { page.close() }
+	}
+	globalThis.window = original
 })
 
 test("GRN list always fetches warehouse even when the user hides its column", async () => {

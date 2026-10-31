@@ -16,6 +16,7 @@ import { mutationScope } from "./mutationScope.js"
 import { useActionRunner } from "./useActionRunner.js"
 import { lifecycleActions } from "./lifecycleActions.js"
 import { isSaveShortcut } from "./lifecycle.js"
+import { actionToastText, documentToast, notify } from "../shared/notify.js"
 
 export function useDocument(book) {
 	const route = useRoute()
@@ -203,6 +204,7 @@ export function useDocument(book) {
 			const result = await callMethod("frappe.client.save", { doc: payload() }, (values) => { if (operation.current()) messages.value = values })
 			if (!operation.current()) return
 			operation.apply(() => apply(result))
+			notify.success(documentToast(result.name, "saved"))
 			if (wasNew) await router.replace(`${book.routePath}/${encodeURIComponent(result.name)}`)
 			else await reload()
 		})
@@ -218,6 +220,7 @@ export function useDocument(book) {
 			if (!operation.current()) return
 			if (cause.payload?.exc_type === "TimestampMismatchError") stale.value = true
 			else if (!required.value.length) error.value = cause.message
+			notify.error(cause.message)
 		} finally { if (operation.active()) { busy.value = false; live.flush() } }
 	}
 
@@ -252,10 +255,17 @@ export function useDocument(book) {
 	async function mutateDocument(name, lifecycle, operation) {
 		if (name === "amend") return amendDocument(operation)
 		const call = (method, args) => callMethod(method, args, (values) => { if (operation.current()) messages.value = values })
-		const result = lifecycle ? (await lifecycle.run({ doc: doc.value }, { call, isCurrent: operation.current }))?.doc
-			: await call("frappe.client.delete", { doctype: book.doctype, name: doc.value.name })
+		const docName = doc.value.name
+		const outcome = lifecycle ? await lifecycle.run({ doc: doc.value }, { call, isCurrent: operation.current })
+			: await call("frappe.client.delete", { doctype: book.doctype, name: docName })
 		if (!operation.current()) return
-		if (name === "delete") return router.push(book.listPath || book.routePath)
+		if (name === "delete") {
+			notify.success(documentToast(docName, "deleted"))
+			return router.push(book.listPath || book.routePath)
+		}
+		const result = outcome?.doc
+		if (!result) return
+		notify.success(actionToastText(outcome))
 		if (name === "cancel" && book.doctype === "MGK Purchase Invoice") {
 			result.__onload = { ...result.__onload, valuation_pending: true }
 		}
@@ -270,6 +280,7 @@ export function useDocument(book) {
 		if (latest.__onload?.valuation_pending || ["Reversing", "Reopening"].includes(latest.reopen_status)) throw new Error("Wait for valuation or reopening to finish before amending.")
 		const draft = stageMappedDraft(amendmentDraft(latest, metas.value))
 		await router.push({ path: `${book.routePath}/new`, query: { draft } })
+		notify.success(`Amending ${latest.name}`)
 	}
 
 	async function focusStart() {

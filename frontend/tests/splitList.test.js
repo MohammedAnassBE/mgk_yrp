@@ -275,14 +275,16 @@ test("split CSS uses existing tokens and confines tables at the phone breakpoint
 
 test("bulk actions render only with the target document create permission", async () => {
 	for (const [book, target] of [[challan, receipt], [receipt, challan]]) {
-		assert.deepEqual(book.bulkActions[0].permission, [target.doctype, "create"])
-		for (const permission of ["read", "write", "create"]) {
-			const page = await mountSplit({ doctype: book.doctype, user: { [`can_${permission}`]: [target.doctype] } })
+		const required = book === receipt ? ["create", "submit"] : ["create"]
+		assert.deepEqual(book.bulkActions[0].permission, [target.doctype, ...required])
+		for (const permission of ["read", "write", "create", "all"]) {
+			const granted = permission === "all" ? required : [permission]
+			const page = await mountSplit({ doctype: book.doctype, user: Object.fromEntries(granted.map((key) => [`can_${key}`, [target.doctype]])) })
 			try {
 				page.props.bulkActions = book.bulkActions
 				checkboxes(page)[0].props.onChange()
 				await settle()
-				assert.equal(Boolean(button(page, book.bulkActions[0].label)), permission === "create")
+				assert.equal(Boolean(button(page, book.bulkActions[0].label)), required.every((key) => granted.includes(key)))
 			} finally { page.close() }
 		}
 	}
@@ -331,7 +333,7 @@ test("reconnect evicts unselected previews and doc events force reads at the sam
 test("selection changes suppress mapped navigation and retain mutation single flight", async (context) => {
 	context.mock.timers.enable({ apis: ["setTimeout"] })
 	let finish, mutations = 0
-	const page = await mountSplit({ user: { can_create: [receipt.doctype] }, preview: { doc: { items: [{ pending_qty: 1 }] } },
+	const page = await mountSplit({ user: { can_create: [receipt.doctype], can_submit: [receipt.doctype] }, preview: { doc: { items: [{ pending_qty: 1 }] } },
 		respond: (_url, options, message) => options.method === "POST"
 			? new Promise((resolve) => { mutations++; finish = resolve }) : message })
 	const tick = async () => { context.mock.timers.tick(120); await settle() }
@@ -355,7 +357,7 @@ test("selection changes clear completed action errors and results", async (conte
 	context.mock.timers.enable({ apis: ["setTimeout"] })
 	for (const hasError of [false, true]) {
 		const message = hasError ? "Source is closed." : "Created and submitted:"
-		const page = await mountSplit({ user: { can_create: [receipt.doctype] }, preview: { doc: { items: [{ pending_qty: 1 }] } },
+		const page = await mountSplit({ user: { can_create: [receipt.doctype], can_submit: [receipt.doctype] }, preview: { doc: { items: [{ pending_qty: 1 }] } },
 			respond: (_url, options, preview) => {
 				if (options.method !== "POST") return preview
 				if (hasError) throw new Error(message)
@@ -377,7 +379,7 @@ test("selection changes clear completed action errors and results", async (conte
 test("preview actions refresh list rows once, reload the preview and retain selection", async (context) => {
 	context.mock.timers.enable({ apis: ["setTimeout"] })
 	for (const [label, docstatus] of [["Mark as Received", 1], ["Submit", 0], ["Cancel", 1]]) {
-		const page = await mountSplit({ user: { can_submit: ["MGK Purchase Order"], can_cancel: ["MGK Purchase Order"], can_create: [receipt.doctype] },
+		const page = await mountSplit({ user: { can_submit: ["MGK Purchase Order", receipt.doctype], can_cancel: ["MGK Purchase Order"], can_create: [receipt.doctype] },
 			preview: { is_submittable: 1, doc: { docstatus, items: [{ pending_qty: 1 }] } },
 			respond: (url, options, preview) => {
 				if (url.includes("load.getdoc")) return { docs: [{ ...preview.doc, doctype: "MGK Purchase Order" }] }

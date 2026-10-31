@@ -12,6 +12,7 @@ import deliveryChallan from "../src/books/delivery-challan/config.js"
 import { readMappedDraft, stageMappedDraft } from "../src/document/mappedDraft.js"
 import { FakeSocket } from "./helpers/fakeSocket.js"
 import { documentModule } from "../src/documents/registry.js"
+import { bindToast } from "../src/shared/notify.js"
 
 const renderer = createRenderer({ createComment: (text) => ({ text }), createText: (text) => ({ text }), insert: () => {}, remove: () => {}, setText: () => {}, parentNode: () => null, nextSibling: () => null })
 async function settle() { await nextTick(); await new Promise(setImmediate); await nextTick() }
@@ -590,4 +591,24 @@ test("declined run confirmations do not write or reload; unknown action names ne
 		assert.equal(page.model.error.value, "Unknown document action: missing")
 		assert.equal(page.requests.length, before)
 	} finally { page.close(); module.actions = original }
+})
+
+test("save, submit and cancel each show a green toast with the document name; failures show the server message in red", async () => {
+	const toasts = []
+	bindToast({ add: (message) => toasts.push([message.severity, message.summary]) })
+	const page = await context()
+	try {
+		page.model.change("note", "edited")
+		await page.model.save()
+		await page.model.action("submit")
+		await page.model.action("cancel")
+		assert.deepEqual(toasts, [["success", "PI-1 saved"], ["success", "PI-1 submitted"], ["success", "PI-1 cancelled"]])
+	} finally { page.close() }
+	toasts.length = 0
+	const failing = await context({ book: purchaseOrder, record: { doctype: purchaseOrder.doctype, name: "PO-1", docstatus: 1 },
+		methods: { "frappe.client.cancel": async () => { throw new Error("Cancel GRN-1 first.") } } })
+	try {
+		await failing.model.action("cancel")
+		assert.deepEqual(toasts, [["error", "Cancel GRN-1 first."]])
+	} finally { failing.close(); bindToast(null) }
 })

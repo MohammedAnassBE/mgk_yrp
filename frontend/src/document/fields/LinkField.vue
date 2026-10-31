@@ -1,4 +1,5 @@
 <script setup>
+import "../../shared/linkSuggestions.css"
 import { ref, watch, onBeforeUnmount, getCurrentInstance } from "vue"
 import { callRead } from "../../api/client.js"
 import { trailingTask } from "../../list/listQuery.js"

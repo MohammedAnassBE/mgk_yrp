@@ -164,7 +164,7 @@ test("W15 action visibility matches Desk submission, pending rows and both creat
 	for (const docstatus of [0, 1, 2]) for (const pending_qty of [-1, 0, 2]) {
 		for (const deliver_to_supplier of [0, 1]) for (const canCreateReceipt of [false, true]) for (const canCreateChallan of [false, true]) {
 			const doc = { ...order, docstatus, deliver_to_supplier, items: [{ pending_qty }] }
-			const result = actions(doc, (doctype, permission) => permission === "create"
+			const result = actions(doc, (doctype, permission) => ["create", "submit"].includes(permission)
 				&& (doctype === "MGK Goods Received Note" ? canCreateReceipt : canCreateChallan))
 			const isAvailable = docstatus === 1 && pending_qty > 0 && canCreateReceipt
 			assert.equal(result.some((action) => action.key === "create-grn"), isAvailable)

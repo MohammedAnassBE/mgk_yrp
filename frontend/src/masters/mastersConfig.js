@@ -1,12 +1,12 @@
 const itemGroups = [
-	{ label: "Item identity", fields: ["item_name", "name1", "mgk_tamil_name", "hsn_code", "gst_hsn_code", "mgk_gst_tax_slab", "is_purchase_item"] },
+	{ label: "Item identity", fields: ["item_name", "name1", "mgk_tamil_name", "item_group", "hsn_code", "gst_hsn_code", "mgk_gst_tax_slab", "is_purchase_item"] },
 	{ label: "Stock and purchasing", fields: ["over_delivery_receipt_allowance", "po_excess_allowed_percentage", "is_ineligible_for_itc", "is_yarn_item"] },
 	{ label: "Units and attributes", fields: ["stock_uom", "default_unit_of_measure", "secondary_unit_of_measure", "purchase_uom", "attributes", "primary_attribute", "dependent_attribute", "uoms"] },
 	{ label: "Process conversions", fields: ["mgk_process_conversions"] },
 ]
 
 export const stockItemFields = itemGroups.flatMap((group) => group.fields)
-export const hiddenItemFields = ["item_code", "item_group", "is_stock_item", "allow_negative_stock", "disabled", "is_sales_item", "mgk_is_karigan", "mgk_is_salavai_cone", "has_variants"]
+export const hiddenItemFields = ["item_code", "is_stock_item", "allow_negative_stock", "disabled", "is_sales_item", "has_variants"]
 
 const definitions = [
 	{

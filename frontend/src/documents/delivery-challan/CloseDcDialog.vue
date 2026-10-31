@@ -10,6 +10,7 @@ import { itemColumns as outputColumns } from "../delivery-challan-close/preview.
 import { money } from "../previewValues.js"
 import { formatDate } from "../../shared/formatDate.js"
 import { isSaveShortcut } from "../../document/lifecycle.js"
+import { notify } from "../../shared/notify.js"
 
 const props = defineProps({ doc: { type: Object, required: true }, names: Array, rows: Array, action: Object })
 const emit = defineEmits(["done", "close"])
@@ -39,7 +40,7 @@ async function save() {
 	is_saving.value = true
 	error.value = ""
 	try { emit("done", await closeDeliveryChallan(props.doc.name, callMethod)) }
-	catch (cause) { error.value = cause.message }
+	catch (cause) { error.value = cause.message; notify.error(cause.message) }
 	finally { is_saving.value = false }
 }
 function keydown(event) { if (isSaveShortcut(event)) { event.preventDefault(); save() } }

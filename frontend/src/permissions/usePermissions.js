@@ -4,6 +4,10 @@ export function hasPermission(doctype, permission = "read", user = globalThis.wi
 	return (user[`can_${permission}`] || []).includes(doctype)
 }
 
+export function hasPermissions(doctype, permissions, can = hasPermission) {
+	return permissions.every((permission) => can(doctype, permission))
+}
+
 export function readableMasters(user = globalThis.window?.frappe?.boot?.user || {}) {
 	return masters.filter((master) => hasPermission(master.doctype, "read", user))
 }
@@ -15,5 +19,5 @@ export function canReadBook(book, user = globalThis.window?.frappe?.boot?.user |
 }
 
 export function usePermissions() {
-	return { hasPermission, canReadBook, readableMasters }
+	return { hasPermission, hasPermissions, canReadBook, readableMasters }
 }

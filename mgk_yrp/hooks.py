@@ -22,6 +22,7 @@ extend_doctype_class = {"YRP Stock Entry": ["mgk_yrp.overrides.stock_entry.MGKSt
 fixtures = [
 	{"dt": "Custom Field", "filters": [["module", "=", "MGK YRP"]]},
 	{"dt": "Property Setter", "filters": [["module", "=", "MGK YRP"]]},
+	{"dt": "Item Group", "filters": [["name", "in", ["Karigan Items", "Salavai Cone Items"]]]},
 	{
 		"dt": "YRP UI Layout",
 		"filters": [["name", "in", ["MGK Workspace", "Stock Users", "Billing", "Purchase", "PO and Bills"]]],

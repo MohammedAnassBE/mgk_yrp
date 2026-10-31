@@ -1,4 +1,5 @@
 import { stageMappedDraft } from "../../document/mappedDraft.js"
+import { hasPermission, hasPermissions } from "../../permissions/usePermissions.js"
 export const jobWorkMethods = {
 	createGrn: "mgk_yrp.job_work.grn_from_dc.make_job_work_grn",
 	getPlan: "mgk_yrp.job_work.process_plan.get_process_plan",
@@ -25,7 +26,14 @@ export async function saveProcessPlan(delivery_challan, items, call) {
 	return { message: "Process plan updated." }
 }
 
-export async function createDcFromSelection(selection, values, call) {
+export function canMoveToHeadOffice(can = hasPermission) {
+	return hasPermissions("YRP Stock Entry", ["create", "submit"], can)
+}
+
+export async function createDcFromSelection(selection, values, call, can = hasPermission) {
+	if ((selection.is_forced || values.move_to_head_office) && !canMoveToHeadOffice(can)) {
+		throw new Error("Moving stock to Head Office needs create and submit permission on YRP Stock Entry.")
+	}
 	const result = await call(jobWorkMethods.createDc, {
 		source_names: selection.source_names, process_name: values.process_name, supplier: values.supplier,
 		move_to_head_office: Number(selection.is_forced || values.move_to_head_office),

@@ -14,7 +14,7 @@ import { formatFieldValue } from "../document/fieldDisplay.js"
 import { useLastRates } from "./useLastRates.js"
 
 const props = defineProps({ mode: String, editable: Boolean, permissions: Object, defaults: Object, dimensions: Array, poEntries: Array, hasTransferredQuantity: Boolean,
-	supplier: String, currentDocument: String })
+	supplier: String, currentDocument: String, itemGroup: String })
 const emit = defineEmits(["change"])
 const groups = ref([])
 const editPosition = ref(null)
@@ -207,6 +207,7 @@ defineExpose({ loadData, getItems })
 			:dimensions="dimensions"
 			:permissions="permissions"
 			:po-entries="poEntries"
+			:item-group="itemGroup"
 			:editing="editing"
 			:disabled="!editable"
 			@commit="commit"

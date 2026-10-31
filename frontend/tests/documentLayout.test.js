@@ -7,7 +7,7 @@ import { tableFields } from "../src/document/fields/tableFields.js"
 
 test("all five layouts keep paper order and omit duplicate, computed and display-only panel rows", async () => {
 	const paper = {
-		"MGK Purchase Order": ["supplier", "po_date"],
+		"MGK Purchase Order": ["supplier", "item_group", "po_date"],
 		"MGK Goods Received Note": ["supplier", "posting_date"],
 		"MGK Delivery Challan": ["to_location", "posting_date"],
 		"MGK Purchase Invoice": ["supplier", "bill_no", "bill_date"],
@@ -56,4 +56,17 @@ test("saved side cards link present source documents, including DC Close and ame
 	const meta = { fields: [{ fieldname: "purchase_order", fieldtype: "Link", options: "MGK Purchase Order" }, { fieldname: "delivery_challan_close", fieldtype: "Link", options: "MGK Delivery Challan Close" }, { fieldname: "amended_from", fieldtype: "Link", options: "MGK Delivery Challan" }] }
 	const links = connectedDocuments({ purchase_order: "PO / 1", delivery_challan_close: "Close-1", amended_from: "DC-1" }, meta)
 	assert.deepEqual(links.map((link) => link.to), ["/purchase-order/PO%20%2F%201", "/delivery-challan-close/Close-1", "/delivery-challan/DC-1"])
+})
+
+test("PO form shows Item Group next to Supplier and hides the derived order flags", async () => {
+	const { default: layout } = await import("../src/documents/purchase-order/layout.js")
+	assert.deepEqual(layout.paperFields.slice(0, 2), ["supplier", "item_group"])
+	const doctype = JSON.parse(await readFile(new URL("../../mgk_yrp/mgk_yrp/doctype/mgk_purchase_order/mgk_purchase_order.json", import.meta.url)))
+	const byName = Object.fromEntries(doctype.fields.map((field) => [field.fieldname, field]))
+	assert.deepEqual([byName.item_group.fieldtype, byName.item_group.options, byName.item_group.reqd], ["Link", "Item Group", undefined])
+	assert.equal(doctype.field_order.indexOf("item_group"), doctype.field_order.indexOf("supplier") + 1)
+	for (const flag of ["is_karigan_order", "is_salavai_cone_order"]) {
+		assert.equal(layout.panelFields.includes(flag), false)
+		assert.deepEqual([byName[flag].read_only, byName[flag].hidden], [1, 1])
+	}
 })

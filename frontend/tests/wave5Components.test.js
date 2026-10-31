@@ -116,7 +116,7 @@ test("Billing Get GRNs sits in step 2, displays a GRN ID/Date/Total Qty/Total Am
 
 test("Close toolbar has primary Reopen with exact confirmation and suppresses Amend while reversing", async () => {
 	const original = globalThis.window
-	globalThis.window = { frappe: { boot: { user: { can_cancel: ["MGK Delivery Challan Close"], can_amend: ["MGK Delivery Challan Close"] } } } }
+	globalThis.window = { frappe: { boot: { user: { can_cancel: ["MGK Delivery Challan Close"], can_amend: ["MGK Delivery Challan Close"], can_create: ["MGK Delivery Challan Close"] } } } }
 	const actions = []
 	const props = reactive({ doc: { doctype: "MGK Delivery Challan Close", name: "CLOSE-1", delivery_challan: "DC-1", docstatus: 1 }, meta: {}, onAction: (name) => actions.push(name) })
 	const page = await mountComponent("../../src/document/DocumentActions.vue", props)

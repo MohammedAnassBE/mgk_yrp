@@ -2,6 +2,7 @@ import { computed, onScopeDispose, ref, shallowRef } from "vue"
 import { useRouter } from "vue-router"
 import { callMethod } from "../api/client.js"
 import { runAction } from "./actionRunner.js"
+import { actionToastText, notify } from "../shared/notify.js"
 
 export function useActionRunner({ reload = async () => {}, settled = async () => {} } = {}) {
 	const router = useRouter()
@@ -18,6 +19,7 @@ export function useActionRunner({ reload = async () => {}, settled = async () =>
 		await settled(target)
 		if (current !== sequence) return
 		if (value) result.value = value
+		notify.success(actionToastText(value))
 		await reload()
 	}
 	async function openDialog(action, target, current) {
@@ -34,7 +36,7 @@ export function useActionRunner({ reload = async () => {}, settled = async () =>
 			finished: (value) => finished(value, current, target), openDialog: (action, target) => openDialog(action, target, current),
 			isCurrent: () => current === sequence }
 		try { await runAction(action, target, ctx) }
-		catch (cause) { if (current === sequence) error.value = cause.message }
+		catch (cause) { if (current === sequence) { error.value = cause.message; notify.error(cause.message) } }
 		finally { is_running.value = false }
 	}
 	async function dialogDone(value) {
@@ -44,7 +46,7 @@ export function useActionRunner({ reload = async () => {}, settled = async () =>
 		dialog.value = null
 		is_running.value = true
 		try { await finished(value, current, target) }
-		catch (cause) { if (current === sequence) error.value = cause.message }
+		catch (cause) { if (current === sequence) { error.value = cause.message; notify.error(cause.message) } }
 		finally { is_running.value = false }
 	}
 	function dialogClosed() { dialog.value = null }

@@ -10,8 +10,8 @@ const definition = {
 	presentation: "book",
 	tabs: [
 		{ key: "all", label: "All", filters: [] },
-		{ key: "karigan", label: "Karigan", filters: [["is_karigan_order", "=", 1]] },
-		{ key: "salavai-cone", label: "Salavai Cone", filters: [["is_salavai_cone_order", "=", 1]] },
+		{ key: "karigan", label: "Karigan", filters: [["item_group", "=", "Karigan Items"]] },
+		{ key: "salavai-cone", label: "Salavai Cone", filters: [["item_group", "=", "Salavai Cone Items"]] },
 	],
 	defaultColumns: ["name", "supplier", "po_date", "delivery_location", "total_qty", "total_amount", "status"],
 	statusField: "status",

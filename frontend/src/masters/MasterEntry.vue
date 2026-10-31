@@ -13,6 +13,7 @@ import SupplierWarehouses from "./SupplierWarehouses.vue"
 import UserAccess from "./UserAccess.vue"
 import { fieldState } from "../document/fieldConditions.js"
 import { hasPermission } from "../permissions/usePermissions.js"
+import { notify } from "../shared/notify.js"
 import { masterHeading, safeReturnPath } from "./masterFields.js"
 import { useMasterForm } from "./useMasterForm.js"
 import "../document/document.css"
@@ -32,7 +33,7 @@ function confirm() {
 	const action = pending.value
 	pending.value = null
 	if (action === "delete") remove()
-	else reload()
+	else reload().then(() => notify.success("Changes discarded"))
 }
 </script>
 

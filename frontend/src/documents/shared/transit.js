@@ -1,3 +1,5 @@
+import { hasPermissions } from "../../permissions/usePermissions.js"
+
 export function pendingTransferQuantity(row) {
 	return Number(row.qty || 0) - Number(row.transferred_qty || 0)
 		- Number(row.returned_qty || 0) / (Number(row.conversion_factor) || 1)
@@ -9,7 +11,7 @@ export function pendingTransferRows(doc) {
 
 export function completeTransferActions(doc, can) {
 	return Number(doc.docstatus) === 1 && doc.is_internal_transfer && pendingTransferRows(doc).length
-		&& can("YRP Stock Entry", "create")
+		&& hasPermissions("YRP Stock Entry", ["create", "submit"], can)
 		? [{ key: "complete-transfer", label: "Complete Transfer",
 			dialog: () => import("./CompleteTransferDialog.vue") }] : []
 }

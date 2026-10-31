@@ -57,3 +57,4 @@ export const MultiSelect = {
 	setup: (props, { attrs, emit }) => () => h("select", { ...attrs, multiple: true, value: props.modelValue, disabled: props.disabled,
 		onChange: (event) => emit("update:modelValue", event.target.values) }, props.options.map((value) => h("option", { value }, value))),
 }
+export const Toast = { render: () => null }

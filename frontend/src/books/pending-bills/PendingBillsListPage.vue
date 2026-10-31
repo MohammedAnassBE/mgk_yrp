@@ -5,18 +5,19 @@ import ListPageHeader from "../../shell/ListPageHeader.vue"
 import NoAccess from "../../shared/NoAccess.vue"
 import { formatDate } from "../../shared/formatDate.js"
 import { callRead } from "../../api/client.js"
-import { canReadBook, hasPermission } from "../../permissions/usePermissions.js"
+import { canReadBook, hasPermissions } from "../../permissions/usePermissions.js"
 import { subscribeDoctype, onReconnect } from "../../realtime/socket.js"
 import { trailingTask } from "../../list/listQuery.js"
 import { money } from "../../documents/previewValues.js"
 import MakeBillDialog from "./MakeBillDialog.vue"
+import { notify } from "../../shared/notify.js"
 import { allChecked, bucketClass, bucketLabel, itemTooltip, keepPending, method, selectedBySupplier, toggleAll, typeLabel } from "./pendingBills.js"
 import book from "./config.js"
 import "./pendingBills.css"
 
 const BILL_DOCTYPE = "MGK Purchase Invoice"
 const canRead = canReadBook(book)
-const canBill = hasPermission(BILL_DOCTYPE, "create") && hasPermission(BILL_DOCTYPE, "submit")
+const canBill = hasPermissions(BILL_DOCTYPE, ["create", "submit"])
 const result = ref({ count: 0, suppliers: [] })
 const loading = ref(true)
 const error = ref("")
@@ -58,6 +59,7 @@ function openDialog() {
 }
 function billsCreated(rows) {
 	created.value = rows
+	if (rows.length) notify.success(`${rows.map((row) => row.name).join(", ")} submitted`)
 	selected.value = new Set()
 	load()
 }
@@ -73,7 +75,7 @@ onBeforeUnmount(() => { sequence++; refresh.cancel(); disposers.forEach((dispose
 	<NoAccess v-if="!canRead" />
 	<section v-else class="page list-page pending-bills">
 		<ListPageHeader :title="book.label">
-			<Button :label="`Make Bill${selected.size ? ` (${selected.size})` : ''}`" :disabled="!canBill || !selected.size || dialogOpen" @click="openDialog" />
+			<Button v-if="canBill" :label="`Make Bill${selected.size ? ` (${selected.size})` : ''}`" :disabled="!selected.size || dialogOpen" @click="openDialog" />
 		</ListPageHeader>
 		<div v-if="created.length" class="pending-created" role="status">
 			<strong>Bills created:</strong>

@@ -1,4 +1,5 @@
 import { completeTransferActions, pendingTransferRows } from "../shared/transit.js"
+import { hasPermissions } from "../../permissions/usePermissions.js"
 
 const method = "mgk_yrp.mgk_yrp.doctype.mgk_delivery_challan.mgk_delivery_challan"
 
@@ -9,7 +10,7 @@ function returnActions(can) {
 
 function jobWorkActions(can) {
 	const result = returnActions(can)
-	if (can("MGK Delivery Challan Close", "create")) result.push({ key: "close", label: "Close",
+	if (hasPermissions("MGK Delivery Challan Close", ["create", "submit"], can)) result.push({ key: "close", label: "Close",
 		dialog: () => import("./CloseDcDialog.vue") })
 	if (can("MGK Goods Received Note", "create")) result.push({ key: "create-grn", label: "Create GRN",
 		method: "mgk_yrp.job_work.grn_from_dc.make_job_work_grn", route: "/goods-received-note" })

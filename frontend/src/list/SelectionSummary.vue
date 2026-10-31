@@ -4,12 +4,12 @@ import { selectionTotals } from "./useSplitSelection.js"
 import { useActionRunner } from "../document/useActionRunner.js"
 import ActionHost from "../document/ActionHost.vue"
 import { formatFieldValue } from "../document/fieldDisplay.js"
-import { hasPermission } from "../permissions/usePermissions.js"
+import { hasPermissions } from "../permissions/usePermissions.js"
 
 const props = defineProps({ rows: { type: Array, required: true }, actions: { type: Array, default: () => [] }, refresh: { type: Function, required: true } })
 defineEmits(["clear"])
 const totals = computed(() => selectionTotals(props.rows))
-const allowedActions = computed(() => props.actions.filter((action) => !action.permission || hasPermission(...action.permission)))
+const allowedActions = computed(() => props.actions.filter((action) => !action.permission || hasPermissions(action.permission[0], action.permission.slice(1))))
 const runner = useActionRunner({ reload: () => props.refresh() })
 </script>
 

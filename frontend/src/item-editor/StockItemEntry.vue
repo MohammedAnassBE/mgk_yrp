@@ -5,9 +5,9 @@ import InputNumber from "primevue/inputnumber"
 import LinkField from "../document/fields/LinkField.vue"
 import { callRead } from "../api/client.js"
 import { clone } from "../document/mappedDraft.js"
-import { validateItem } from "./editorModes.js"
+import { itemFilters as getItemFilters, validateItem } from "./editorModes.js"
 
-const props = defineProps({ mode: String, defaults: Object, dimensions: Array, permissions: Object, poEntries: Array, editing: Object, disabled: Boolean })
+const props = defineProps({ mode: String, defaults: Object, dimensions: Array, permissions: Object, poEntries: Array, itemGroup: String, editing: Object, disabled: Boolean })
 const emit = defineEmits(["commit", "cancel"])
 const itemInput = ref(null)
 const entry = ref(null)
@@ -18,8 +18,7 @@ const loading = ref(false)
 const error = ref("")
 const resetVersion = ref(0)
 let sequence = 0
-const itemFilters = computed(() => ({ is_stock_item: 1, disabled: 0, variant_of: ["is", "not set"],
-	...(props.mode === "grn_po" ? { name: ["in", props.poEntries.map((entry) => entry.name)] } : {}) }))
+const itemFilters = computed(() => getItemFilters(props.mode, { poEntries: props.poEntries, itemGroup: props.itemGroup }))
 const keys = computed(() => details.value?.primary_attribute_values?.length ? details.value.primary_attribute_values : ["default"])
 
 async function resolve(name) {
@@ -174,19 +173,18 @@ function updateCell(key, field, value) {
 		</template>
 		<div class="editor-actions">
 			<Button
-				:label="editing ? 'Update item' : 'Add item'"
-				size="small"
-				severity="secondary"
-				:disabled="disabled || loading || !entry"
-				@click="commit"
-			/>
-			<Button
 				v-if="editing"
 				label="Cancel edit"
-				size="small"
 				severity="secondary"
 				outlined
 				@click="cancel"
+			/>
+			<Button
+				class="editor-commit"
+				:label="editing ? 'Update item' : 'Add item'"
+				:icon="editing ? 'pi pi-check' : 'pi pi-plus'"
+				:disabled="disabled || loading || !entry"
+				@click="commit"
 			/>
 		</div>
 	</section>

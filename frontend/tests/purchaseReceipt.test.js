@@ -30,16 +30,15 @@ function mappedReceipt(supplier = "Vendor") {
 		delivery_location: "Own", warehouse: "Main", total_qty: 10, total_amount: 50, __onload: { item_details: itemDetails() } }
 }
 
-test("PO field changes clear supplier companions, warehouse, direct handling and exclusive flags", () => {
+test("PO field changes clear supplier companions, warehouse, direct handling and nothing for order flags", () => {
 	assert.deepEqual(purchaseOrderChanges("supplier", {}), {
 		supplier_address: "", address_display: "", contact_person: "", contact_display: "", contact_mobile: "",
 	})
 	assert.deepEqual(purchaseOrderChanges("delivery_location", {}), { warehouse: "" })
 	assert.deepEqual(purchaseOrderChanges("goods_routing", { goods_routing: "Direct" }), { handling_supplier: "" })
 	assert.deepEqual(purchaseOrderChanges("goods_routing", { goods_routing: "Through Vendor" }), {})
-	assert.deepEqual(purchaseOrderChanges("is_karigan_order", { is_karigan_order: 1 }), { is_salavai_cone_order: 0 })
-	assert.deepEqual(purchaseOrderChanges("is_salavai_cone_order", { is_salavai_cone_order: 1 }), { is_karigan_order: 0 })
-	assert.deepEqual(purchaseOrderChanges("is_karigan_order", { is_karigan_order: 0 }), {})
+	assert.deepEqual(purchaseOrderChanges("is_karigan_order", { is_karigan_order: 1 }), {})
+	assert.deepEqual(purchaseOrderChanges("item_group", { item_group: "Karigan Items" }), {})
 })
 
 test("PO address/contact display methods use Desk arguments and drop stale responses, including A-B-A", async () => {
@@ -187,8 +186,9 @@ test("bill dates default to today and GRN posting date/time obey the Desk edit t
 test("Create GRN is gated by submission, pending quantity and create permission; mapper stages a refreshable UUID draft", async () => {
 	const module = documentModule("MGK Purchase Order")
 	const doc = { docstatus: 1, items: [{ pending_qty: 1 }] }
-	const allow = (doctype, permission) => doctype === "MGK Goods Received Note" && permission === "create"
+	const allow = (doctype, permission) => doctype === "MGK Goods Received Note" && ["create", "submit"].includes(permission)
 	const actions = module.actions(doc, allow)
+	assert.deepEqual(module.actions(doc, (doctype, permission) => doctype === "MGK Goods Received Note" && permission === "create").map((action) => action.key), ["create-grn"])
 	assert.equal(actions.length, 2)
 	for (const docstatus of [0, 2]) assert.equal(module.actions({ ...doc, docstatus }, allow).length, 0)
 	assert.equal(module.actions({ ...doc, items: [{ pending_qty: 0 }] }, allow).length, 0)
@@ -241,7 +241,9 @@ test("PO connected-record link supplies exactly its noncancelled GRN count filte
 test("summaries, overview facts, PO counts and invoice billing state come from the doctype module", async () => {
 	const po = documentModule("MGK Purchase Order")
 	assert.equal(po.summary({ total_amount: 50 }, 3).lines.find((line) => line.label === "Items").value, 3)
-	assert.equal(po.viewFacts({ is_karigan_order: 1 }).find((fact) => fact.label === "Karigan order").value, "Yes")
+	assert.equal(po.viewFacts({ item_group: "Karigan Items" }).find((fact) => fact.label === "Item group").value, "Karigan Items")
+	assert.equal(po.viewFacts({}).find((fact) => fact.label === "Item group").value, "Other")
+	assert.equal(po.viewFacts({}).some((fact) => /order$/.test(fact.label)), false)
 	const grn = documentModule("MGK Goods Received Note")
 	const doc = { ...mappedReceipt(), docstatus: 0, purchase_invoice: "PI-1", delivery_challans: [{ delivery_challan: "DC-1" }] }
 	const calls = []

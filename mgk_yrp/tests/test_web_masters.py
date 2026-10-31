@@ -29,11 +29,11 @@ class TestWebMasters(IntegrationTestCase):
 			"doctype": "Item", "item_code": f"MGK Web Item {frappe.generate_hash(length=8)}",
 			"item_name": "Web stock item", "item_group": make_item_group(), "stock_uom": make_uom("Kg"),
 			"is_stock_item": 1, "is_purchase_item": 1, "mgk_gst_tax_slab": make_tax_slab("5"),
-			"mgk_is_karigan": 1, "po_excess_allowed_percentage": 2,
+			"po_excess_allowed_percentage": 2,
 		}
 		web = insert(payload)
 		desk = frappe.get_doc({**payload, "item_code": f"{payload['item_code']} Desk"}).insert().as_dict()
-		for field in ("stock_uom", "item_group", "is_stock_item", "is_purchase_item", "mgk_gst_tax_slab", "mgk_is_karigan", "po_excess_allowed_percentage"):
+		for field in ("stock_uom", "item_group", "is_stock_item", "is_purchase_item", "mgk_gst_tax_slab", "po_excess_allowed_percentage"):
 			self.assertEqual(web[field], desk[field], field)
 		self.assertEqual([(row.uom, row.conversion_factor) for row in web.uoms], [(row.uom, row.conversion_factor) for row in desk.uoms])
 		web.disabled = 1

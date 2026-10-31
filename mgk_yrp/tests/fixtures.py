@@ -35,7 +35,9 @@ def get_company() -> str:
 
 
 def make_item_group() -> str:
-	group = frappe.db.get_value("Item Group", {"is_group": 0}, "name")
+	group = frappe.db.get_value(
+		"Item Group", {"is_group": 0, "name": ["not in", ["Karigan Items", "Salavai Cone Items"]]}, "name"
+	)
 	if group:
 		return group
 	name = f"MGK Test Group {frappe.generate_hash(length=8)}"
@@ -59,8 +61,7 @@ def make_item(
 	purchase_uom=None,
 	conversion_factor=None,
 	tax_slab=None,
-	is_karigan=0,
-	is_salavai_cone=0,
+	item_group=None,
 	excess_percent=0,
 ) -> str:
 	name = f"MGK Test Item {frappe.generate_hash(length=8)}"
@@ -72,7 +73,7 @@ def make_item(
 			"doctype": "Item",
 			"item_code": name,
 			"item_name": name,
-			"item_group": make_item_group(),
+			"item_group": item_group or make_item_group(),
 			"stock_uom": stock_uom,
 			"purchase_uom": purchase_uom,
 			"uoms": conversions,
@@ -80,8 +81,6 @@ def make_item(
 			"is_purchase_item": 1,
 			"is_sales_item": 0,
 			"mgk_gst_tax_slab": tax_slab,
-			"mgk_is_karigan": is_karigan,
-			"mgk_is_salavai_cone": is_salavai_cone,
 			"po_excess_allowed_percentage": excess_percent,
 		}
 	)

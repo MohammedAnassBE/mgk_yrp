@@ -29,14 +29,15 @@ test("internal DC action matrix matches pending, transferred, returned and job-w
 	for (const docstatus of [0, 2]) assert.deepEqual(actionKeys({ ...source, docstatus }), [])
 	assert.deepEqual(actionKeys({ ...source, is_internal_transfer: 0, is_return: 1 }), [])
 	assert.deepEqual(challanActions(source, () => false), [])
-	assert.deepEqual(challanActions(source, (doctype, permission) => doctype === "YRP Stock Entry" && permission === "create").map((action) => action.key), ["complete-transfer"])
+	assert.deepEqual(challanActions(source, (doctype, permission) => doctype === "YRP Stock Entry" && permission === "create").map((action) => action.key), [])
+	assert.deepEqual(challanActions(source, (doctype, permission) => doctype === "YRP Stock Entry" && ["create", "submit"].includes(permission)).map((action) => action.key), ["complete-transfer"])
 	assert.deepEqual(challanActions(source, (doctype) => doctype === challanType).map((action) => action.key), ["return"])
 })
 
-test("Complete Transfer uses the same Stock Entry create permission on DC and GRN", () => {
+test("Complete Transfer uses the same Stock Entry create and submit permissions on DC and GRN", () => {
 	for (const doctype of [challanType, receiptType]) {
 		const doc = { ...source, doctype }
-		const actions = documentModule(doctype).actions(doc, (target, permission) => target === "YRP Stock Entry" && permission === "create")
+		const actions = documentModule(doctype).actions(doc, (target, permission) => target === "YRP Stock Entry" && ["create", "submit"].includes(permission))
 		assert.equal(actions[0].key, "complete-transfer")
 		assert.equal(typeof actions[0].dialog, "function")
 		for (const flags of [{ docstatus: 0 }, { docstatus: 2 }, { is_internal_transfer: 0 }, { items: [] }]) {

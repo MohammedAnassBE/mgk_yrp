@@ -9,7 +9,7 @@ const definition = {
 	routePath: "/goods-received-note",
 	presentation: "book",
 	extraFields: ["warehouse"],
-	bulkActions: [{ key: "create-dc", label: "Create DC", permission: ["MGK Delivery Challan", "create"], dialog: () => import("../../documents/goods-received-note/CreateDcDialog.vue") }],
+	bulkActions: [{ key: "create-dc", label: "Create DC", permission: ["MGK Delivery Challan", "create", "submit"], dialog: () => import("../../documents/goods-received-note/CreateDcDialog.vue") }],
 	tabs: [
 		{ key: "all", label: "All", filters: [] },
 		{ key: "job-work", label: "Job Work", filters: [["against_purchase_order", "=", 0]] },

@@ -54,7 +54,7 @@ test("combines base, advanced, quick, search and tab filters without mutation", 
 	const before = structuredClone(query)
 	const request = rowParameters(query, ["name", "supplier", "name"], 20, 40)
 	assert.deepEqual(request, {
-		fields: ["name", "supplier"], filters: [["docstatus", "!=", 2], ["total_qty", ">", 2], ["po_date", "=", "2026-10-29"], ["name", "like", "%PO-1%"], ["is_karigan_order", "=", 1]],
+		fields: ["name", "supplier"], filters: [["docstatus", "!=", 2], ["total_qty", ">", 2], ["po_date", "=", "2026-10-29"], ["name", "like", "%PO-1%"], ["item_group", "=", "Karigan Items"]],
 		order_by: "po_date asc, name asc", limit_start: 20, limit: 40,
 	})
 	assert.deepEqual(query, before)
@@ -62,7 +62,7 @@ test("combines base, advanced, quick, search and tab filters without mutation", 
 	assert.equal(counts.length, 4)
 	assert.deepEqual(counts[0].filters, request.filters.slice(0, -1))
 	assert.deepEqual(counts[1], counts[0])
-	assert.deepEqual(counts[3].filters.at(-1), ["is_salavai_cone_order", "=", 1])
+	assert.deepEqual(counts[3].filters.at(-1), ["item_group", "=", "Salavai Cone Items"])
 })
 
 test("All is always first, unknown tab falls back to All, DC has one countable tab", () => {
@@ -136,7 +136,7 @@ test("advanced filters emit Between, Timespan, In and Is Frappe tuples", () => {
 
 test("New stages each book tab's equality defaults and excludes read-only/system/search filters", () => {
 	for (const [book, tab, expected] of [
-		[purchaseOrder, "karigan", { is_karigan_order: 1 }], [grn, "purchase-order", { against_purchase_order: 1 }], [grn, "job-work", { against_purchase_order: 0 }], [billing, "job-work", { against: "Job Work" }],
+		[purchaseOrder, "karigan", { item_group: "Karigan Items" }], [grn, "purchase-order", { against_purchase_order: 1 }], [grn, "job-work", { against_purchase_order: 0 }], [billing, "job-work", { against: "Job Work" }],
 	]) {
 		const fields = Object.keys(expected).map((fieldname) => ({ fieldname }))
 		const filters = activeFilters({ tabs: book.tabs, tab, search: "PO-1", filters: [["status", "=", "Completed"]] })

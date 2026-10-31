@@ -5,6 +5,7 @@ import { bookRegistry } from "../books/registry.js"
 import { canReadBook } from "../permissions/usePermissions.js"
 import AppTopbar from "./AppTopbar.vue"
 import NoAccess from "../shared/NoAccess.vue"
+import Toast from "primevue/toast"
 
 const route = useRoute()
 const router = useRouter()
@@ -25,6 +26,7 @@ function reload() { window.location.reload() }
 
 <template>
 	<div class="ops-shell">
+		<Toast position="top-right" class="app-toast" />
 		<AppTopbar :title="String(route.meta.title || 'MGK')" />
 		<main id="main-content" class="ops-main">
 			<div v-if="navigationError" class="page">

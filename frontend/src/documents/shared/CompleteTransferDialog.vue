@@ -7,6 +7,7 @@ import LinkField from "../../document/fields/LinkField.vue"
 import TransferItems from "./TransferItems.vue"
 import { callMethod } from "../../api/client.js"
 import { completeTransfer, transferDestination, transferItems } from "./transit.js"
+import { notify } from "../../shared/notify.js"
 
 const props = defineProps({ doc: { type: Object, required: true }, names: Array, rows: Array, action: Object })
 const emit = defineEmits(["done", "close"])
@@ -21,7 +22,7 @@ async function save() {
 	is_saving.value = true
 	error.value = ""
 	try { emit("done", await completeTransfer(props.doc, warehouse.value, items.value, callMethod)) }
-	catch (cause) { error.value = cause.message }
+	catch (cause) { error.value = cause.message; notify.error(cause.message) }
 	finally { is_saving.value = false }
 }
 function close() { if (!is_saving.value) emit("close") }

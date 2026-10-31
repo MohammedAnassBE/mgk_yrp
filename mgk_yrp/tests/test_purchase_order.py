@@ -10,6 +10,7 @@ from mgk_yrp.tests.fixtures import (
 	make_address,
 	make_contact,
 	make_item,
+	make_item_group,
 	make_purchase_order,
 	make_supplier,
 	make_tax_slab,
@@ -94,40 +95,45 @@ class TestPurchaseOrder(IntegrationTestCase):
 		order.save()
 		self.assertFalse(order.handling_supplier)
 
-	def test_karigan_and_salavai_are_exclusive(self):
-		with self.assertRaisesRegex(frappe.ValidationError, "both"):
-			self.make_order(is_karigan_order=1, is_salavai_cone_order=1)
-
-	def test_karigan_order_rejects_unclassified_item(self):
-		with self.assertRaisesRegex(frappe.ValidationError, "book"):
-			self.make_order(is_karigan_order=1)
-		item = make_item(stock_uom=self.stock_uom, is_karigan=1)
-		order = self.make_order(items=[{"item": item, "qty": 1, "rate": 10}], is_karigan_order=1)
-		self.assertEqual(order.items[0].item, item)
-
-	def test_other_order_rejects_classified_item(self):
-		for classification in ({"is_karigan": 1}, {"is_salavai_cone": 1}):
-			with self.subTest(classification=classification):
-				item = make_item(stock_uom=self.stock_uom, **classification)
-				with self.assertRaisesRegex(frappe.ValidationError, "book"):
-					self.make_order(items=[{"item": item, "qty": 1, "rate": 10}])
-
-	def test_salavai_order_accepts_only_salavai_items(self):
-		item = make_item(stock_uom=self.stock_uom, is_salavai_cone=1)
-		order = self.make_order(items=[{"item": item, "qty": 1, "rate": 10}], is_salavai_cone_order=1)
-		self.assertEqual(order.items[0].item, item)
-		for header in ({"is_salavai_cone_order": 1}, {"is_karigan_order": 1}):
-			with self.subTest(header=header), self.assertRaisesRegex(frappe.ValidationError, "book"):
-				self.make_order(
-					items=[
-						{
-							"item": self.item if header.get("is_salavai_cone_order") else item,
-							"qty": 1,
-							"rate": 10,
-						}
-					],
-					**header,
+	def test_order_flags_are_derived_from_item_group(self):
+		cases = (
+			("Karigan Items", 1, 0),
+			("Salavai Cone Items", 0, 1),
+			(make_item_group(), 0, 0),
+			(None, 0, 0),
+		)
+		for item_group, karigan, salavai_cone in cases:
+			with self.subTest(item_group=item_group):
+				item = make_item(stock_uom=self.stock_uom, item_group=item_group)
+				order = self.make_order(
+					items=[{"item": item, "qty": 1, "rate": 10}],
+					item_group=item_group,
+					is_karigan_order=1 - karigan,
+					is_salavai_cone_order=1 - salavai_cone,
 				)
+				self.assertEqual((order.is_karigan_order, order.is_salavai_cone_order), (karigan, salavai_cone))
+
+	def test_order_item_group_limits_items(self):
+		karigan_item = make_item(stock_uom=self.stock_uom, item_group="Karigan Items")
+		order = self.make_order(items=[{"item": karigan_item, "qty": 1, "rate": 10}], item_group="Karigan Items")
+		self.assertEqual(order.items[0].item, karigan_item)
+		for item in (self.item, make_item(stock_uom=self.stock_uom, item_group="Salavai Cone Items")):
+			with self.subTest(item=item), self.assertRaisesRegex(frappe.ValidationError, "not Karigan Items"):
+				self.make_order(items=[{"item": item, "qty": 1, "rate": 10}], item_group="Karigan Items")
+
+	def test_order_without_item_group_allows_any_item(self):
+		items = [self.item] + [
+			make_item(stock_uom=self.stock_uom, item_group=group) for group in ("Karigan Items", "Salavai Cone Items")
+		]
+		order = self.make_order(items=[{"item": item, "qty": 1, "rate": 10} for item in items])
+		self.assertEqual([row.item for row in order.items], items)
+
+	def test_item_checkbox_classification_is_gone(self):
+		meta = frappe.get_meta("Item")
+		for fieldname in ("mgk_is_karigan", "mgk_is_salavai_cone"):
+			self.assertIsNone(meta.get_field(fieldname))
+			self.assertFalse(frappe.db.exists("Custom Field", f"Item-{fieldname}"))
+		self.assertFalse(hasattr(MGKPurchaseOrder, "is_item_allowed"))
 
 	def test_po_rate_is_user_typed_and_kept(self):
 		self.make_item_prices()
@@ -208,9 +214,9 @@ class TestPurchaseOrder(IntegrationTestCase):
 
 	def test_po_uom_resolves_variant_purchase_uom_from_parent_mapping(self):
 		item = make_item(
-			stock_uom=self.stock_uom, purchase_uom=make_uom("Bag"), conversion_factor=50, is_karigan=1
+			stock_uom=self.stock_uom, purchase_uom=make_uom("Bag"), conversion_factor=50, item_group="Karigan Items"
 		)
-		order = self.make_order(items=[{"item": item, "qty": 3, "rate": 100}], is_karigan_order=1)
+		order = self.make_order(items=[{"item": item, "qty": 3, "rate": 100}], item_group="Karigan Items")
 		row = order.items[0]
 		self.assertEqual(row.uom, "Bag")
 		self.assertEqual(row.stock_uom, self.stock_uom)
@@ -220,7 +226,7 @@ class TestPurchaseOrder(IntegrationTestCase):
 		self.assertEqual(row.amount, 300)
 		parent = frappe.db.get_value("Item", item, "variant_of")
 		self.assertTrue(parent)
-		self.assertTrue(frappe.db.get_value("Item", parent, "mgk_is_karigan"))
+		self.assertEqual(frappe.db.get_value("Item", parent, "item_group"), "Karigan Items")
 
 	def test_po_status_on_submit_and_cancel(self):
 		order = self.make_order()

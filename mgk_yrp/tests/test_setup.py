@@ -25,12 +25,13 @@ class TestSetup(IntegrationTestCase):
 		self.assertEqual(hooks.doc_events["Item"]["validate"], "mgk_yrp.overrides.item.validate")
 		self.assertEqual(hooks.app_include_js, ["mgk_yrp.bundle.js"])
 		self.assertEqual(
-			{fixture["dt"] for fixture in hooks.fixtures}, {"Custom Field", "Property Setter", "YRP UI Layout"}
+			{fixture["dt"] for fixture in hooks.fixtures}, {"Custom Field", "Property Setter", "Item Group", "YRP UI Layout"}
 		)
-		for fieldname in ("mgk_is_karigan", "mgk_is_salavai_cone", "mgk_gst_tax_slab"):
-			field = frappe.get_meta("Item").get_field(fieldname)
-			self.assertIsNotNone(field)
-			self.assertEqual(frappe.db.get_value("Custom Field", f"Item-{fieldname}", "module"), "MGK YRP")
+		self.assertEqual(frappe.db.get_value("Custom Field", "Item-mgk_gst_tax_slab", "module"), "MGK YRP")
+		for group in ("Karigan Items", "Salavai Cone Items"):
+			self.assertEqual(
+				frappe.db.get_value("Item Group", group, ["parent_item_group", "is_group"]), ("All Item Groups", 0)
+			)
 		self.assertEqual(frappe.get_meta("Item").get_field("mgk_gst_tax_slab").options, "YRP Tax Slab")
 		options = frappe.get_meta("YRP Stock Valuation Adjustment").get_field("adjustment_type").options
 		self.assertEqual(
@@ -70,10 +71,6 @@ class TestSetup(IntegrationTestCase):
 		set_mgk_settings()
 		settings.reload()
 		self.assertEqual(settings.company_state_code, "33")
-
-	def test_item_cannot_be_karigan_and_salavai(self):
-		with self.assertRaises(frappe.ValidationError):
-			make_item(stock_uom=make_uom("Kg"), is_karigan=1, is_salavai_cone=1)
 
 	def test_lock_documents_uses_parent_order_then_sorted_names(self):
 		documents = {doctype: ["B", "A", "A", ""] for doctype in reversed(LOCK_ORDER)}

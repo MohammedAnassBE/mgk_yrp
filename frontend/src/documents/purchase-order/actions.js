@@ -1,10 +1,13 @@
 import { makeGoodsReceivedNote } from "../goods-received-note/fieldEvents.js"
+import { hasPermissions } from "../../permissions/usePermissions.js"
 
 export function actions(doc, can) {
 	if (Number(doc.docstatus) !== 1 || !(doc.items || []).some((row) => Number(row.pending_qty) > 0)
 		|| !can("MGK Goods Received Note", "create")) return []
 	const result = [{ key: "create-grn", label: "Create GRN", method: makeGoodsReceivedNote, route: "/goods-received-note" }]
-	if (!doc.deliver_to_supplier || can("MGK Delivery Challan", "create")) result.push({
+	const canReceive = hasPermissions("MGK Goods Received Note", ["create", "submit"], can)
+		&& (!doc.deliver_to_supplier || hasPermissions("MGK Delivery Challan", ["create", "submit"], can))
+	if (canReceive) result.push({
 		key: "mark-as-received", label: "Mark as Received",
 		confirm: receiptConfirmation, run: receivePurchaseOrder,
 	})

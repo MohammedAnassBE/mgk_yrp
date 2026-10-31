@@ -146,7 +146,7 @@ test("Details fields edit inline without Done: Enter and blur keep the value, Es
 
 test("document actions omit Edit for every status and expose the correct lifecycle actions", async () => {
 	const original = globalThis.window
-	globalThis.window = { frappe: { boot: { user: Object.fromEntries(["write", "submit", "cancel", "delete", "amend"].map((key) => [`can_${key}`, [purchaseOrder.doctype]])) } } }
+	globalThis.window = { frappe: { boot: { user: Object.fromEntries(["create", "write", "submit", "cancel", "delete", "amend"].map((key) => [`can_${key}`, [purchaseOrder.doctype]])) } } }
 	const props = reactive({ doc: { doctype: purchaseOrder.doctype, docstatus: 0 }, meta: { is_submittable: 1 }, editing: true, dirty: false })
 	const page = await mountComponent("../../src/document/DocumentActions.vue", props)
 	try {
@@ -298,4 +298,22 @@ test("PO and GRN amended rows hydrate through the draft editor endpoint before b
 			} finally { page.close() }
 		}
 	} finally { globalThis.fetch = original; clearReadCaches() }
+})
+
+test("PO item picker searches only the order item group", async () => {
+	const original = globalThis.fetch
+	const searches = []
+	globalThis.fetch = async (url) => {
+		const params = new URL(url, "http://site").searchParams
+		if (params.get("doctype") === "Item") searches.push(JSON.parse(params.get("filters") || "{}"))
+		return { ok: true, status: 200, json: async () => ({ message: [] }) }
+	}
+	const page = await mountComponent("../../src/item-editor/StockItemEntry.vue", { mode: "po", defaults: {}, dimensions: [],
+		permissions: editorPermissions("po"), poEntries: [], itemGroup: "Karigan Items" })
+	try {
+		await inputs(page.root)[0].props.onFocus()
+		await settle()
+		assert.equal(searches.at(-1).item_group, "Karigan Items")
+		assert.deepEqual(searches.at(-1).variant_of, ["is", "not set"])
+	} finally { page.close(); globalThis.fetch = original; clearReadCaches() }
 })

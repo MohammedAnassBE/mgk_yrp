@@ -147,3 +147,7 @@ p { font-size: var(--type-body); line-height: 1.5; }
 @media (prefers-reduced-motion: reduce) {
 	.group-card { transition: none; }
 }
+.p-toast.app-toast { top: 78px; right: 16px; max-width: calc(100vw - 32px); }
+@media (max-width: 760px) {
+	.p-toast.app-toast { top: auto; bottom: 16px; left: 16px; right: 16px; width: auto; transform: none; }
+}

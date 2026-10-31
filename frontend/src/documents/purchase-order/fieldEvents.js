@@ -7,8 +7,6 @@ export function purchaseOrderChanges(name, doc) {
 	if (changes[name]) return changes[name]
 	if (name === "deliver_to_supplier" && doc.deliver_to_supplier) return { delivery_location: "", warehouse: "" }
 	if (name === "goods_routing" && doc.goods_routing === "Direct") return { handling_supplier: "" }
-	const exclusiveField = { is_karigan_order: "is_salavai_cone_order", is_salavai_cone_order: "is_karigan_order" }[name]
-	if (exclusiveField && doc[name]) return { [exclusiveField]: 0 }
 	return {}
 }
 

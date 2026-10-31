@@ -5,7 +5,8 @@ import Message from "primevue/message"
 import ActionDialog from "../shared/ActionDialog.vue"
 import LinkField from "../../document/fields/LinkField.vue"
 import { callMethod } from "../../api/client.js"
-import { createDcFromSelection, dispatchSelection } from "../shared/jobWork.js"
+import { canMoveToHeadOffice, createDcFromSelection, dispatchSelection } from "../shared/jobWork.js"
+import { notify } from "../../shared/notify.js"
 
 const props = defineProps({ doc: Object, names: Array, rows: Array, action: Object })
 const emit = defineEmits(["done", "close"])
@@ -13,6 +14,8 @@ const selection = dispatchSelection(props)
 const supplierFilters = { is_company_location: 0, disabled: 0 }
 const process = ref("")
 const supplier = ref("")
+const can_move = canMoveToHeadOffice()
+const is_move_blocked = selection.is_forced && !can_move
 const move_to_head_office = ref(selection.move_to_head_office)
 const is_saving = ref(false)
 const error = ref("")
@@ -25,7 +28,7 @@ async function save() {
 	try {
 		emit("done", await createDcFromSelection(selection, { process_name: process.value, supplier: supplier.value,
 			move_to_head_office: move_to_head_office.value }, callMethod))
-	} catch (cause) { error.value = cause.message }
+	} catch (cause) { error.value = cause.message; notify.error(cause.message) }
 	finally { is_saving.value = false }
 }
 function close() { if (!is_saving.value) emit("close") }
@@ -44,7 +47,8 @@ function close() { if (!is_saving.value) emit("close") }
 				<LinkField v-model="supplier" doctype="Supplier" label="Supplier" input-id="dispatch-supplier"
 					:filters="supplierFilters" :disabled="is_saving" />
 			</div>
-			<label class="check-field">
+			<Message v-if="is_move_blocked" severity="error" :closable="false" class="form-banner">These GRNs are in different warehouses, so stock must move to Head Office. That needs create and submit permission on YRP Stock Entry.</Message>
+			<label v-if="can_move || selection.is_forced" class="check-field">
 				<input v-model="move_to_head_office" type="checkbox" aria-label="Move stock to Head Office"
 					:disabled="selection.is_forced || is_saving" :aria-readonly="selection.is_forced" />
 				<span>Move stock to Head Office</span>
@@ -52,7 +56,7 @@ function close() { if (!is_saving.value) emit("close") }
 		</form>
 		<template #footer>
 			<Button label="Cancel" severity="secondary" outlined :disabled="is_saving" @click="close" />
-			<Button label="Create DC" type="submit" form="create-dc-form" :loading="is_saving" :disabled="is_saving || !has_required_values" />
+			<Button label="Create DC" type="submit" form="create-dc-form" :loading="is_saving" :disabled="is_saving || !has_required_values || is_move_blocked" />
 		</template>
 	</ActionDialog>
 </template>

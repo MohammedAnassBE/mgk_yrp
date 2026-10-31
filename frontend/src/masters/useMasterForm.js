@@ -2,6 +2,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { callMethod, callRead, getDocument, getMeta } from "../api/client.js"
 import { hasPermission } from "../permissions/usePermissions.js"
+import { documentToast, notify } from "../shared/notify.js"
 import { subscribeDoc, onReconnect } from "../realtime/socket.js"
 import { LiveDocument } from "../document/liveDocument.js"
 import { mutationScope } from "../document/mutationScope.js"
@@ -120,6 +121,7 @@ export function useMasterForm(master, options = {}) {
 		catch (cause) {
 			if (!operation.current()) return
 			error.value = cause.message
+			notify.error(cause.message)
 			if (cause.payload?.exc_type === "TimestampMismatchError") stale.value = true
 		} finally { if (operation.active()) { busy.value = false; live.flush() } }
 	}
@@ -135,6 +137,7 @@ export function useMasterForm(master, options = {}) {
 			const saved = await callMethod(method, { doc: clone(doc.value) }, (values) => { if (operation.current()) messages.value = values })
 			if (!operation.current()) return
 			operation.apply(() => apply(saved))
+			notify.success(documentToast(saved.name, "saved"))
 			busy.value = false
 			const returnTo = safeReturnPath(route.query.returnTo)
 			if (returnTo) return router.push(returnTo)
@@ -145,8 +148,10 @@ export function useMasterForm(master, options = {}) {
 	async function remove() {
 		if (!canDelete.value) return
 		return perform(async (operation) => {
-			await callMethod("frappe.client.delete", { doctype: master.doctype, name: doc.value.name })
+			const name = doc.value.name
+			await callMethod("frappe.client.delete", { doctype: master.doctype, name })
 			if (!operation.current()) return
+			notify.success(documentToast(name, "deleted"))
 			await router.push(safeReturnPath(route.query.returnTo) || master.route)
 		})
 	}

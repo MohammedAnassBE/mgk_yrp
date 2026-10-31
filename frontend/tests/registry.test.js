@@ -42,8 +42,8 @@ test("no book imports another book", async () => {
 test("list tab definitions preserve Desk filters for the next wave", () => {
 	const tabs = (key) => bookRegistry[`mgk-${key}`].tabs
 	assert.deepEqual(tabs("purchase-order").map((tab) => tab.label), ["All", "Karigan", "Salavai Cone"])
-	assert.deepEqual(tabs("purchase-order")[1].filters, [["is_karigan_order", "=", 1]])
-	assert.deepEqual(tabs("purchase-order")[2].filters, [["is_salavai_cone_order", "=", 1]])
+	assert.deepEqual(tabs("purchase-order")[1].filters, [["item_group", "=", "Karigan Items"]])
+	assert.deepEqual(tabs("purchase-order")[2].filters, [["item_group", "=", "Salavai Cone Items"]])
 	assert.deepEqual(tabs("goods-received-note")[1].filters, [["against_purchase_order", "=", 0]])
 	assert.deepEqual(tabs("goods-received-note")[2].filters, [["against_purchase_order", "=", 1]])
 	assert.deepEqual(tabs("billing")[1].filters, [["against", "=", "Job Work"]])
