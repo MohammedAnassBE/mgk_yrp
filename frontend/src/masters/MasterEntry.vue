@@ -22,7 +22,7 @@ const pending = ref(null)
 const accessBusy = ref(false)
 const accessError = ref("")
 const { root, doc, metas, meta, sections, loading, busy, dirty, stale, error, messages, isNew, editing, canRead, canDelete,
-	toggle, isDisabled, change, initialize, reload, save, remove } = useMasterForm(props.master, { blocked: () => accessBusy.value || Boolean(accessError.value) })
+	variantTemplate, toggle, isDisabled, change, initialize, reload, save, remove } = useMasterForm(props.master, { blocked: () => accessBusy.value || Boolean(accessError.value) })
 const back = computed(() => safeReturnPath(route.query.returnTo) || props.master.route)
 const heading = computed(() => masterHeading(props.master, doc.value, meta.value, isNew.value))
 const toggleEditable = computed(() => toggle.value && editing.value && !fieldState(toggle.value, doc.value, meta.value).readOnly)
@@ -39,6 +39,9 @@ function confirm() {
 	<section v-else ref="root" class="page po-document-page book-entry master-book-entry">
 		<Breadcrumbs :items="[{ label: 'Manage', to: '/manage' }, { label: master.label, to: master.route }, { label: route.params.name || doc?.name || 'New entry' }]" />
 		<div v-if="loading" class="loading-state" role="status"><i class="pi pi-spin pi-spinner" />Loading {{ master.label }}…</div>
+		<div v-else-if="variantTemplate" class="form-banner">
+			Variants are managed from their template <RouterLink class="record-id" :to="`${master.route}/${encodeURIComponent(variantTemplate)}`">{{ variantTemplate }}</RouterLink>
+		</div>
 		<template v-else-if="doc && meta">
 			<header class="detail-head">
 				<div class="book-entry-title"><span class="book-entry-mark cover-masters"><small>MGK</small><strong>{{ master.code }}</strong></span><div><div class="book-entry-kicker">{{ heading.kicker }}</div><h1 class="doc-hero">{{ heading.title }}</h1><p>{{ heading.description }}</p></div></div>

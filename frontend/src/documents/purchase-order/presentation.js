@@ -24,5 +24,8 @@ export function viewFacts(doc) {
 export function connections(doc) {
 	return doc.name && !doc.__islocal ? [{ label: "Goods Received Notes", doctype: "MGK Goods Received Note",
 		filters: [["purchase_order", "=", doc.name], ["docstatus", "<", 2]],
-		to: { path: "/goods-received-note", query: { purchase_order: doc.name } } }] : []
+		to: { path: "/goods-received-note", query: { purchase_order: doc.name } } },
+		{ label: "Delivery Challans", doctype: "MGK Delivery Challan",
+			filters: [["purchase_order", "=", doc.name], ["docstatus", "<", 2]],
+			to: { path: "/delivery-challan", query: { purchase_order: doc.name } } }] : []
 }

@@ -1,7 +1,8 @@
 const itemGroups = [
 	{ label: "Item identity", fields: ["item_code", "item_name", "name1", "mgk_tamil_name", "item_group", "brand", "hsn_code", "gst_hsn_code", "mgk_gst_tax_slab", "disabled"] },
 	{ label: "Stock and purchasing", fields: ["is_stock_item", "allow_negative_stock", "is_purchase_item", "is_sales_item", "over_delivery_receipt_allowance", "po_excess_allowed_percentage", "is_ineligible_for_itc", "is_yarn_item", "mgk_is_karigan", "mgk_is_salavai_cone"] },
-	{ label: "Units and attributes", fields: ["stock_uom", "default_unit_of_measure", "secondary_unit_of_measure", "purchase_uom", "primary_attribute", "dependent_attribute", "uoms"] },
+	{ label: "Units and attributes", fields: ["stock_uom", "default_unit_of_measure", "secondary_unit_of_measure", "purchase_uom", "has_variants", "primary_attribute", "dependent_attribute", "uoms"] },
+	{ label: "Process conversions", fields: ["mgk_process_conversions"] },
 ]
 
 export const stockItemFields = itemGroups.flatMap((group) => group.fields)
@@ -11,6 +12,7 @@ const definitions = [
 		key: "items", doctype: "Item", entityLabel: "Item", titleFields: ["item_name", "name1"], label: "Items", code: "ITM",
 		description: "Yarn, fabric and other stock items.", columns: ["item_name", "item_group", "stock_uom", "hsn_code", "disabled"],
 		formOrder: stockItemFields, formGroups: itemGroups,
+		baseFilters: [["variant_of", "is", "not set"]], baseOrFilters: [["has_variants", "=", 1], ["disabled", "=", 0]],
 		hiddenSections: ["accounting", "accounting_tab", "sales_details", "sales", "sales_tab", "website", "website_tab", "deferred_accounting_section", "customer_details"],
 		hideFormFields: ["weight_per_unit", "weight_uom"], hideChildTables: ["categories"],
 		boolLabels: {
@@ -91,14 +93,15 @@ const definitions = [
 	{
 		key: "suppliers", doctype: "Supplier", entityLabel: "Supplier", titleFields: ["supplier_name"], label: "Suppliers", code: "SUP",
 		description: "Suppliers with linked addresses and contacts.", party: true,
-		columns: ["supplier_name", "supplier_primary_address", "tax_id", "mobile_no", "disabled"], columnLabels: { tax_id: "GSTIN", supplier_primary_address: "Primary Address" },
-		formOrder: ["supplier_name", "mgk_tamil_name", "disabled", "is_company_location", "department", "tax_id", "gstin", "pan", "po_terms_and_condition", "wo_terms_and_condition"],
+		columns: ["supplier_name", "supplier_primary_address", "tax_id", "mobile_no", "mgk_is_head_office", "disabled"], columnLabels: { tax_id: "GSTIN", supplier_primary_address: "Primary Address", mgk_is_head_office: "Head Office" },
+		formOrder: ["supplier_name", "mgk_tamil_name", "disabled", "is_company_location", "mgk_is_head_office", "department", "tax_id", "gstin", "pan", "po_terms_and_condition", "wo_terms_and_condition"],
 		formGroups: [
-			{ label: "Supplier identity", fields: ["supplier_name", "mgk_tamil_name", "disabled", "is_company_location", "department"] },
+			{ label: "Supplier identity", fields: ["supplier_name", "mgk_tamil_name", "disabled", "is_company_location", "mgk_is_head_office", "department"] },
 			{ label: "Tax details", fields: ["tax_id", "gstin", "pan"] },
 			{ label: "Default terms", fields: ["po_terms_and_condition", "wo_terms_and_condition"] },
 		],
 		hideFormFields: ["uid"],
+		boolLabels: { mgk_is_head_office: { on: "Head Office", off: "Not the Head Office" } },
 		labels: { mgk_tamil_name: "Supplier name (Tamil)", tax_id: "GSTIN", gstin: "GSTIN / UIN", po_terms_and_condition: "Purchase Order terms", wo_terms_and_condition: "Work Order terms" },
 		help: { supplier_name: "Use the familiar supplier or job-worker name.", mgk_tamil_name: "Enter the Tamil name exactly as operators should see it when Tamil is enabled.", is_company_location: "Enable only when this party represents an MGK-owned location." },
 	},

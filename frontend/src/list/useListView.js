@@ -40,9 +40,15 @@ export function useListView(props) {
 	let savedScroll = 0
 	let savedLimit = PAGE_SIZE
 	let disposers = []
-	const currentQuery = () => JSON.parse(JSON.stringify({ ...query, baseFilters: props.baseFilters, tabs: props.tabs, quickFields: quickFields.value }))
-	const fetchFields = () => [...new Set(["name", "docstatus", ...columns.value.filter((column) => !column.indicator && !column.clientOnly).map((column) => column.fieldname), ...indicatorFields(props.doctype, hasPermission("MGK Purchase Invoice"))])]
-	const loader = new ListLoader({ doctype: props.doctype, getRows, getCounts, query: currentQuery, fields: fetchFields, state: data })
+	const currentQuery = () => JSON.parse(JSON.stringify({ ...query, baseFilters: props.baseFilters, baseOrFilters: props.baseOrFilters, tabs: props.tabs, quickFields: quickFields.value }))
+	const fetchFields = () => [...new Set(["name", "docstatus", ...(props.extraFields || []), ...columns.value.filter((column) => !column.indicator && !column.clientOnly).map((column) => column.fieldname), ...indicatorFields(props.doctype, hasPermission("MGK Purchase Invoice"))])]
+	const splitFields = () => props.layout === "split" ? meta.value.fields.filter((field) => ["modified", "supplier", "from_location", "to_location", "po_date", "posting_date", "total_qty", "total_output_qty", "total_amount", "grand_total", "total_declared_value", "total_dc_value"].includes(field.fieldname)).map((field) => field.fieldname).concat("modified") : []
+	const loader = new ListLoader({ doctype: props.doctype, getRows, getCounts, query: currentQuery, fields: () => [...new Set([...fetchFields(), ...splitFields()])], state: data })
+	let pendingMore
+	function loadMore() {
+		if (!pendingMore) pendingMore = loader.more().finally(() => { pendingMore = null })
+		return pendingMore
+	}
 
 	function restore() {
 		try {
@@ -183,7 +189,7 @@ export function useListView(props) {
 		restore()
 		if (query.tab !== route.query.tab) tabChanged(query.tab)
 		if (typeof IntersectionObserver !== "undefined") observer = new IntersectionObserver((entries) => {
-			if (entries.some((entry) => entry.isIntersecting)) loader.more()
+			if (entries.some((entry) => entry.isIntersecting)) loadMore()
 		}, { rootMargin: "0px 0px 240px 0px" })
 		disposers = [...new Set([props.doctype, ...props.relatedDoctypes])].map((doctype) => subscribeDoctype(doctype, liveRefresh))
 		disposers.push(onReconnect(reconnect))
@@ -200,5 +206,5 @@ export function useListView(props) {
 		liveRefresh.cancel()
 		disposers.forEach((dispose) => dispose())
 	})
-	return { query, data, search, quickValues, ready, initializing, notice, tabs, fields, quickFields, columns, draft, filterCount, canCreate, sentinel, initialize, refresh, searchChanged, applySearch, quickChanged, applyFilters, clearFilters, sort, direction, tabChanged, columnsSaved, openRow, documentRoute, savePosition, create, loadMore: () => loader.more() }
+	return { query, data, search, quickValues, ready, initializing, notice, tabs, fields, quickFields, columns, draft, filterCount, canCreate, sentinel, initialize, refresh, searchChanged, applySearch, quickChanged, applyFilters, clearFilters, sort, direction, tabChanged, columnsSaved, openRow, documentRoute, savePosition, create, loadMore }
 }

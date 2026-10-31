@@ -2,6 +2,8 @@ import test from "node:test"
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { defaultBlocks, getHomeBlocks } from "../src/layout/homeLayout.js"
+import { canReadBook } from "../src/permissions/usePermissions.js"
+import { bookManifest, manifestByType } from "../src/books/manifest.js"
 
 const layout = (blocks, hidden = {}) => ({ ui_config: { config: { screens: { home: { blocks, hidden } } } } })
 const dc = { id: "dc", type: "mgk-delivery-challan", size: "half", props: { title: "Dispatch" } }
@@ -26,8 +28,8 @@ test("all configured blocks hidden produces an empty layout", () => {
 	assert.deepEqual(getHomeBlocks(layout([dc, grn], { dc: true, grn: true })), [])
 })
 
-test("fallback order is PO, Billing, DC, GRN, Stock, Masters", () => {
-	const types = ["purchase-order", "billing", "delivery-challan", "goods-received-note", "stock", "masters"]
+test("fallback order is PO, Billing, DC, DC Close, GRN, Stock, Masters", () => {
+	const types = ["purchase-order", "billing", "delivery-challan", "delivery-challan-close", "goods-received-note", "stock", "masters"]
 	assert.deepEqual(getHomeBlocks({}).map((block) => block.type), types.map((key) => `mgk-${key}`))
 	assert.deepEqual(getHomeBlocks(layout([])), defaultBlocks)
 	assert.deepEqual(getHomeBlocks(layout([{ id: "unknown", type: "unknown" }])), defaultBlocks)
@@ -55,5 +57,15 @@ test("shipped layouts resolve their books without adding Stock or Manage links",
 		const blocks = getHomeBlocks({ ui_config: { config } })
 		assert.deepEqual(blocks, config.screens.home.blocks, record.name)
 		assert.ok(blocks.every((block) => !["mgk-stock", "mgk-masters"].includes(block.type)), record.name)
+		const position = blocks.findIndex((block) => block.type === "mgk-delivery-challan")
+		if (position >= 0) assert.equal(blocks[position + 1].type, "mgk-delivery-challan-close", record.name)
 	}
+})
+
+test("DC Close is visible after DC only to users with its read permission", () => {
+	const close = bookManifest.find((book) => book.key === "delivery-challan-close")
+	assert.equal(canReadBook(close, { can_read: ["MGK Delivery Challan"] }), false)
+	const user = { can_read: ["MGK Delivery Challan", "MGK Delivery Challan Close"] }
+	const visible = getHomeBlocks({}).filter((block) => canReadBook(manifestByType[block.type], user))
+	assert.deepEqual(visible.map((block) => block.type), ["mgk-delivery-challan", "mgk-delivery-challan-close"])
 })

@@ -11,6 +11,7 @@ export function companionText(field, doc) {
 export function formatFieldValue(field, value) {
 	if (value == null || value === "") return "—"
 	if (field.fieldtype === "Check") return Number(value) ? "Yes" : "No"
+	if (field.fieldtype === "Time") return String(value).split(".")[0]
 	if (["Currency", "Float", "Int", "Percent"].includes(field.fieldtype)) {
 		const precision = field.fieldtype === "Currency" ? 2 : field.precision == null || field.precision === "" ? 6 : Number(field.precision)
 		return Number(value).toLocaleString("en-IN", { minimumFractionDigits: field.fieldtype === "Currency" ? precision : 0,

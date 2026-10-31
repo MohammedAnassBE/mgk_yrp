@@ -1,0 +1,6 @@
+.action-dialog .table-scroll { overflow-x: auto; max-width: 100%; }
+.action-result .record-id { margin-left: 8px; }
+@media (max-width: 760px) {
+	.action-dialog.p-dialog { width: 100vw !important; max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; border-radius: 0; }
+	.action-dialog .p-dialog-content { flex: 1; overflow: auto; }
+}

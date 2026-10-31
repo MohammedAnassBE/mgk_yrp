@@ -19,7 +19,7 @@ async function load() {
 	loading.value = true
 	error.value = ""
 	try {
-		const values = await getCounts(masters.map((master) => ({ doctype: master.doctype, filters: [] })))
+		const values = await getCounts(masters.map((master) => ({ doctype: master.doctype, filters: master.baseFilters || [], or_filters: master.baseOrFilters || [] })))
 		if (current === sequence) counts.value = values
 	} catch (cause) { if (current === sequence) error.value = cause.message }
 	finally { if (current === sequence) loading.value = false }

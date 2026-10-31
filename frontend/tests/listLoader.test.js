@@ -1,6 +1,23 @@
 import test from "node:test"
 import assert from "node:assert/strict"
 import { ListLoader } from "../src/list/listLoader.js"
+import { getMaster } from "../src/masters/mastersConfig.js"
+
+test("Item loader keeps its base and OR filters in rows, counts and subsequent pages", async () => {
+	const { baseFilters, baseOrFilters } = getMaster("items")
+	const requests = []
+	const loader = new ListLoader({ doctype: "Item", query: () => ({ baseFilters, baseOrFilters }), fields: () => ["name"],
+		getRows: async (doctype, parameters) => { requests.push(parameters); return Array.from({ length: 20 }, (_, index) => ({ name: `Item ${parameters.limit_start + index}` })) },
+		getCounts: async (sets) => { requests.push(sets); return [40, 40] },
+	})
+	await loader.load()
+	await loader.more()
+	for (const parameters of [requests[0], ...requests[1], requests[2]]) {
+		assert.deepEqual(parameters.filters, baseFilters)
+		assert.deepEqual(parameters.or_filters, baseOrFilters)
+	}
+	assert.equal(loader.state.rows.length, 40)
+})
 
 function deferred() {
 	let resolve

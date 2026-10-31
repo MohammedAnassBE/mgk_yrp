@@ -7,6 +7,7 @@ import Breadcrumbs from "../shell/Breadcrumbs.vue"
 import NoAccess from "../shared/NoAccess.vue"
 import DocumentHeader from "./DocumentHeader.vue"
 import DocumentActions from "./DocumentActions.vue"
+import ActionHost from "./ActionHost.vue"
 import DetailsPanel from "./DetailsPanel.vue"
 import ActivityPanel from "./ActivityPanel.vue"
 import DocumentSummary from "./DocumentSummary.vue"
@@ -27,11 +28,11 @@ import "./document.css"
 
 const props = defineProps({ book: { type: Object, required: true } })
 const route = useRoute()
-const { doc, meta, metas, layout, loading, busy, dirty, editing, error, required, stale, itemEditor, editorReady,
+const { doc, meta, metas, layout, loading, busy, runner, dirty, editing, error, required, stale, itemEditor, editorReady,
 	isNew, canWrite, party, fieldsLoading, fieldError, retryFields, itemsLoading, messages, extraActions, editorItemCount, change, update, itemsChanged, initialize, reload, action } = useDocument(props.book)
 const { summary: documentSummary, facts: viewFacts, connections, fieldHints, statusRecord, loading: factsLoading, error: factsError, retry: retryFacts } = usePresentation(doc, editorItemCount)
 const { candidates, autoFields, error: partyError, loading: partyLoading, retry: retryParty } = party
-const disabled = computed(() => busy.value || itemsLoading.value || !editing.value || !canWrite.value)
+const disabled = computed(() => busy.value || runner.busy.value || itemsLoading.value || !editing.value || !canWrite.value)
 const summary = computed(() => visibleFields(summaryFields.map((name) => meta.value?.fields.find((field) => field.fieldname === name)).filter(Boolean), doc.value, meta.value))
 const valuationStatus = computed(() => doc.value?.__onload?.valuation_status)
 const module = documentModule(props.book.doctype)
@@ -71,7 +72,7 @@ function fieldValue(field) {
 						:meta="meta"
 						:is-new="isNew"
 						:dirty="dirty"
-						:busy="busy || fieldsLoading || itemsLoading || partyLoading"
+						:busy="busy || runner.busy.value || fieldsLoading || itemsLoading || partyLoading"
 						:blocked="Boolean(fieldError)"
 						:extra-actions="extraActions"
 						:editing="editing"
@@ -81,6 +82,7 @@ function fieldValue(field) {
 				</div>
 			</DocumentHeader>
 			<Message v-if="intro" :severity="intro.severity" :closable="false" class="form-banner">{{ intro.text }}</Message>
+			<ActionHost :runner="runner" />
 			<Message v-for="message in messages" :key="message" severity="warn" :closable="false" class="form-banner">{{ message }}</Message>
 			<Message
 				v-if="stale"

@@ -1,3 +1,5 @@
+export { transferIntro as intro } from "../shared/transit.js"
+
 export function summary(doc, itemCount = doc.items?.length || 0) {
 	return { title: "Dispatch summary", lines: [
 		{ label: "To", value: doc.to_location }, { label: "From", value: doc.from_location },

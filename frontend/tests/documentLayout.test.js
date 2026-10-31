@@ -3,6 +3,7 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import { connectedDocuments, documentLayout, summaryFields, statusFields, detailCompanionFields } from "../src/document/documentLayout.js"
 import { companionText } from "../src/document/fieldDisplay.js"
+import { tableFields } from "../src/document/fields/tableFields.js"
 
 test("all five layouts keep paper order and omit duplicate, computed and display-only panel rows", async () => {
 	const paper = {
@@ -22,6 +23,18 @@ test("all five layouts keep paper order and omit duplicate, computed and display
 		const excluded = [...summaryFields, ...statusFields, ...Object.values(detailCompanionFields).flat(), "items", "outputs", "item_html", "item_details", "purchase_invoice", "delivery_challan_close"]
 		if (doctype === "MGK Delivery Challan") excluded.push("is_return")
 		for (const field of meta.fields) assert.equal(placed.includes(field.fieldname), !excluded.includes(field.fieldname), `${doctype}: ${field.fieldname}`)
+	}
+})
+
+test("DC Close output valuation columns use real read-only fields and reach the table renderer", async () => {
+	const name = "mgk_delivery_challan_close_output"
+	const meta = JSON.parse(await readFile(new URL(`../../mgk_yrp/mgk_yrp/doctype/${name}/${name}.json`, import.meta.url)))
+	const layout = documentLayout("MGK Delivery Challan Close", { fields: [] })
+	const parent = { doctype: "MGK Delivery Challan Close", docstatus: 1 }
+	const rendered = tableFields(meta, { fieldname: "outputs" }, parent, { ...meta, permissions: [] }, {}, { name: "Administrator" })
+	assert.deepEqual(rendered.map((field) => field.fieldname), layout.outputColumns)
+	for (const name of ["input_item", "allocation_weight", "allocated_value", "allocated_rate"]) {
+		assert.equal(rendered.find((field) => field.fieldname === name)?.read_only, 1, name)
 	}
 })
 

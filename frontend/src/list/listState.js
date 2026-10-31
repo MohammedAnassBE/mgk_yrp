@@ -9,6 +9,7 @@ export function normalizeListState(state = {}) {
 		filters: Array.isArray(state.filters) ? JSON.parse(JSON.stringify(state.filters)) : [],
 		quickFilters: JSON.parse(JSON.stringify(state.quickFilters || {})),
 		search: String(state.search || ""), tab: String(state.tab || "all"),
+		selected: String(state.selected || ""),
 		sortField: String(state.sortField || "modified"),
 		sortDirection: state.sortDirection === "asc" ? "asc" : "desc",
 		loadedCount: Math.max(20, Math.floor(Number(state.loadedCount) || 20)),

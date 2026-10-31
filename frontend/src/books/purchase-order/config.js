@@ -16,7 +16,7 @@ const definition = {
 	defaultColumns: ["name", "supplier", "po_date", "delivery_location", "total_qty", "total_amount", "status"],
 	statusField: "status",
 	columnLabels: { total_qty: "Total Qty" },
-	relatedDoctypes: ["MGK Goods Received Note"],
+	relatedDoctypes: ["MGK Goods Received Note", "MGK Delivery Challan"],
 }
 
 export default definition

@@ -8,8 +8,10 @@ import { useDocument } from "../src/document/useDocument.js"
 import billing from "../src/books/billing/config.js"
 import purchaseOrder from "../src/books/purchase-order/config.js"
 import goodsReceivedNote from "../src/books/goods-received-note/config.js"
+import deliveryChallan from "../src/books/delivery-challan/config.js"
 import { readMappedDraft, stageMappedDraft } from "../src/document/mappedDraft.js"
 import { FakeSocket } from "./helpers/fakeSocket.js"
+import { documentModule } from "../src/documents/registry.js"
 
 const renderer = createRenderer({ createComment: (text) => ({ text }), createText: (text) => ({ text }), insert: () => {}, remove: () => {}, setText: () => {}, parentNode: () => null, nextSibling: () => null })
 async function settle() { await nextTick(); await new Promise(setImmediate); await nextTick() }
@@ -363,6 +365,43 @@ test("PO and GRN cancellation blocker text reaches the error banner verbatim", a
 	}
 })
 
+test("job-work cancel guards reach the document error banner verbatim", async () => {
+	for (const [book, message] of [
+		[purchaseOrder, "Cancel Delivery Challan DC-1 first, then Goods Received Note GRN-1."],
+		[goodsReceivedNote, "Cancel Delivery Challan DC-1 before this receipt."],
+		[deliveryChallan, "Cancel Delivery Challan DC-1 first."],
+	]) {
+		const page = await context({ book, record: { doctype: book.doctype, name: "DOC-1", docstatus: 1 },
+			methods: { "frappe.client.cancel": async () => ({ exc_type: "ValidationError", _server_messages: JSON.stringify([JSON.stringify({ message })]) }) } })
+		try {
+			await page.model.action("cancel")
+			assert.equal(page.model.error.value, message)
+			assert.equal(page.model.doc.value.docstatus, 1)
+			assert.equal(page.model.busy.value, false)
+		} finally { page.close() }
+	}
+})
+
+test("Create GRN preserves numbered server route and output blockers in the document banner", async () => {
+	for (const message of [
+		"Row 4: Unprocessed goods? Use Return on the DC.",
+		"Row 1: Yarn-Raw cannot be received into the job worker's warehouse Worker Store.",
+		"Row 2: Fabric is not an output of Yarn for process Dyeing.",
+	]) {
+		const page = await context({ book: deliveryChallan,
+			record: { doctype: deliveryChallan.doctype, name: "DC-1", docstatus: 1, close_status: "Open" },
+			boot: { user: { can_create: [goodsReceivedNote.doctype] } },
+			methods: { "frappe.model.mapper.make_mapped_doc": async () => ({ exc_type: "ValidationError",
+				_server_messages: JSON.stringify([JSON.stringify({ message })]) }) },
+		})
+		try {
+			await page.model.action("create-grn")
+			assert.equal(page.model.error.value, message)
+			assert.equal(page.router.currentRoute.value.path, "/delivery-challan/PI-1")
+		} finally { page.close() }
+	}
+})
+
 test("PO and GRN amendments navigate to their own new routes with source links and copied rows", async () => {
 	for (const book of [purchaseOrder, goodsReceivedNote]) {
 		const record = { doctype: book.doctype, name: "CANCELLED-1", docstatus: 2, purchase_order: "PO-1", against_purchase_order: 1,
@@ -448,4 +487,102 @@ test("Billing in-place cancel hides Amend until a fresh getdoc supplies valuatio
 		assert.match(page.model.error.value, /Wait for valuation/)
 		assert.equal(page.router.currentRoute.value.path, "/billing/PI-1")
 	} finally { release?.(); page.close() }
+})
+
+test("document run actions confirm once, keep busy through the request and reload, and retain result links", async () => {
+	const module = documentModule(billing.doctype), original = module.actions
+	let finish, release
+	const result = { message: "Stock Entry STE-10 submitted.", links: [{ label: "STE-10", to: "/app/yrp-stock-entry/STE-10" }] }
+	module.actions = () => [{ key: "receive", label: "Receive", confirm: (doc) => `Receive ${doc.name}?`, run: async ({ doc }, { call }) => {
+		assert.equal(doc.name, "PI-1")
+		await call("test.receive", { name: doc.name })
+		return result
+	} }]
+	const page = await context({ methods: { "test.receive": () => new Promise((resolve) => { finish = () => resolve({ message: true }) }) } })
+	try {
+		const { runner } = page.model
+		const pending = page.model.action("receive")
+		assert.equal(runner.confirmation.value.text, "Receive PI-1?")
+		assert.equal(runner.busy.value, true)
+		await page.model.action("receive")
+		runner.answer(true); await settle()
+		assert.equal(page.requests.filter((row) => row.url.endsWith("test.receive")).length, 1)
+		page.setSaved({ ...page.saved(), note: "received" })
+		release = page.holdReads()
+		finish(); await settle()
+		assert.equal(runner.busy.value, true)
+		release(); await pending
+		assert.equal(runner.busy.value, false)
+		assert.equal(page.model.doc.value.note, "received")
+		assert.deepEqual(runner.result.value, result)
+		assert.equal(page.requests.some((row) => row.url.endsWith("frappe.client.receive")), false)
+	} finally { finish?.(); release?.(); page.close(); module.actions = original }
+})
+
+test("document dialog actions stay busy until done or close, reload only on done, and surface loading errors", async () => {
+	const module = documentModule(billing.doctype), original = module.actions
+	const component = { render: () => null }
+	let loads = 0
+	module.actions = () => [{ key: "transfer", label: "Complete Transfer", dialog: async () => { loads += 1; return { default: component } } },
+		{ key: "broken", dialog: async () => { throw new Error("Unable to load transfer dialog.") } }]
+	const page = await context()
+	try {
+		const { runner } = page.model
+		await page.model.action("transfer")
+		assert.equal(runner.dialog.value.component, component)
+		assert.equal(runner.dialog.value.target.doc, page.model.doc.value)
+		assert.equal(runner.busy.value, true)
+		await page.model.action("transfer")
+		assert.equal(loads, 1)
+		const before = page.requests.filter((row) => row.url.includes("getdoc?")).length
+		runner.dialogClosed()
+		assert.equal(runner.busy.value, false)
+		assert.equal(page.requests.filter((row) => row.url.includes("getdoc?")).length, before)
+		await page.model.action("transfer")
+		page.setSaved({ ...page.saved(), note: "transferred" })
+		await runner.dialogDone({ message: "Done", links: [] })
+		assert.equal(runner.dialog.value, null)
+		assert.equal(runner.busy.value, false)
+		assert.equal(page.model.doc.value.note, "transferred")
+		assert.equal(page.requests.filter((row) => row.url.includes("getdoc?")).length, before + 1)
+		await page.model.action("broken")
+		assert.equal(runner.error.value, "Unable to load transfer dialog.")
+		assert.equal(runner.busy.value, false)
+	} finally { page.close(); module.actions = original }
+})
+
+test("abandoned run actions and lazy dialogs cannot show results or reload another document", async () => {
+	const module = documentModule(billing.doctype), original = module.actions
+	for (const kind of ["run", "dialog"]) {
+		let finish
+		module.actions = () => [{ key: "delayed", [kind]: () => new Promise((resolve) => { finish = () => resolve(kind === "run" ? { message: "Old result" } : { default: { render: () => null } }) }) }]
+		const page = await context()
+		try {
+			const pending = page.model.action("delayed")
+			await settle()
+			await page.router.push("/billing/OTHER"); await settle()
+			const before = page.requests.length
+			finish(); await pending
+			assert.equal(page.model.runner.result.value, null)
+			assert.equal(page.model.runner.dialog.value, null)
+			assert.equal(page.model.runner.busy.value, false)
+			assert.equal(page.requests.length, before)
+		} finally { finish?.(); page.close(); module.actions = original }
+	}
+})
+
+test("declined run confirmations do not write or reload; unknown action names never call frappe.client", async () => {
+	const module = documentModule(billing.doctype), original = module.actions
+	module.actions = () => [{ key: "decline", confirm: "Continue?", run: () => assert.fail("declined action") }]
+	const page = await context()
+	try {
+		const before = page.requests.length
+		const pending = page.model.action("decline")
+		page.model.runner.answer(false); await pending
+		assert.equal(page.requests.length, before)
+		assert.equal(page.model.runner.busy.value, false)
+		await page.model.action("missing")
+		assert.equal(page.model.error.value, "Unknown document action: missing")
+		assert.equal(page.requests.length, before)
+	} finally { page.close(); module.actions = original }
 })

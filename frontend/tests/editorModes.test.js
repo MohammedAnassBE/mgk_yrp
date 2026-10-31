@@ -1,6 +1,6 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { editorMode, editorPermissions, preparePurchaseOrderEntry, recalculate, validateItem } from "../src/item-editor/editorModes.js"
+import { editorMode, editorPermissions, preparePurchaseOrderEntry, recalculate, usesAttributeColumns, validateItem } from "../src/item-editor/editorModes.js"
 
 test("mode selection and independent Desk permission flags", () => {
 	assert.equal(editorMode({ doctype: "MGK Purchase Order" }), "po")
@@ -17,6 +17,15 @@ test("mode selection and independent Desk permission flags", () => {
 		const flags = editorPermissions(mode, false)
 		for (const flag of ["canCreate", "canEdit", "canRemove", "rateEditable"]) assert.equal(flags[flag], false)
 	}
+})
+
+test("job-work and plan use attribute columns; plan is writable with rate hidden", () => {
+	assert.equal(editorMode({ doctype: "MGK Process Planning" }), "plan")
+	for (const mode of ["grn_job", "plan"]) assert.equal(usesAttributeColumns(mode), true)
+	for (const mode of ["po", "dc", "dc_return", "grn_po"]) assert.equal(usesAttributeColumns(mode), false)
+	assert.deepEqual(editorPermissions("plan"), { canCreate: true, canEdit: true, canRemove: true,
+		rateEditable: false, lockDimensionsOnEdit: false, inlineQtyMaxField: "" })
+	assert.equal(editorPermissions("plan", false).canCreate, false)
 })
 
 test("PO rows match by parent, attributes, primary cell and explicit source row, ignoring received type", () => {

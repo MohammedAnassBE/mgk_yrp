@@ -3,8 +3,9 @@ from unittest.mock import call, patch
 
 import frappe
 from frappe.tests import IntegrationTestCase
+from yrp.yrp.doctype.yrp_item.yrp_item import create_variant
 
-from mgk_yrp.tests.fixtures import make_supplier
+from mgk_yrp.tests.fixtures import make_item, make_supplier, make_template_item
 from mgk_yrp.web.list_counts import MAX_FILTER_SETS, get_counts
 
 COUNTS = "mgk_yrp.web.list_counts"
@@ -44,9 +45,42 @@ class TestWebCounts(IntegrationTestCase):
 		self.assertEqual(counted, [])
 
 	def test_rejects_malformed_payloads(self):
-		for payload in ("not JSON", "{}", None, [None], [{"doctype": "", "filters": []}], [{"doctype": "Supplier", "filters": {}}]):
+		for payload in ("not JSON", "{}", None, [None], [{"doctype": "", "filters": []}], [{"doctype": "Supplier", "filters": {}}], [{"doctype": "Item", "filters": [], "or_filters": {}}]):
 			with self.subTest(payload=payload), self.assertRaises(frappe.ValidationError):
 				get_counts(payload)
+
+	def test_forwards_each_or_filter_set_to_permission_aware_query(self):
+		entry = {
+			"doctype": "Item", "filters": [["variant_of", "is", "not set"]],
+			"or_filters": [["has_variants", "=", 1], ["disabled", "=", 0]],
+		}
+		with (
+			patch(f"{COUNTS}.frappe.has_permission", return_value=True),
+			patch(f"{COUNTS}.frappe.get_list", return_value=[{"count": 3}]) as query,
+		):
+			self.assertEqual(get_counts(json.dumps([entry])), [3])
+		query.assert_called_once_with(
+			"Item", filters=entry["filters"], or_filters=entry["or_filters"],
+			fields=[{"COUNT": "*", "as": "count"}], limit=1, order_by="",
+		)
+
+	def test_item_or_filters_count_disabled_templates_and_enabled_plain_items_only(self):
+		original_user = frappe.session.user
+		self.addCleanup(frappe.set_user, original_user)
+		frappe.set_user("Administrator")
+		names = []
+		for disabled in (0, 1):
+			template, attributes = make_template_item()
+			variant = create_variant(template.name, attributes).insert(ignore_permissions=True)
+			plain = make_item(stock_uom="Kg")
+			for name in (template.name, variant.name, plain):
+				frappe.db.set_value("Item", name, "disabled", disabled)
+				names.append(name)
+		filters = [["name", "in", names], ["variant_of", "is", "not set"]]
+		self.assertEqual(get_counts([{
+			"doctype": "Item", "filters": filters,
+			"or_filters": [["has_variants", "=", 1], ["disabled", "=", 0]],
+		}]), [3])
 
 	def test_empty_batch_and_twenty_sets_are_accepted(self):
 		self.assertEqual(get_counts([]), [])

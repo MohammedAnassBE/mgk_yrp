@@ -60,7 +60,8 @@ test("DC process default uses actual enable fields, fills only one candidate, pr
 
 test("DC Return/Close actions gate status and permissions and stage mapped drafts on the correct route", async () => {
 	const doc = { doctype: dcType, name: "DC-1", docstatus: 1, close_status: "Open" }
-	assert.deepEqual(dcActions(doc, () => true).map((action) => action.key), ["return", "close"])
+	assert.deepEqual(dcActions(doc, () => true).map((action) => action.key), ["return", "close", "create-grn", "update-plan"])
+	assert.ok(dcActions(doc, () => true).every((action) => action.forward === true))
 	for (const flags of [{ docstatus: 0 }, { docstatus: 2 }, { is_return: 1 }, { close_status: "Closed" }, { close_status: "Reopening" }]) {
 		assert.deepEqual(dcActions({ ...doc, ...flags }, () => true), [])
 	}
@@ -68,7 +69,7 @@ test("DC Return/Close actions gate status and permissions and stage mapped draft
 	assert.deepEqual(dcActions({ ...doc, delivery_challan_close: "C/1" }, () => false), [])
 	assert.equal(dcActions({ ...doc, delivery_challan_close: "C/1" }, () => true).at(-1).to, "/delivery-challan-close/C%2F1")
 	const store = new Map(), storage = { setItem: (key, value) => store.set(key, value), getItem: (key) => store.get(key) }
-	for (const action of dcActions(doc, () => true)) {
+	for (const action of dcActions(doc, () => true).filter((action) => ["return", "close"].includes(action.key))) {
 		const target = { doctype: action.key === "return" ? dcType : closeType, delivery_challan: doc.name, is_return: action.key === "return" ? 1 : 0 }
 		await openMappedDraft(action, doc.name, { storage, call: async (method, args) => {
 			assert.equal(method, "frappe.model.mapper.make_mapped_doc")

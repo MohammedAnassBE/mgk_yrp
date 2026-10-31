@@ -16,16 +16,22 @@ import * as closePresentation from "./delivery-challan-close/presentation.js"
 import invoiceLayout from "./purchase-invoice/layout.js"
 import { createFieldEvents as invoiceEvents } from "./purchase-invoice/fieldEvents.js"
 import * as invoicePresentation from "./purchase-invoice/presentation.js"
+import { actions as grnActions } from "./goods-received-note/actions.js"
+import * as purchaseOrderPreview from "./purchase-order/preview.js"
+import * as grnPreview from "./goods-received-note/preview.js"
+import * as dcPreview from "./delivery-challan/preview.js"
+import * as closePreview from "./delivery-challan-close/preview.js"
+import * as invoicePreview from "./purchase-invoice/preview.js"
 
 const modules = {
 	"MGK Purchase Order": { layout: purchaseOrderLayout, createFieldEvents: purchaseOrderEvents,
-		asyncFields: ["supplier_address", "contact_person"], actions, ...purchaseOrderPresentation },
+		asyncFields: ["supplier_address", "contact_person", "deliver_to_supplier"], actions, preview: purchaseOrderPreview, ...purchaseOrderPresentation },
 	"MGK Goods Received Note": { layout: grnLayout, createFieldEvents: grnEvents,
-		asyncFields: ["purchase_order"], fieldOverrides, initialAutoFields, ...grnPresentation },
-	"MGK Delivery Challan": { layout: dcLayout, createFieldEvents: dcEvents, asyncFields: [], actions: dcActions, ...dcPresentation },
+		asyncFields: ["purchase_order"], fieldOverrides, initialAutoFields, actions: grnActions, preview: grnPreview, ...grnPresentation },
+	"MGK Delivery Challan": { layout: dcLayout, createFieldEvents: dcEvents, asyncFields: [], actions: dcActions, preview: dcPreview, ...dcPresentation },
 	"MGK Delivery Challan Close": { layout: closeLayout, createFieldEvents: closeEvents, asyncFields: ["delivery_challan"],
-		actions: closeActions, finishReopen, ...closePresentation },
-	"MGK Purchase Invoice": { layout: invoiceLayout, createFieldEvents: invoiceEvents, asyncFields: [], ...invoicePresentation },
+		actions: closeActions, finishReopen, preview: closePreview, ...closePresentation },
+	"MGK Purchase Invoice": { layout: invoiceLayout, createFieldEvents: invoiceEvents, asyncFields: [], preview: invoicePreview, ...invoicePresentation },
 }
 
 export function documentModule(doctype) { return modules[doctype] || {} }

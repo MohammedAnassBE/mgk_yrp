@@ -28,10 +28,11 @@ export function usePartyDefaults(doc, change, canEdit, editing = ref(true), init
 		loading.value = true
 		try {
 			const ownReceipt = record.doctype === "MGK Goods Received Note" && !record.against_purchase_order && !record.delivery_location
-			const own = !record.is_return && (record.__islocal || ownReceipt) ? await callRead("mgk_yrp.party_defaults.get_own_location") : null
+			const isSupplierDelivery = record.doctype === "MGK Purchase Order" && record.deliver_to_supplier
+			const own = !record.is_return && !isSupplierDelivery && (record.__islocal || ownReceipt) ? await callRead("mgk_yrp.party_defaults.get_own_location") : null
 			if (current !== sequence || record !== doc.value) return
 			const ownField = { "MGK Purchase Order": "delivery_location", "MGK Delivery Challan": "from_location" }[record.doctype]
-			if (ownField && own?.location) fill(ownField, own.location)
+			if (ownField && own?.location && !(record.doctype === "MGK Purchase Order" && record.deliver_to_supplier)) fill(ownField, own.location)
 			if (ownReceipt && own) {
 				candidates.value.warehouse = own.warehouses
 				fill("warehouse", own.warehouse)
@@ -60,7 +61,7 @@ export function usePartyDefaults(doc, change, canEdit, editing = ref(true), init
 		}))
 	}
 
-	watch(() => [doc.value, doc.value?.supplier, doc.value?.delivery_location, doc.value?.from_location, doc.value?.to_location, doc.value?.docstatus, doc.value?.against_purchase_order, doc.value?.purchase_order, editing.value], (next, previous) => {
+	watch(() => [doc.value, doc.value?.supplier, doc.value?.delivery_location, doc.value?.from_location, doc.value?.to_location, doc.value?.docstatus, doc.value?.against_purchase_order, doc.value?.purchase_order, editing.value, doc.value?.deliver_to_supplier], (next, previous) => {
 		if (next[0] !== previous?.[0]) autoFields.value = initialAutoFields(doc.value)
 		load()
 	})

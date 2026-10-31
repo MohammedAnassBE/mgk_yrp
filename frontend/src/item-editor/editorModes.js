@@ -1,13 +1,16 @@
 export function editorMode(doc) {
+	if (doc.doctype === "MGK Process Planning") return "plan"
 	if (doc.doctype === "MGK Purchase Order") return "po"
 	if (doc.doctype === "MGK Delivery Challan") return doc.is_return ? "dc_return" : "dc"
 	return doc.against_purchase_order ? "grn_po" : "grn_job"
 }
 
+export function usesAttributeColumns(mode) { return ["grn_job", "plan"].includes(mode) }
+
 export function editorPermissions(mode, editable = true) {
 	const locked = ["dc_return", "grn_po"].includes(mode)
 	return { canCreate: editable && mode !== "dc_return", canEdit: editable && !locked,
-		canRemove: editable && !locked, rateEditable: editable && !locked,
+		canRemove: editable && !locked, rateEditable: editable && !locked && mode !== "plan",
 		lockDimensionsOnEdit: mode === "dc_return", inlineQtyMaxField: locked ? "allowed_qty" : "" }
 }
 

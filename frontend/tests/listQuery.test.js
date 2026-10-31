@@ -5,6 +5,45 @@ import { fieldConditions, filterTuples } from "../src/list/filterFields.js"
 import purchaseOrder from "../src/books/purchase-order/config.js"
 import grn from "../src/books/goods-received-note/config.js"
 import billing from "../src/books/billing/config.js"
+import { getMaster } from "../src/masters/mastersConfig.js"
+import { statusPill } from "../src/list/statusPill.js"
+import { getRows } from "../src/list/listApi.js"
+import { clearReadCaches } from "../src/api/client.js"
+
+test("Item OR filters reach resource GET, get_list POST and every count set", () => {
+	const { baseFilters, baseOrFilters } = getMaster("items")
+	const query = { baseFilters, baseOrFilters, filters: [["item_group", "=", "Yarn"]], search: "Template", tabs: [{ key: "disabled", filters: [["disabled", "=", 1]] }], tab: "disabled" }
+	const before = structuredClone(query)
+	const parameters = rowParameters(query, ["name"])
+	assert.deepEqual(parameters.or_filters, baseOrFilters)
+	assert.deepEqual(parameters.filters, [...baseFilters, ["item_group", "=", "Yarn"], ["name", "like", "%Template%"], ["disabled", "=", 1]])
+	const get = resourceRequest("Item", parameters)
+	assert.deepEqual(JSON.parse(new URL(get.url, "http://site").searchParams.get("or_filters")), baseOrFilters)
+	const post = resourceRequest("Item", parameters, 10)
+	assert.deepEqual(JSON.parse(post.options.body).or_filters, baseOrFilters)
+	for (const set of countRequests("Item", query)) assert.deepEqual(set.or_filters, baseOrFilters)
+	assert.deepEqual(query, before)
+	assert.deepEqual(statusPill("Item", { has_variants: 1, disabled: 1 }), { label: "Disabled", className: "status-disabled" })
+})
+
+test("list API accepts orFilters and sends Frappe or_filters on GET and POST", async () => {
+	const original = globalThis.fetch
+	const requests = []
+	globalThis.fetch = async (url, options) => {
+		requests.push({ url, options })
+		return { ok: true, status: 200, json: async () => ({ data: [{ name: "Template" }] }) }
+	}
+	try {
+		const orFilters = [["has_variants", "=", 1], ["disabled", "=", 0]]
+		for (const search of ["short", "x".repeat(2000)]) {
+			assert.deepEqual(await getRows("Item", { fields: ["name"], filters: [["name", "like", search]], orFilters, limit: 20 }), [{ name: "Template" }])
+		}
+		assert.deepEqual(JSON.parse(new URL(requests[0].url, "http://site").searchParams.get("or_filters")), orFilters)
+		assert.equal(requests[1].url, "/api/method/frappe.client.get_list")
+		assert.deepEqual(JSON.parse(requests[1].options.body).or_filters, orFilters)
+		assert.equal(JSON.parse(requests[1].options.body).orFilters, undefined)
+	} finally { globalThis.fetch = original; clearReadCaches() }
+})
 
 test("combines base, advanced, quick, search and tab filters without mutation", () => {
 	const query = {

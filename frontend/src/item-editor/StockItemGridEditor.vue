@@ -2,20 +2,29 @@
 import { ref, computed } from "vue"
 import Button from "primevue/button"
 import InputNumber from "primevue/inputnumber"
+import Select from "primevue/select"
+import ActionDialog from "../documents/shared/ActionDialog.vue"
+import AttributeColumns from "./AttributeColumns.vue"
 import StockItemEntry from "./StockItemEntry.vue"
-import { getItems as copyItems, addEntry, replaceEntry, loadItems } from "./editorPayload.js"
-import { recalculate } from "./editorModes.js"
+import { getItems as copyItems, addEntry, addSplit, replaceEntry, loadItems } from "./editorPayload.js"
+import { recalculate, usesAttributeColumns } from "./editorModes.js"
+import { splitLines } from "./attributeColumns.js"
 import { clone } from "../document/mappedDraft.js"
 import { formatFieldValue } from "../document/fieldDisplay.js"
 
-const props = defineProps({ mode: String, editable: Boolean, permissions: Object, defaults: Object, dimensions: Array, poEntries: Array })
+const props = defineProps({ mode: String, editable: Boolean, permissions: Object, defaults: Object, dimensions: Array, poEntries: Array, hasTransferredQuantity: Boolean })
 const emit = defineEmits(["change"])
 const groups = ref([])
 const editPosition = ref(null)
+const isSplitDialogVisible = ref(false)
+const splitLine = ref("")
+const splitMessage = ref("")
+const attributeGrid = computed(() => usesAttributeColumns(props.mode))
+const lines = computed(() => splitLines(groups.value))
 const editing = computed(() => editPosition.value ? clone({ group: groups.value[editPosition.value.group], entry: groups.value[editPosition.value.group].items[editPosition.value.entry] }) : null)
-function loadData(data) { groups.value = loadItems(data, props.mode); editPosition.value = null }
+function loadData(data) { groups.value = loadItems(data, props.mode); editPosition.value = null; isSplitDialogVisible.value = false }
 function getItems() { return copyItems(groups.value) }
-function changed() { emit("change", recalculate(groups.value, props.mode)) }
+function changed() { splitMessage.value = ""; emit("change", recalculate(groups.value, props.mode)) }
 function commit(details, entry) {
 	if (editPosition.value) replaceEntry(groups.value, editPosition.value.group, editPosition.value.entry, entry)
 	else addEntry(groups.value, details, entry)
@@ -24,9 +33,31 @@ function commit(details, entry) {
 }
 function remove(groupIndex, entryIndex) {
 	groups.value[groupIndex].items.splice(entryIndex, 1)
-	if (!groups.value[groupIndex].items.length) groups.value.splice(groupIndex, 1)
+	if (!attributeGrid.value && !groups.value[groupIndex].items.length) groups.value.splice(groupIndex, 1)
 	editPosition.value = null
 	changed()
+}
+function removeAll() {
+	groups.value = []
+	editPosition.value = null
+	changed()
+}
+function split(groupIndex, entryIndex) {
+	addSplit(groups.value, groupIndex, entryIndex)
+	editPosition.value = null
+	changed()
+}
+function showSplitDialog() {
+	splitMessage.value = lines.value.length ? "" : "Add an item before splitting."
+	if (!lines.value.length) return
+	splitLine.value = ""
+	isSplitDialogVisible.value = true
+}
+function confirmSplit() {
+	const line = lines.value.find((line) => line.label === splitLine.value)
+	if (!line) return
+	split(line.groupIndex, line.entryIndex)
+	isSplitDialogVisible.value = false
 }
 function updateCell(cell, field, value) {
 	cell[field] = value ?? 0
@@ -46,7 +77,15 @@ defineExpose({ loadData, getItems })
 
 <template>
 	<div class="stock-grid-editor">
-		<p v-if="!groups.length" class="empty-state compact">No items yet. Add an item and enter the quantity.</p>
+		<div v-if="attributeGrid && editable" class="editor-actions">
+			<Button label="Add Split" size="small" severity="secondary" outlined @click="showSplitDialog" />
+			<Button label="Remove All" size="small" severity="secondary" outlined @click="removeAll" />
+		</div>
+		<p v-if="splitMessage" class="form-banner" role="status">{{ splitMessage }}</p>
+		<p v-if="!groups.some((group) => group.items.length)" class="empty-state compact">No items yet. Add an item and enter the quantity.</p>
+		<AttributeColumns v-if="attributeGrid" :items="groups" :editable="editable" :mode="mode" :dimensions="dimensions"
+			:has-transferred-quantity="hasTransferredQuantity" @changed="changed" @split="split" @remove="remove" />
+		<template v-else>
 		<div v-for="(group, groupIndex) in groups" :key="groupIndex" class="table-scroll pivot-group">
 			<table>
 				<thead>
@@ -57,6 +96,7 @@ defineExpose({ loadData, getItems })
 						<th v-for="attribute in group.attributes" :key="attribute">{{ attribute }}</th>
 						<th v-for="key in keys(group)" :key="key">{{ key === 'default' ? 'Qty' : key }}</th>
 						<th>UOM</th>
+						<th v-if="hasTransferredQuantity">Transferred Qty</th>
 						<th v-if="permissions.canEdit || permissions.canRemove">Actions</th>
 					</tr>
 				</thead>
@@ -103,6 +143,9 @@ defineExpose({ loadData, getItems })
 							<span v-else>—</span>
 						</td>
 						<td>{{ entry.default_uom || '—' }}</td>
+						<td v-if="hasTransferredQuantity">
+							<div v-for="key in keys(group)" :key="key">{{ key === 'default' ? '' : `${key}: ` }}{{ entry.values[key]?.transferred_qty || 0 }} {{ entry.values[key]?.uom || entry.default_uom }}</div>
+						</td>
 						<td v-if="permissions.canEdit || permissions.canRemove">
 							<div class="editor-actions">
 								<Button
@@ -129,6 +172,7 @@ defineExpose({ loadData, getItems })
 				</tbody>
 			</table>
 		</div>
+		</template>
 		<StockItemEntry
 			v-if="permissions.canCreate || editing"
 			:mode="mode"
@@ -141,5 +185,20 @@ defineExpose({ loadData, getItems })
 			@commit="commit"
 			@cancel="editPosition = null"
 		/>
+		<ActionDialog :visible="isSplitDialogVisible" header="Add Split" @close="isSplitDialogVisible = false">
+			<div class="form-field">
+				<label class="field-label" for="split-line">Line</label>
+				<Select v-model="splitLine" input-id="split-line" aria-label="Line" :options="lines.map((line) => line.label)" fluid />
+			</div>
+			<template #footer>
+				<Button label="Cancel" size="small" severity="secondary" outlined @click="isSplitDialogVisible = false" />
+				<Button label="Add Split" size="small" :disabled="!splitLine" @click="confirmSplit" />
+			</template>
+		</ActionDialog>
 	</div>
 </template>
+
+<style scoped>
+.stock-grid-editor { min-width: 0; max-width: 100%; }
+.table-scroll { max-width: 100%; overflow-x: auto; }
+</style>

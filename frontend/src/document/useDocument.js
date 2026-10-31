@@ -13,6 +13,7 @@ import { usePartyDefaults } from "./usePartyDefaults.js"
 import { LiveDocument } from "./liveDocument.js"
 import { documentModule } from "../documents/registry.js"
 import { mutationScope } from "./mutationScope.js"
+import { useActionRunner } from "./useActionRunner.js"
 
 export function useDocument(book) {
 	const route = useRoute()
@@ -38,6 +39,7 @@ export function useDocument(book) {
 		setCandidates: (field, values) => { party.candidates.value[field] = values },
 		markAuto: (fields) => { party.autoFields.value = [...new Set([...party.autoFields.value, ...fields])] } })
 	const extraActions = computed(() => doc.value ? module.actions?.(doc.value, hasPermission) || [] : [])
+	const runner = useActionRunner({ reload })
 	const meta = computed(() => metas.value.find((entry) => entry.name === book.doctype))
 	const layout = computed(() => meta.value ? documentLayout(book.doctype, meta.value) : null)
 	const isNew = computed(() => Boolean(doc.value?.__islocal || !doc.value?.name))
@@ -52,7 +54,8 @@ export function useDocument(book) {
 	let lastAsyncField = ""
 	const mutations = mutationScope(() => doc.value, () => route.fullPath, () => disposed)
 	const live = new LiveDocument({ reload: () => reload(true), isDirty: () => dirty.value,
-		isBusy: () => busy.value || loading.value || fieldsLoading.value || itemsLoading.value || party.loading.value, stale: () => { stale.value = true } })
+		isBusy: () => busy.value || runner.busy.value || loading.value || fieldsLoading.value || itemsLoading.value || party.loading.value, stale: () => { stale.value = true } })
+	watch(runner.busy, (is_busy) => { if (!is_busy) live.flush() })
 
 	function canEdit(name) {
 		const field = meta.value?.fields.find((field) => field.fieldname === name)
@@ -117,6 +120,7 @@ export function useDocument(book) {
 
 	async function initialize() {
 		const current = ++loadSequence
+		runner.reset()
 		mutations.invalidate()
 		busy.value = false
 		routeKey = route.fullPath
@@ -190,7 +194,7 @@ export function useDocument(book) {
 	}
 
 	async function save() {
-		if (busy.value || !editing.value || !dirty.value) return
+		if (busy.value || runner.busy.value || !editing.value || !dirty.value) return
 		await perform(async (operation) => {
 			const wasNew = isNew.value
 			const result = await callMethod("frappe.client.save", { doc: payload() }, (values) => { if (operation.current()) messages.value = values })
@@ -215,16 +219,18 @@ export function useDocument(book) {
 	}
 
 	async function action(name) {
-		if (busy.value || fieldsLoading.value || itemsLoading.value) return
+		if (busy.value || runner.busy.value || fieldsLoading.value || itemsLoading.value) return
 		if (name === "submit" && fieldError.value) { error.value = fieldError.value; return }
 		if (name === "save") return save()
 		const mapped = extraActions.value.find((entry) => entry.key === name)
+		if (mapped?.run || mapped?.dialog) return runner.run(mapped, { doc: doc.value })
 		if (mapped?.to) return router.push(mapped.to)
 		if (mapped?.key === "finish-reopen") return perform((operation) => module.finishReopen(doc.value, {
 			call: callMethod, reload: () => { if (operation.current()) return reload() }, message: (message) => { if (operation.current()) messages.value = [message] },
 		}))
 		if (mapped?.method) return perform((operation) => openMappedDraft(mapped, doc.value.name, { call: callMethod,
 			isCurrent: operation.current, navigate: (target) => router.push(target) }))
+		if (!["submit", "cancel", "delete", "amend"].includes(name)) { error.value = `Unknown document action: ${name}`; return }
 		const permission = name === "submit" ? "submit" : name === "cancel" ? "cancel" : name === "delete" ? "delete" : "amend"
 		if (!hasPermission(book.doctype, permission)) return
 		await perform(async (operation) => {
@@ -266,6 +272,6 @@ export function useDocument(book) {
 		disposers.forEach((dispose) => dispose())
 		window.removeEventListener("keydown", keydown)
 	})
-	return { doc, meta, metas, layout, loading, busy, dirty, editing, error, required, stale, itemEditor, editorReady,
+	return { doc, meta, metas, layout, loading, busy, runner, dirty, editing, error, required, stale, itemEditor, editorReady,
 		isNew, canWrite, party, fieldsLoading, fieldError, retryFields, itemsLoading, messages, extraActions, editorItemCount, change, update, itemsChanged, initialize, reload, save, action }
 }

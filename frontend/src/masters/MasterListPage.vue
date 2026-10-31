@@ -15,6 +15,7 @@ const master = computed(() => getMaster(route.params.master))
 	<NotFound v-if="!master" />
 	<NoAccess v-else-if="!hasPermission(master.doctype, master.permission)" />
 	<ListView v-else :key="master.key" :doctype="master.doctype" :title="master.label" :default-columns="master.defaultColumns"
+		:base-filters="master.baseFilters" :base-or-filters="master.baseOrFilters"
 		:status-field="master.statusField" :column-labels="master.columnLabels" :related-doctypes="master.relatedDoctypes" :document-route="master.route"
 		:create-route="`${master.route}/new`" :allow-create="canEditMaster(master)" back-route="/manage" back-label="Manage" />
 </template>

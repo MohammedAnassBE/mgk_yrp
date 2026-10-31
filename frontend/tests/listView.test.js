@@ -75,7 +75,7 @@ test("list initialization waits for meta/preferences before its one rows/count b
 		assert.match(list.requests[1][0], /get_user_listview/)
 		assert.equal(list.model.data.rows.length, 20)
 		assert.equal(list.model.data.total, 90)
-		assert.deepEqual(list.socket.emitted, [["doctype_subscribe", "MGK Purchase Order"], ["doctype_subscribe", "MGK Goods Received Note"]])
+		assert.deepEqual(list.socket.emitted, [["doctype_subscribe", "MGK Purchase Order"], ["doctype_subscribe", "MGK Goods Received Note"], ["doctype_subscribe", "MGK Delivery Challan"]])
 	} finally { list.close() }
 })
 
@@ -172,7 +172,7 @@ test("live list/related events coalesce at 500ms and preserve loaded count/scrol
 		assert.equal(list.rows().length, 4)
 		assert.equal(list.counts().length, 3)
 	} finally { list.close() }
-	assert.deepEqual(list.socket.emitted.slice(-2), [["doctype_unsubscribe", "MGK Purchase Order"], ["doctype_unsubscribe", "MGK Goods Received Note"]])
+	assert.deepEqual(list.socket.emitted.slice(-3), [["doctype_unsubscribe", "MGK Purchase Order"], ["doctype_unsubscribe", "MGK Goods Received Note"], ["doctype_unsubscribe", "MGK Delivery Challan"]])
 })
 
 test("restored state fetches the loaded range and restores scroll after loading ends", async () => {

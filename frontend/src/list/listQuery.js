@@ -51,20 +51,28 @@ export function activeFilters(query) {
 
 export function countRequests(doctype, query) {
 	const common = sharedFilters(query)
+	const alternatives = query.baseOrFilters || query.orFilters
+	const orFilters = alternatives?.length ? { or_filters: alternatives } : {}
 	return [
-		{ doctype, filters: common },
-		...orderedTabs(query.tabs).map((tab) => ({ doctype, filters: [...common, ...tab.filters] })),
+		{ doctype, filters: common, ...orFilters },
+		...orderedTabs(query.tabs).map((tab) => ({ doctype, filters: [...common, ...tab.filters], ...orFilters })),
 	]
 }
 
 export function rowParameters(query, fields, start = 0, limit = PAGE_SIZE) {
+	const alternatives = query.baseOrFilters || query.orFilters
 	return {
 		fields: [...new Set(fields)], filters: activeFilters(query),
+		...(alternatives?.length ? { or_filters: alternatives } : {}),
 		order_by: deterministicOrder(query.sortField, query.sortDirection), limit_start: start, limit,
 	}
 }
 
 export function resourceRequest(doctype, parameters, maxLength = 1800) {
+	if (parameters.orFilters) {
+		const { orFilters, ...rest } = parameters
+		parameters = { ...rest, or_filters: orFilters }
+	}
 	const query = new URLSearchParams()
 	for (const [key, value] of Object.entries(parameters)) {
 		query.set(key, typeof value === "object" ? JSON.stringify(value) : String(value))

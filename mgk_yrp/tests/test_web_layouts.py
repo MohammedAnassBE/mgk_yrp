@@ -8,8 +8,8 @@ from yrp.yrp.api.ui_config import validate_config
 from mgk_yrp import hooks
 
 EXPECTED_BOOKS = {
-	"MGK Workspace": ["purchase-order", "billing", "delivery-challan", "goods-received-note"],
-	"Stock Users": ["delivery-challan", "goods-received-note"],
+	"MGK Workspace": ["purchase-order", "billing", "delivery-challan", "delivery-challan-close", "goods-received-note"],
+	"Stock Users": ["delivery-challan", "delivery-challan-close", "goods-received-note"],
 	"Billing": ["billing"],
 	"Purchase": ["purchase-order"],
 	"PO and Bills": ["purchase-order", "billing"],

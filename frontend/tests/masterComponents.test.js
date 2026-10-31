@@ -25,7 +25,7 @@ test("master field controls render the copied toggle on/off wording and configur
 	} finally { page.close() }
 })
 
-async function mountMaster(master, isNew, broken = false) {
+async function mountMaster(master, isNew, broken = false, recordOverrides = {}) {
 	const original = { window: globalThis.window, fetch: globalThis.fetch, realtime: { ...realtime } }
 	Object.assign(realtime, { socket: null, pending: null, rooms: new Map(), reconnectHandlers: new Set(), stateHandlers: new Set(), factory: () => new FakeSocket() })
 	const permissions = Object.fromEntries(["read", "write", "create", "delete"].map((permission) => [`can_${permission}`, [master.doctype, "Address", "Contact"]]))
@@ -36,7 +36,7 @@ async function mountMaster(master, isNew, broken = false) {
 	if (broken) fields.find((field) => field.fieldname === "supplier").depends_on = "eval:missing_dependency(doc.is_group);"
 	if (master.doctype === "User") fields.find((field) => field.fieldname === "send_welcome_email").depends_on = "eval:in_list(['System User', 'Website User'], doc.user_type) && doc.enabled == 1"
 	const meta = { name: master.doctype, fields: [...fields, { fieldname: "noise", fieldtype: "Data" }] }
-	const record = { doctype: master.doctype, name: "REC-001", [master.titleFields[0]]: "Record title", enabled: 1, user_type: "System User" }
+	const record = { doctype: master.doctype, name: "REC-001", [master.titleFields[0]]: "Record title", enabled: 1, user_type: "System User", ...recordOverrides }
 	const requests = []
 	globalThis.fetch = async (url) => {
 		requests.push(url)
@@ -69,6 +69,34 @@ test("all eight new and edit forms render numbered configured sections and the m
 			}
 		} finally { page.close() }
 	}
+})
+
+test("a variant URL renders its encoded template link instead of the master form", async () => {
+	const page = await mountMaster(getMaster("items"), false, false, { variant_of: "Template / 1" })
+	try {
+		assert.match(textContent(page.root), /Variants are managed from their template Template \/ 1/)
+		assert.equal(nodes(page.root, (node) => node.tag === "a" && node.props.href === "/manage/items/Template%20%2F%201").length, 1)
+		assert.equal(nodes(page.root, (node) => node.props.class === "form-layout").length, 0)
+		assert.equal(nodes(page.root, (node) => node.tag === "button").length, 0)
+	} finally { page.close() }
+})
+
+test("Manage counts use the same Item base and OR filters as the list", async () => {
+	const original = { window: globalThis.window, fetch: globalThis.fetch, realtime: { ...realtime } }
+	Object.assign(realtime, { socket: null, pending: null, rooms: new Map(), reconnectHandlers: new Set(), stateHandlers: new Set(), factory: () => new FakeSocket() })
+	globalThis.window = { frappe: { boot: { user: { name: "Administrator", can_read: ["Item"] } } } }
+	const requests = []
+	globalThis.fetch = async (url) => {
+		requests.push(url)
+		return { ok: true, status: 200, json: async () => ({ message: [3] }) }
+	}
+	const page = await mountComponent("../../src/books/masters/MastersListPage.vue", {})
+	try {
+		const counts = requests.find((url) => url.includes("get_counts"))
+		const sets = JSON.parse(new URL(counts, "http://site").searchParams.get("doctype_filter_sets"))
+		assert.deepEqual(sets, [{ doctype: "Item", filters: [["variant_of", "is", "not set"]], or_filters: [["has_variants", "=", 1], ["disabled", "=", 0]] }])
+		assert.match(textContent(page.root), /3 records/)
+	} finally { page.close(); globalThis.window = original.window; globalThis.fetch = original.fetch; Object.assign(realtime, original.realtime); clearReadCaches() }
 })
 
 test("a condition that still fails leaves the master page and other fields available and logs one diagnostic", async (t) => {

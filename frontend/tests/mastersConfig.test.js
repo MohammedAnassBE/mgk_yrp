@@ -61,7 +61,23 @@ test("Item keeps ERPNext required fields, YRP stock fields and MGK GST while omi
 	const config = getMaster("items")
 	assert.ok(config.hiddenSections.includes("accounting"))
 	const fixtures = JSON.parse(await readFile(new URL("../../mgk_yrp/fixtures/custom_field.json", import.meta.url)))
-	for (const field of fixtures.filter((field) => field.dt === "Item")) assert.ok(stockItemFields.includes(field.fieldname))
+	for (const field of fixtures.filter((field) => field.dt === "Item" && field.fieldtype !== "Section Break")) assert.ok(stockItemFields.includes(field.fieldname), field.fieldname)
+})
+
+test("Supplier Head Office follows Company Location in the form and has a list column and toggle labels", () => {
+	const master = getMaster("suppliers")
+	assert.equal(master.formOrder[master.formOrder.indexOf("is_company_location") + 1], "mgk_is_head_office")
+	const identity = master.formGroups[0].fields
+	assert.equal(identity[identity.indexOf("is_company_location") + 1], "mgk_is_head_office")
+	assert.ok(master.defaultColumns.includes("mgk_is_head_office"))
+	assert.equal(master.columnLabels.mgk_is_head_office, "Head Office")
+	assert.deepEqual(master.boolLabels.mgk_is_head_office, { on: "Head Office", off: "Not the Head Office" })
+})
+
+test("Item master excludes variants and includes templates of any state or enabled plain items", () => {
+	const master = getMaster("items")
+	assert.deepEqual(master.baseFilters, [["variant_of", "is", "not set"]])
+	assert.deepEqual(master.baseOrFilters, [["has_variants", "=", 1], ["disabled", "=", 0]])
 })
 
 test("master Link queries use enabled suppliers, Warehouse groups and YRP stock UOM and tax slab filters", () => {

@@ -1,6 +1,6 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { addEntry, editorSavePayload, getItems, loadItems, replaceEntry } from "../src/item-editor/editorPayload.js"
+import { addEntry, addSplit, editorSavePayload, getItems, loadItems, replaceEntry } from "../src/item-editor/editorPayload.js"
 import { amendmentDraft } from "../src/document/mappedDraft.js"
 
 function fixture() {
@@ -71,4 +71,46 @@ test("new entries retain unknown keys and empty quantity is blocked before save"
 	addEntry(groups, groups[0], entry)
 	assert.deepEqual(groups[0].items[1], entry)
 	assert.throws(() => editorSavePayload({}, []), /Enter Qty/)
+})
+
+test("split retains DC source links independently for occupied and prefilled size cells", () => {
+	const groups = fixture()
+	const original = groups[0].items[0]
+	original.values.S.delivery_challan_item = "DC-row-S"
+	original.values.M = { qty: 0, is_prefilled: 1, delivery_challan_item: "DC-row-M" }
+	original.values.L = { qty: 0 }
+	original.values.XL = null
+	addSplit(groups, 0, 0)
+	const split = groups[0].items[1]
+	assert.equal(split.row_index, undefined)
+	for (const key of ["S", "M"]) {
+		assert.equal(split.values[key].qty, 0)
+		assert.equal(split.values[key].amount, 0)
+		assert.equal(split.values[key].is_prefilled, 1)
+		assert.equal(split.values[key].delivery_challan_item, `DC-row-${key}`)
+		assert.equal(split.values[key].name, undefined)
+	}
+	assert.equal(split.values.L, null)
+	assert.equal(split.values.XL, null)
+	split.attributes.Colour = "Blue"
+	split.dimensions.received_type = "Rejected"
+	assert.equal(original.attributes.Colour, "Red")
+	assert.equal(original.dimensions.received_type, "Accepted")
+	assert.equal(original.values.S.qty, 4)
+	const payload = editorSavePayload({ doctype: "MGK Goods Received Note", docstatus: 0 }, groups)
+	assert.deepEqual(loadItems(payload.item_details, "grn_job"), groups)
+	assert.deepEqual(payload.items, [])
+})
+
+test("zero-quantity prefilled job-work drafts survive save even before any receipt quantity is entered", () => {
+	const groups = fixture()
+	const cell = groups[0].items[0].values.S
+	Object.assign(cell, { qty: 0, is_prefilled: 1, delivery_challan_item: "DC-source" })
+	const doc = { doctype: "MGK Goods Received Note", docstatus: 0 }
+	const payload = editorSavePayload(doc, groups)
+	assert.deepEqual(JSON.parse(payload.item_details), groups)
+	assert.throws(() => editorSavePayload({ ...doc, against_purchase_order: 1 }, groups), /Enter Qty/)
+	assert.throws(() => editorSavePayload({ ...doc, docstatus: 1 }, groups), /Enter Qty/)
+	delete cell.is_prefilled
+	assert.throws(() => editorSavePayload(doc, groups), /Enter Qty/)
 })

@@ -1,7 +1,7 @@
 [
  {
-  "config": "{\"schema_version\": 1, \"screens\": {\"home\": {\"blocks\": [{\"id\": \"purchase-order\", \"type\": \"mgk-purchase-order\"}, {\"id\": \"billing\", \"type\": \"mgk-billing\"}, {\"id\": \"delivery-challan\", \"type\": \"mgk-delivery-challan\"}, {\"id\": \"goods-received-note\", \"type\": \"mgk-goods-received-note\"}]}}}",
-  "description": "Purchase Order, Billing, Delivery Challan and Goods Received Note books.",
+  "config": "{\"schema_version\": 1, \"screens\": {\"home\": {\"blocks\": [{\"id\": \"purchase-order\", \"type\": \"mgk-purchase-order\"}, {\"id\": \"billing\", \"type\": \"mgk-billing\"}, {\"id\": \"delivery-challan\", \"type\": \"mgk-delivery-challan\"}, {\"id\": \"delivery-challan-close\", \"type\": \"mgk-delivery-challan-close\"}, {\"id\": \"goods-received-note\", \"type\": \"mgk-goods-received-note\"}]}}}",
+  "description": "Purchase Order, Billing, Delivery Challan, DC Close and Goods Received Note books.",
   "disabled": 0,
   "docstatus": 0,
   "doctype": "YRP UI Layout",
@@ -11,8 +11,8 @@
   "render_mode": "Configurable Layout"
  },
  {
-  "config": "{\"schema_version\": 1, \"screens\": {\"home\": {\"blocks\": [{\"id\": \"delivery-challan\", \"type\": \"mgk-delivery-challan\"}, {\"id\": \"goods-received-note\", \"type\": \"mgk-goods-received-note\"}]}}}",
-  "description": "Delivery Challan and Goods Received Note books for stock users.",
+  "config": "{\"schema_version\": 1, \"screens\": {\"home\": {\"blocks\": [{\"id\": \"delivery-challan\", \"type\": \"mgk-delivery-challan\"}, {\"id\": \"delivery-challan-close\", \"type\": \"mgk-delivery-challan-close\"}, {\"id\": \"goods-received-note\", \"type\": \"mgk-goods-received-note\"}]}}}",
+  "description": "Delivery Challan, DC Close and Goods Received Note books for stock users.",
   "disabled": 0,
   "docstatus": 0,
   "doctype": "YRP UI Layout",

@@ -46,6 +46,18 @@ test("Warehouse keeps ERPNext identity and hierarchy while dropping unrelated fi
 	assert.equal(sections[0].fields[1].label, "Linked supplier")
 })
 
+test("Item process conversions use the fixture visibility rule for templates only", async () => {
+	const { readFile } = await import("node:fs/promises")
+	const fixtures = JSON.parse(await readFile(new URL("../../mgk_yrp/fixtures/custom_field.json", import.meta.url)))
+	const fields = fixtures.filter((field) => field.dt === "Item")
+	const meta = { name: "Item", fields: [field("has_variants", "Check"), ...fields] }
+	for (const has_variants of [0, 1]) {
+		const sections = masterSections(getMaster("items"), meta, { has_variants }, user)
+		assert.equal(sections.some((section) => section.label === "Process conversions"), Boolean(has_variants))
+		assert.equal(sections.flatMap((section) => section.fields).some((field) => field.fieldname === "mgk_process_conversions"), Boolean(has_variants))
+	}
+})
+
 test("Process groups keep Desk conditional transformation and sub-process tables", () => {
 	const meta = metadata([field("process_name"), field("is_group", "Check"), field("is_item_conversion", "Check"), field("input_uom"), field("output_uom"),
 		field("transformation", "Section Break", { depends_on: "eval:doc.is_group != 1" }), field("value_change_attributes", "Table"),

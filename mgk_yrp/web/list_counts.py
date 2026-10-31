@@ -6,6 +6,17 @@ from frappe import _
 MAX_FILTER_SETS = 20
 
 
+def validate_count_filter(entry):
+	if not isinstance(entry, dict):
+		frappe.throw(_("Each count filter set must be an object."), frappe.ValidationError)
+	if not isinstance(entry.get("doctype"), str) or not entry["doctype"].strip():
+		frappe.throw(_("Each count filter set needs a DocType."), frappe.ValidationError)
+	if not isinstance(entry.get("filters"), list):
+		frappe.throw(_("Count filters must be a list."), frappe.ValidationError)
+	if "or_filters" in entry and not isinstance(entry["or_filters"], list):
+		frappe.throw(_("Count or-filters must be a list."), frappe.ValidationError)
+
+
 def validate_filter_sets(doctype_filter_sets):
 	if isinstance(doctype_filter_sets, str):
 		try:
@@ -15,12 +26,7 @@ def validate_filter_sets(doctype_filter_sets):
 	if not isinstance(doctype_filter_sets, list) or len(doctype_filter_sets) > MAX_FILTER_SETS:
 		frappe.throw(_("Provide a list of at most 20 count filter sets."), frappe.ValidationError)
 	for entry in doctype_filter_sets:
-		if not isinstance(entry, dict):
-			frappe.throw(_("Each count filter set must be an object."), frappe.ValidationError)
-		if not isinstance(entry.get("doctype"), str) or not entry["doctype"].strip():
-			frappe.throw(_("Each count filter set needs a DocType."), frappe.ValidationError)
-		if not isinstance(entry.get("filters"), list):
-			frappe.throw(_("Count filters must be a list."), frappe.ValidationError)
+		validate_count_filter(entry)
 	return doctype_filter_sets
 
 
@@ -35,6 +41,7 @@ def get_counts(doctype_filter_sets):
 		rows = frappe.get_list(
 			entry["doctype"],
 			filters=entry["filters"],
+			**({"or_filters": entry["or_filters"]} if "or_filters" in entry else {}),
 			fields=[{"COUNT": "*", "as": "count"}],
 			limit=1,
 			order_by="",

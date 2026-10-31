@@ -26,10 +26,11 @@ export function useMasterForm(master, options = {}) {
 	const root = ref(null)
 	const meta = computed(() => metas.value.find((entry) => entry.name === master.doctype))
 	const isNew = computed(() => !doc.value?.name || Boolean(doc.value.__islocal))
+	const variantTemplate = computed(() => master.doctype === "Item" ? doc.value?.variant_of : null)
 	const canRead = hasPermission(master.doctype, master.permission)
-	const editing = computed(() => canEditMaster(master) && hasPermission(master.doctype, isNew.value ? "create" : "write"))
-	const canDelete = computed(() => !isNew.value && canEditMaster(master) && hasPermission(master.doctype, "delete"))
-	const sections = computed(() => doc.value && meta.value ? masterSections(master, meta.value, doc.value) : [])
+	const editing = computed(() => !variantTemplate.value && canEditMaster(master) && hasPermission(master.doctype, isNew.value ? "create" : "write"))
+	const canDelete = computed(() => !variantTemplate.value && !isNew.value && canEditMaster(master) && hasPermission(master.doctype, "delete"))
+	const sections = computed(() => !variantTemplate.value && doc.value && meta.value ? masterSections(master, meta.value, doc.value) : [])
 	const toggle = computed(() => meta.value && disableField(meta.value))
 	const isDisabled = computed(() => toggle.value && doc.value && disabledValue(toggle.value, doc.value))
 	let disposed = false
@@ -43,6 +44,9 @@ export function useMasterForm(master, options = {}) {
 	function change(name, value) {
 		if (!editing.value || busy.value) return
 		doc.value[name] = value
+		if (master.doctype === "Item" && name === "stock_uom") {
+			for (const row of doc.value.mgk_process_conversions || []) row.from_uom = value
+		}
 		dirty.value = true
 		revision++
 	}
@@ -148,5 +152,5 @@ export function useMasterForm(master, options = {}) {
 	onMounted(() => { window.addEventListener("keydown", keydown); initialize() })
 	onBeforeUnmount(() => { disposed = true; sequence++; live.dispose(); disposers.forEach((dispose) => dispose()); window.removeEventListener("keydown", keydown) })
 	return { root, doc, metas, meta, sections, loading, busy, dirty, stale, error, messages, isNew, editing, canRead, canDelete,
-		toggle, isDisabled, change, initialize, reload, save, remove }
+		variantTemplate, toggle, isDisabled, change, initialize, reload, save, remove }
 }

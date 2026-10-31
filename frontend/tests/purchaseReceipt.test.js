@@ -161,7 +161,7 @@ test("Create GRN is gated by submission, pending quantity and create permission;
 	const doc = { docstatus: 1, items: [{ pending_qty: 1 }] }
 	const allow = (doctype, permission) => doctype === "MGK Goods Received Note" && permission === "create"
 	const actions = module.actions(doc, allow)
-	assert.equal(actions.length, 1)
+	assert.equal(actions.length, 2)
 	for (const docstatus of [0, 2]) assert.equal(module.actions({ ...doc, docstatus }, allow).length, 0)
 	assert.equal(module.actions({ ...doc, items: [{ pending_qty: 0 }] }, allow).length, 0)
 	assert.equal(module.actions(doc, () => false).length, 0)

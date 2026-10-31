@@ -289,6 +289,8 @@ class JobWorkDispatch:
 				frappe.db.rollback(save_point=checkpoint)
 			raise
 		frappe.db.release_savepoint(checkpoint)
+		for receipt in self.receipts:
+			receipt.notify_update()
 		return {"delivery_challan": challan.name, "stock_entries": entries}
 
 	def move_stock(self, challan):

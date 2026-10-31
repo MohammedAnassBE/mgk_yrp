@@ -1,5 +1,6 @@
 import { statusPill } from "../../list/statusPill.js"
 import { purchaseOrderFilters } from "./fieldEvents.js"
+export { transferIntro as intro } from "../shared/transit.js"
 
 export function summary(doc, itemCount = doc.items?.length || 0) {
 	return { title: "Receipt summary", lines: [{ label: "Source", value: doc.against_purchase_order ? doc.purchase_order || "Purchase Order" : "Job Work" },

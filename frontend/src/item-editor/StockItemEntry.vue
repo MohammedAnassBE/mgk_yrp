@@ -53,7 +53,7 @@ async function commit() {
 	try {
 		if (!entry.value || entry.value.name !== item.value) throw new Error("Choose an item first.")
 		for (const dim of props.dimensions) if (dim.mandatory && !dimensions.value[dim.fieldname]) throw new Error(`${dim.label} is required.`)
-		for (const attr of details.value.attributes || []) if (!entry.value.attributes[attr]) throw new Error(`Choose ${attr}.`)
+		for (const attr of details.value.attributes || []) if (attr !== details.value.primary_attribute && !entry.value.attributes[attr]) throw new Error(`Choose ${attr}.`)
 		if (!Object.values(entry.value.values).some((cell) => Number(cell?.qty) > 0)) throw new Error("Enter Qty to continue")
 		entry.value.dimensions = clone(dimensions.value)
 		validateItem(entry.value, props.mode, props.poEntries)
@@ -116,7 +116,7 @@ function updateCell(key, field, value) {
 		<p v-if="loading" role="status">Resolving item attributes…</p>
 		<template v-if="entry">
 			<div class="form-grid attribute-fields">
-				<div v-for="attribute in details.attributes" :key="attribute" class="form-field">
+				<div v-for="attribute in (details.attributes || []).filter((value) => value !== details.primary_attribute)" :key="attribute" class="form-field">
 					<label class="field-label">
 						{{ attribute }}
 						<span class="required">*</span>
@@ -154,7 +154,7 @@ function updateCell(key, field, value) {
 								/>
 							</td>
 						</tr>
-						<tr>
+						<tr v-if="mode !== 'plan'">
 							<th>Rate</th>
 							<td v-for="key in keys" :key="key">
 								<InputNumber
@@ -191,3 +191,11 @@ function updateCell(key, field, value) {
 		</div>
 	</section>
 </template>
+
+<style scoped>
+.stock-add-form { min-width: 0; }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 20px; margin-bottom: 18px; }
+@media (max-width: 700px) {
+	.form-grid { grid-template-columns: minmax(0, 1fr); }
+}
+</style>

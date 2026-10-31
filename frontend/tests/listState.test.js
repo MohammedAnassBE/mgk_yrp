@@ -10,7 +10,7 @@ function storage() {
 test("saves and restores filters, zero quick values, sort, tab, loaded count and whole-page scroll", () => {
 	const store = storage()
 	const key = listStateKey("MGK Purchase Order", "/purchase-order", "one@example.test")
-	const state = { filters: [["supplier", "=", "S-1"]], quickFilters: { against_purchase_order: 0 }, search: "PO", tab: "karigan", sortField: "creation", sortDirection: "asc", loadedCount: 80, scrollTop: 1450 }
+	const state = { filters: [["supplier", "=", "S-1"]], quickFilters: { against_purchase_order: 0 }, search: "PO", tab: "karigan", selected: "PO-42", sortField: "creation", sortDirection: "asc", loadedCount: 80, scrollTop: 1450 }
 	assert.equal(readListState(key, store), null)
 	saveListState(key, state, store)
 	assert.deepEqual(readListState(key, store), state)
@@ -23,6 +23,7 @@ test("saves and restores filters, zero quick values, sort, tab, loaded count and
 test("normalizes bad paging values and surfaces corrupt/unavailable session storage", () => {
 	assert.equal(normalizeListState({ loadedCount: -1, scrollTop: -20 }).loadedCount, 20)
 	assert.equal(normalizeListState({ scrollTop: -20 }).scrollTop, 0)
+	assert.equal(normalizeListState({}).selected, "")
 	assert.throws(() => readListState("key", { getItem: () => "bad JSON" }), SyntaxError)
 	assert.throws(() => saveListState("key", {}, { setItem: () => { throw new Error("Storage blocked") } }), /Storage blocked/)
 })
