@@ -9,10 +9,10 @@ import { callMethod } from "../../api/client.js"
 import { toIsoDate } from "../../shared/formatDate.js"
 import { money } from "../../documents/previewValues.js"
 import { notify } from "../../shared/notify.js"
-import { billPayload, blockTotals, buildBlocks, draftGroups, failedSupplier, method, setDraftRate, typeLabel, validateBlocks } from "./pendingBills.js"
+import { billPayload, blockTotals, buildBlocks, draftGroups, failedSupplier, method, removeGrn, setDraftRate, typeLabel, validateBlocks } from "./pendingBills.js"
 
 const props = defineProps({ visible: Boolean, groups: { type: Array, default: () => [] } })
-const emit = defineEmits(["update:visible", "created"])
+const emit = defineEmits(["update:visible", "created", "remove"])
 const blocks = ref([])
 const loading = ref(false)
 const saving = ref(false)
@@ -42,6 +42,12 @@ function changeRate(block, draftIndex, group, rate) {
 const taxColumns = (draft) => draft.tax_type === "IGST" ? [["igst_amount", "IGST"]]
 	: draft.tax_type === "CGST + SGST" ? [["cgst_amount", "CGST"], ["sgst_amount", "SGST"]] : []
 
+function remove(name) {
+	blocks.value = removeGrn(blocks.value, name)
+	emit("remove", name)
+	if (!blocks.value.length) emit("update:visible", false)
+}
+
 async function submit() {
 	if (busy.value || !blocks.value.length) return
 	error.value = ""
@@ -70,6 +76,9 @@ async function submit() {
 		<p v-for="note in notes" :key="note" class="make-bill-note">{{ note }}</p>
 		<section v-for="block in blocks" :key="block.supplier" class="make-bill-block" :class="{ 'has-error': block.error }">
 			<header><h3>{{ block.supplier_name }}</h3><span>{{ block.grns.length }} GRNs</span></header>
+			<ul class="make-bill-grns" aria-label="GRNs in this bill">
+				<li v-for="grn in block.grns" :key="grn">{{ grn }}<button type="button" :disabled="saving" :aria-label="`Remove ${grn}`" title="Remove from this bill" @click="remove(grn)"><i class="pi pi-times" aria-hidden="true" /></button></li>
+			</ul>
 			<div class="make-bill-fields">
 				<label><span>Supplier Invoice No *</span><InputText v-model="block.bill_no" :id="`bill-no-${block.supplier}`" :disabled="saving" :aria-label="`${block.supplier_name} Supplier Invoice No`" /></label>
 				<label><span>Supplier Invoice Date *</span><DateInput v-model="block.bill_date" :input-id="`bill-date-${block.supplier}`" :aria-label="`${block.supplier_name} Supplier Invoice Date`" required /></label>

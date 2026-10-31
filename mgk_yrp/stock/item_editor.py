@@ -190,6 +190,8 @@ def set_items_from_editor(doc):
 		return
 	keep_zero = doc.doctype == "MGK Goods Received Note" and (doc.against_purchase_order or doc.docstatus == 0)
 	groups = editor_groups(doc)
+	if doc.doctype == "MGK Goods Received Note":
+		drop_unfilled_entries(groups)
 	validate_persisted_names(doc, groups)
 	rows = ungroup_items_from_ui(groups, doc.doctype, keep_zero=keep_zero, config=EDITOR_CONFIG[doc.doctype])
 	cells = (cell for cell in get_cells(groups) if keep_zero or cell.get("qty"))
@@ -198,6 +200,21 @@ def set_items_from_editor(doc):
 			row["name"] = cell["name"]
 	doc.set("items", rows)
 	doc.item_details = None
+
+
+def drop_unfilled_entries(groups):
+	"""Drop zero-qty entries still missing attributes; a positive qty needs them filled."""
+	for group in groups:
+		optional = {group.get("primary_attribute"), group.get("dependent_attribute")}
+		required = [attribute for attribute in group.get("attributes") or [] if attribute not in optional]
+		kept = []
+		for entry in group.get("items") or []:
+			missing = [attribute for attribute in required if not (entry.get("attributes") or {}).get(attribute)]
+			if missing and any(flt(cell.get("qty")) for cell in (entry.get("values") or {}).values()):
+				frappe.throw(frappe._("Choose {0} for {1}.").format(", ".join(missing), entry.get("name")))
+			if not missing:
+				kept.append(entry)
+		group["items"] = kept
 
 
 def drop_zero_qty_rows(doc):

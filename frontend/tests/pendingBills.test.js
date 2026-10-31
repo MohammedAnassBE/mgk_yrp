@@ -136,3 +136,18 @@ test("page lists suppliers by summed aging with GRN links, DD-MM-YYYY dates and 
 		assert.ok(page.requests.filter((entry) => entry.url.includes("get_pending_bills")).length > loadsBefore)
 	} finally { page.close() }
 })
+
+test("removing a GRN from the Make Bill popup drops its rows, empty drafts and empty suppliers", async () => {
+	const { removeGrn } = await import("../src/books/pending-bills/pendingBills.js")
+	const row = (grn, amount) => ({ goods_received_note: grn, qty: 1, rate: amount, amount, cgst_amount: 0, sgst_amount: 0, igst_amount: 0 })
+	const blocks = [
+		{ supplier: "A", grns: ["G1", "G2"], drafts: [{ against: "Purchase Order", items: [row("G1", 10), row("G2", 5)] }] },
+		{ supplier: "B", grns: ["G3"], drafts: [{ against: "Job Work", items: [row("G3", 7)] }] },
+	]
+	const next = removeGrn(blocks, "G1")
+	assert.deepEqual(next[0].grns, ["G2"])
+	assert.equal(next[0].drafts[0].items.length, 1)
+	assert.equal(next[0].drafts[0].grand_total, 5)
+	assert.equal(blocks[0].grns.length, 2)
+	assert.deepEqual(removeGrn(next, "G3").map((block) => block.supplier), ["A"])
+})

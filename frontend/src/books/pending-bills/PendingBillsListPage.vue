@@ -114,6 +114,6 @@ onBeforeUnmount(() => { sequence++; refresh.cancel(); disposers.forEach((dispose
 				</tbody>
 			</table></div>
 		</article>
-		<MakeBillDialog v-model:visible="dialogOpen" :groups="billGroups" @created="billsCreated" />
+		<MakeBillDialog v-model:visible="dialogOpen" :groups="billGroups" @created="billsCreated" @remove="toggle([$event], false)" />
 	</section>
 </template>

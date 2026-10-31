@@ -14,7 +14,7 @@ from mgk_yrp.job_work.grn_from_dc import (
 	validate_output_templates,
 )
 from mgk_yrp.stock.dimensions import get_dimension_defaults
-from mgk_yrp.stock.item_editor import get_item_details
+from mgk_yrp.stock.item_editor import drop_unfilled_entries, get_item_details
 from mgk_yrp.tests.fixtures import (
 	close_dc,
 	make_delivery_challan,
@@ -160,11 +160,20 @@ class TestGRNFromDC(IntegrationTestCase):
 		attributes = {row.attribute: row.attribute_value for row in frappe.get_doc("Item", first).attributes}
 		self.assertEqual(attributes, {self.size["attribute"]: self.small, self.colour["attribute"]: self.red})
 
-	def test_missing_attribute_requires_update_plan(self):
+	def test_missing_attribute_returns_template_to_fill(self):
 		attribute, _value = make_item_attribute()
 		output = make_template([attribute], attribute["attribute"])
-		with self.assertRaisesRegex(frappe.ValidationError, "Use Update Plan on the Delivery Challan"):
-			resolve_output_item(output.name, self.raw)
+		self.assertEqual(resolve_output_item(output.name, self.raw), output.name)
+
+	def test_unfilled_attributes_drop_zero_rows_and_block_positive_qty(self):
+		def groups(qty):
+			entry = {"name": "Output", "attributes": {"Colour": "Red", "Size": ""}, "values": {"default": {"qty": qty}}}
+			return [{"attributes": ["Colour", "Size"], "primary_attribute": "", "items": [entry]}]
+		zero = groups(0)
+		drop_unfilled_entries(zero)
+		self.assertEqual(zero[0]["items"], [])
+		with self.assertRaisesRegex(frappe.ValidationError, "Choose Size for Output"):
+			drop_unfilled_entries(groups(2))
 
 	def test_two_conversion_outputs_per_source_row(self):
 		second = make_item(stock_uom=make_uom("Cone"))

@@ -106,21 +106,15 @@ def prefilled_output(item, row_index, dimensions=None):
 
 
 def resolve_output_item(output_item, source_item):
+	"""Variant matching the source; the template itself when the source lacks an attribute, for the user to fill."""
 	output = frappe.get_doc("Item", output_item)
 	if not output.has_variants:
 		return output_item
 	source = frappe.get_doc("Item", source_item)
 	values = {row.attribute: row.attribute_value for row in source.attributes}
-	attributes = {}
-	for row in output.attributes:
-		if not values.get(row.attribute):
-			frappe.throw(
-				_("Output {0} needs attribute {1}, which {2} does not have. Use Update Plan on the Delivery Challan to choose the output items.").format(
-					output_item, row.attribute, source_item
-				)
-			)
-		attributes[row.attribute] = values[row.attribute]
-	return get_or_create_variant(output_item, attributes)
+	if any(not values.get(row.attribute) for row in output.attributes):
+		return output_item
+	return get_or_create_variant(output_item, {row.attribute: values[row.attribute] for row in output.attributes})
 
 
 def get_linked_challans(grn):

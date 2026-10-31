@@ -69,6 +69,8 @@ class MGKGoodsReceivedNote(Document):
 				frappe.throw(
 					_("Row {0}: A job-work receipt cannot reference a Purchase Order row.").format(row.idx)
 				)
+			if row.qty and frappe.get_cached_value("Item", row.item, "has_variants"):
+				frappe.throw(_("Row {0}: Choose the attribute values for {1}.").format(row.idx, row.item))
 			apply_independent_uom(row)
 
 	@property

@@ -74,3 +74,15 @@ export function failedSupplier(error) {
 	}
 	return ""
 }
+
+/** Drop one GRN from the popup; empty drafts and suppliers go with it. */
+export function removeGrn(blocks, name) {
+	return blocks.map((block) => {
+		if (!block.grns.includes(name)) return block
+		const drafts = block.drafts.map((draft) => {
+			const items = draft.items.filter((row) => row.goods_received_note !== name)
+			return { ...draft, items, ...invoiceTotals(items) }
+		}).filter((draft) => draft.items.length)
+		return { ...block, grns: block.grns.filter((grn) => grn !== name), drafts }
+	}).filter((block) => block.grns.length)
+}
