@@ -6,7 +6,7 @@ import { linkDescription } from "./linkOptions.js"
 import { useLinkLabel } from "./useLinkLabel.js"
 
 const props = defineProps({ modelValue: { default: "" }, doctype: { type: String, required: true }, label: { type: String, default: "Link value" }, placeholder: String, inputId: String })
-const emit = defineEmits(["update:modelValue"])
+const emit = defineEmits(["update:modelValue", "select"])
 const { label: selectedLabel, error: labelError } = useLinkLabel(props)
 const generatedId = `link-${getCurrentInstance().uid}`
 const results = ref([])
@@ -41,6 +41,7 @@ function input(value) {
 }
 function select(option) {
 	emit("update:modelValue", option.value)
+	emit("select", option.value)
 	close()
 }
 function close() { open.value = false; sequence += 1; loading.value = false; delayedSearch.cancel() }

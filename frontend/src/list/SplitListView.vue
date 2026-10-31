@@ -1,4 +1,5 @@
 <script setup>
+import { formatDate } from "../shared/formatDate.js"
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import PreviewPane from "./PreviewPane.vue"
@@ -96,7 +97,7 @@ async function move(direction) {
 }
 
 function keydown(event) {
-	const hasDialog = props.dialogOpen || Boolean(globalThis.document?.querySelector?.('dialog[open], [role="dialog"], .p-dialog-mask'))
+	const hasDialog = props.dialogOpen || Boolean(globalThis.document?.querySelector?.('dialog[open], [role="dialog"], .p-dialog-mask, [role="menu"]'))
 	if (hasDialog) return
 	if (event.key === "Escape") { event.preventDefault(); escapeToList(); return }
 	if (ignoresNavigation(event)) return
@@ -121,9 +122,9 @@ function openSelected(event) {
 
 function resize() { isPhone.value = Boolean(media?.matches) }
 function rowMetrics(row) {
-	const quantity = Number(row.total_qty ?? row.total_output_qty ?? 0).toLocaleString("en-IN")
-	const amount = [row.grand_total, row.total_amount, row.total_declared_value, row.total_dc_value].find((value) => value != null)
-	return [row.po_date || row.posting_date, `${quantity} qty`, amount == null ? null : Number(amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })].filter(Boolean).join(" · ")
+	const quantity = row.amount != null ? null : `${Number(row.total_qty ?? row.total_output_qty ?? 0).toLocaleString("en-IN")} qty`
+	const amount = [row.grand_total, row.total_amount, row.total_declared_value, row.total_dc_value, row.amount].find((value) => value != null)
+	return [formatDate(row.po_date || row.posting_date), quantity, amount == null ? null : Number(amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })].filter(Boolean).join(" · ")
 }
 onMounted(() => {
 	media = window.matchMedia?.("(max-width: 760px)")
@@ -154,7 +155,7 @@ onBeforeUnmount(() => { disposed = true; media?.removeEventListener("change", re
 		<div ref="previewPanel" class="split-preview">
 			<button class="button secondary preview-back" type="button" @click="back">‹ Back to list</button>
 			<SelectionSummary v-if="names.length" :rows="selectedRows" :actions="bulkActions" :refresh="refresh" @clear="selection.clear" />
-			<PreviewPane v-else :doctype="doctype" :row="selectedRow" :related-doctypes="relatedDoctypes" :document-route="documentRoute" :save-position="savePosition" />
+			<PreviewPane v-else :doctype="doctype" :row="selectedRow" :related-doctypes="relatedDoctypes" :document-route="documentRoute" :save-position="savePosition" :refresh="refresh" />
 		</div>
 	</div>
 </template>

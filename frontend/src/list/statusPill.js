@@ -24,6 +24,7 @@ export function statusPill(doctype, row) {
 		const classes = { Open: "open", Closed: "completed", Reopening: "pending" }
 		return pill(row.close_status || "Open", classes[row.close_status] || "open")
 	}
+	if (doctype === "MGK Supplier Credit Debit") return row.entry_type === "Debit" ? pill("Debit", "pending") : pill("Credit", "completed")
 	if (doctype === "MGK Delivery Challan Close" && ["Reversing", "Reopening", "Reopened"].includes(row.reopen_status)) {
 		return pill(row.reopen_status, row.reopen_status === "Reopened" ? "closed" : "pending")
 	}
@@ -41,6 +42,7 @@ export function indicatorFields(doctype, canReadInvoice = false) {
 	if (doctype === "User") return ["enabled"]
 	if (["Item", "Supplier", "Warehouse", "MGK Agent"].includes(doctype)) return ["disabled"]
 	if (doctype === "MGK Purchase Order") return ["status"]
+	if (doctype === "MGK Supplier Credit Debit") return ["entry_type"]
 	if (doctype === "MGK Delivery Challan") return ["is_return", "close_status", "is_internal_transfer", "transfer_status"]
 	if (doctype === "MGK Goods Received Note") {
 		return ["purchase_invoice", "is_internal_transfer", "transfer_status", ...(canReadInvoice ? ["purchase_invoice.docstatus as purchase_invoice_docstatus"] : [])]

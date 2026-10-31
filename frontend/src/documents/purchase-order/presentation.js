@@ -1,3 +1,4 @@
+import { formatDate } from "../../shared/formatDate.js"
 export function summary(doc, itemCount = doc.items?.length || 0) {
 	const lines = [{ label: "Supplier", value: doc.supplier }, { label: "Delivery to", value: doc.delivery_location },
 		{ label: "Routing", value: doc.goods_routing }, { label: "Items", value: itemCount },
@@ -15,7 +16,7 @@ export function summary(doc, itemCount = doc.items?.length || 0) {
 }
 
 export function viewFacts(doc) {
-	return [["Supplier", doc.supplier], ["PO date", doc.po_date], ["Delivery location", doc.delivery_location],
+	return [["Supplier", doc.supplier], ["PO date", formatDate(doc.po_date)], ["Delivery location", doc.delivery_location],
 		["Warehouse", doc.warehouse], ["Goods routing", doc.goods_routing], ["MGK Agent", doc.mgk_agent],
 		["Handling supplier", doc.handling_supplier], ["Karigan order", doc.is_karigan_order ? "Yes" : "No"],
 		["Salavai Cone order", doc.is_salavai_cone_order ? "Yes" : "No"]].map(([label, value]) => ({ label, value }))

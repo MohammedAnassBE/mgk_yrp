@@ -4,11 +4,10 @@ export function reopenConfirmation(doc) {
 
 export function actions(doc, can) {
 	return Number(doc.docstatus) === 2 && doc.reopen_status === "Reversing" && can(doc.doctype, "cancel")
-		? [{ key: "finish-reopen", label: "Finish Reopen" }] : []
+		? [{ key: "finish-reopen", label: "Finish Reopen", run: finishReopen }] : []
 }
 
-export async function finishReopen(doc, { call, reload, message }) {
+async function finishReopen({ doc }, { call }) {
 	const finished = await call("mgk_yrp.job_work.reopen.finish_reopen", { close_name: doc.name })
-	if (!finished) message("The reversal is still processing.")
-	await reload()
+	return finished ? undefined : { message: "The reversal is still processing." }
 }

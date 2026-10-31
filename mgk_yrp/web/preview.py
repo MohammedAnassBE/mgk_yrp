@@ -10,7 +10,8 @@ CHALLAN = "MGK Delivery Challan"
 INVOICE = "MGK Purchase Invoice"
 CLOSE = "MGK Delivery Challan Close"
 PLAN = "MGK Process Planning"
-ALLOWED_DOCTYPES = {PURCHASE_ORDER, RECEIPT, CHALLAN, INVOICE, CLOSE}
+CREDIT_DEBIT = "MGK Supplier Credit Debit"
+ALLOWED_DOCTYPES = {PURCHASE_ORDER, RECEIPT, CHALLAN, INVOICE, CLOSE, CREDIT_DEBIT}
 
 
 @frappe.whitelist()
@@ -24,6 +25,7 @@ def get_preview(doctype: str, name: str) -> dict:
 	connections, linked_events = get_connections(doc)
 	return {
 		"doc": get_preview_doc(doc),
+		"is_submittable": int(doc.meta.is_submittable),
 		"items": [row.as_dict() for row in doc.get("outputs" if doctype == CLOSE else "items") or []],
 		"connections": connections,
 		"timeline": get_timeline(doc, linked_events),
@@ -64,7 +66,12 @@ def add_names(filters, doctype, names):
 
 
 def receipt_connections(doc):
-	filters = {CHALLAN: [["goods_received_note", "=", doc.name]]}
+	filters = {
+		CHALLAN: [
+			["goods_received_note", "=", doc.name],
+			["MGK Delivery Challan Item", "goods_received_note", "=", doc.name],
+		]
+	}
 	add_names(filters, PURCHASE_ORDER, [doc.get("purchase_order")])
 	add_names(filters, CHALLAN, [row.get("delivery_challan") for row in doc.get("delivery_challans") or []])
 	add_names(filters, INVOICE, [doc.get("purchase_invoice")])
@@ -134,6 +141,8 @@ def get_timeline(doc, linked_events):
 
 
 def get_extra(doc):
+	if doc.doctype == CLOSE:
+		return get_close_extra(doc)
 	if doc.doctype != CHALLAN:
 		return {}
 	plan_name = doc.get("mgk_process_planning")
@@ -142,3 +151,12 @@ def get_extra(doc):
 	plan = frappe.get_doc(PLAN, plan_name)
 	plan.apply_fieldlevel_read_permissions()
 	return {"plan_rows": [row.as_dict() for row in plan.get("items") or []]}
+
+
+def get_close_extra(doc):
+	name = doc.get("delivery_challan")
+	if not name or not frappe.has_permission(CHALLAN, "read", doc=name):
+		return {}
+	challan = frappe.get_doc(CHALLAN, name)
+	challan.apply_fieldlevel_read_permissions()
+	return {"process_name": challan.get("process_name")}

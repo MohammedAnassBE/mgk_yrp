@@ -135,3 +135,38 @@ test("reset ignores stale mutation results, errors, navigation and reload withou
 		} finally { pending.resolve(); scope.stop() }
 	}
 })
+
+test("successful run and dialog completions settle the captured target before selection-scoped results", async () => {
+	for (const kind of ["run", "dialog"]) {
+		const app = createApp({}), scope = effectScope(), pending = deferred(), targets = []
+		let reloads = 0
+		app.provide(routerKey, { push: () => assert.fail("Unexpected navigation") })
+		const runner = scope.run(() => app.runWithContext(() => useActionRunner({
+			reload: async () => { reloads++ }, settled: async (target) => { targets.push(target); await pending.promise },
+		})))
+		const target = { doc: { doctype: "MGK Purchase Order", name: "A" } }
+		try {
+			let running
+			if (kind === "dialog") {
+				await runner.run({ key: kind, dialog: async () => ({}) }, target)
+				running = runner.dialogDone({ message: "Saved A" })
+			} else running = runner.run({ key: kind, run: async () => ({ message: "Saved A" }) }, target)
+			await flush()
+			runner.reset()
+			pending.resolve(); await running
+			assert.deepEqual(targets, [target])
+			assert.equal(runner.result.value, null)
+			assert.equal(reloads, 0)
+		} finally { pending.resolve(); scope.stop() }
+	}
+})
+
+test("preview totals sum qty and amount columns only and highlight amount facts", async () => {
+	const { columnTotals, isAmountFact } = await import("../src/documents/previewValues.js")
+	const columns = [{ key: "item" }, { key: "qty", numeric: true }, { key: "rate", money: true }, { key: "amount", money: true }]
+	assert.deepEqual(columnTotals(columns, [{ qty: 5, rate: 2, amount: 10 }, { qty: 5, rate: 2, amount: 10 }]), { qty: 10, amount: 20 })
+	assert.equal(columnTotals(columns, [{ qty: 5, amount: 10 }]), null)
+	assert.deepEqual(columnTotals(columns, [{ qty: null }, { qty: null }]), { qty: null, amount: null })
+	assert.equal(columnTotals([{ key: "item" }], [{}, {}]), null)
+	assert.deepEqual(["Amount", "Grand Total", "Total DC Value", "Process"].map((label) => isAmountFact({ label })), [true, true, true, false])
+})

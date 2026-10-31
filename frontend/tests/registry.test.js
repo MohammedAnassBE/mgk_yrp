@@ -4,22 +4,22 @@ import { readFile, readdir } from "node:fs/promises"
 import { bookManifest } from "../src/books/manifest.js"
 import { books, bookRegistry } from "../src/books/registry.js"
 
-const required = ["type", "key", "doctype", "label", "code", "cover", "routePath", "tabs", "defaultColumns", "card", "routes"]
+const required = ["type", "key", "doctype", "label", "code", "cover", "routePath", "tabs", "defaultColumns", "routes"]
 
-test("all seven modules export the complete contract and own routes/cards", async () => {
-	assert.equal(books.length, 7)
-	assert.equal(new Set(books.map((book) => book.type)).size, 7)
+test("all modules export the complete contract and own routes/cards", async () => {
+	assert.equal(books.length, 10)
+	assert.equal(new Set(books.map((book) => book.type)).size, 10)
 	for (const book of books) {
 		for (const key of required) assert.ok(Object.hasOwn(book, key), `${book.key} missing ${key}`)
 		assert.equal(bookRegistry[book.type], book)
 		const metadata = bookManifest.find((entry) => entry.type === book.type)
 		for (const key of Object.keys(metadata)) assert.deepEqual(book[key], metadata[key])
-		assert.equal(typeof book.card, "function")
+		assert.equal(typeof book.card, book.showOnHome === false ? "undefined" : "function")
+		const files = await readdir(new URL(`../src/books/${book.key}/`, import.meta.url))
+		assert.equal(files.some((file) => file.endsWith("Card.vue")), book.showOnHome !== false)
 		assert.equal(book.routes[0].path, book.routePath)
 		assert.equal(book.routes[0].meta.bookType, book.type)
 		assert.equal(typeof book.routes[0].component, "function")
-		const files = await readdir(new URL(`../src/books/${book.key}/`, import.meta.url))
-		assert.ok(files.some((file) => file.endsWith("Card.vue")))
 		assert.ok(files.some((file) => file.endsWith("ListPage.vue")))
 	}
 })
@@ -80,6 +80,8 @@ test("book metadata exposes useful standard quick filters and declares every rel
 		billing: ["supplier", "posting_date", "against", "bill_no"],
 		"delivery-challan": ["from_location", "to_location", "process_name", "posting_date", "close_status"],
 		"delivery-challan-close": [],
+		"supplier-credit-debit": ["supplier", "entry_type"],
+		"pending-bills": [],
 	}
 	for (const book of books.filter((entry) => entry.presentation === "book")) {
 		const name = book.doctype.toLowerCase().replaceAll(" ", "_")
@@ -101,4 +103,15 @@ test("DC Close owns its list and both document routes without a list create butt
 	assert.ok(page.includes('layout="split"'))
 	assert.ok(page.includes(':bulk-actions="book.bulkActions || []"'))
 	assert.ok(page.includes(':allow-create="book.allowCreate"'))
+})
+
+test("old Users & Access master URLs redirect to Manage", async () => {
+	const { createRouter, createMemoryHistory } = await import("vue-router")
+	const router = createRouter({ history: createMemoryHistory(), routes: bookRegistry["mgk-masters"].routes.map(({ component, ...route }) => component ? { ...route, component: { render: () => null } } : route) })
+	for (const path of ["/manage/users", "/manage/users/new", "/manage/users/a%40b.test"]) {
+		await router.push(path)
+		assert.equal(router.currentRoute.value.path, "/manage")
+	}
+	await router.push("/manage/processes")
+	assert.equal(router.currentRoute.value.params.master, "processes")
 })

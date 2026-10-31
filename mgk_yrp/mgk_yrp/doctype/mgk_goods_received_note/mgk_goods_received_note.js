@@ -63,7 +63,7 @@ frappe.ui.form.on("MGK Goods Received Note", {
 		frappe.mgk_yrp?.load_item_editor(frm);
 		frm.clear_table("delivery_challans");
 		frm.refresh_fields();
-		return frm.set_value({ purchase_order: "", total_qty: 0, total_amount: 0 });
+		return frm.set_value({ purchase_order: "", process_name: "", total_qty: 0, total_amount: 0 });
 	},
 	async purchase_order(frm) {
 		const doc = frm.doc;
@@ -71,7 +71,7 @@ frappe.ui.form.on("MGK Goods Received Note", {
 		const source_name = doc.purchase_order;
 		frm.clear_table("items");
 		frappe.mgk_yrp?.load_item_editor(frm);
-		await frm.set_value({ total_qty: 0, total_amount: 0 });
+		await frm.set_value({ process_name: "", total_qty: 0, total_amount: 0 });
 		if (!source_name || !is_current_purchase_order_request(frm, doc, request, source_name)) return;
 		const { message } = await frappe.call({
 			method: "mgk_yrp.mgk_yrp.doctype.mgk_purchase_order.mgk_purchase_order.make_goods_received_note",

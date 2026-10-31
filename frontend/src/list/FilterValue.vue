@@ -1,5 +1,6 @@
 <script setup>
 import LinkInput from "./LinkInput.vue"
+import DateInput from "../shared/DateInput.vue"
 import { selectChoices, inputType, timespans } from "./filterFields.js"
 
 defineProps({ modelValue: { default: "" }, field: { type: Object, default: () => ({}) }, operator: { type: String, default: "=" }, label: { type: String, default: "Value" }, placeholder: String, inputId: String })
@@ -18,5 +19,6 @@ defineEmits(["update:modelValue"])
 	<select v-else-if="['Select', 'Check'].includes(field.fieldtype)" :id="inputId" :value="modelValue" :aria-label="label" @change="$emit('update:modelValue', $event.target.value)">
 		<option value="">{{ placeholder || 'All / choose…' }}</option><option v-for="[value, text] in selectChoices(field)" :key="value" :value="value">{{ text }}</option>
 	</select>
+	<DateInput v-else-if="field.fieldtype === 'Date'" :input-id="inputId" :model-value="modelValue || ''" :aria-label="label" :placeholder="placeholder" @update:model-value="$emit('update:modelValue', $event)" />
 	<input v-else :id="inputId" :type="inputType(field)" :value="modelValue" :aria-label="label" :placeholder="placeholder" step="any" @input="$emit('update:modelValue', $event.target.value)" />
 </template>

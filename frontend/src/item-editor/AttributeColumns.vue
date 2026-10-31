@@ -50,8 +50,22 @@ function setDimension(entry, dimension, value) {
 	emit("changed")
 }
 function updateCell(entry, size, field, value) {
+	const isNewCell = !entry.values[size]
 	setCellValue(entry, size, field, value)
+	if (isNewCell && entry.values[size]) entry.values[size].rate = getRowRate(entry)
 	emit("changed")
+}
+function getRowRate(entry) {
+	return Number(Object.values(entry.values).find((cell) => cell && Number(cell.rate))?.rate) || 0
+}
+function setRowRate(group, entry, value) {
+	const cellSizes = sizes(group).filter((size) => entry.values[size])
+	if (!cellSizes.length) cellSizes.push(sizes(group)[0])
+	cellSizes.forEach((size) => setCellValue(entry, size, "rate", value))
+	emit("changed")
+}
+function getRowAmount(group, entry) {
+	return sizes(group).reduce((total, size) => total + Number(entry.values[size]?.qty || 0) * Number(entry.values[size]?.rate || 0), 0)
 }
 function selectRow(groupIndex, entryIndex, checked) {
 	const key = rowKey(groupIndex, entryIndex)
@@ -89,8 +103,11 @@ function removeSelected() {
 					<th v-for="dimension in dimensions" :key="dimension.fieldname">{{ dimension.label }}</th>
 					<th v-for="attribute in nonPrimaryAttributes(group)" :key="attribute">{{ attribute }}</th>
 					<th v-for="size in sizes(group)" :key="size">{{ size === 'default' ? 'Quantity' : size }}</th>
+					<th>UOM</th>
+					<th v-if="mode !== 'plan'">Rate</th>
 					<th v-if="hasTransferredQuantity">Transferred Qty</th>
-					<th v-if="editable">Actions</th>
+					<th v-if="mode !== 'plan'">Amount</th>
+					<th v-if="editable" class="actions-column">Actions</th>
 				</tr></thead>
 				<tbody><tr v-for="(entry, entryIndex) in group.items" :key="entryIndex">
 					<td v-if="editable"><input type="checkbox" :aria-label="`Select row ${entryIndex + 1}`"
@@ -99,13 +116,13 @@ function removeSelected() {
 					<td><strong>{{ entry.name }}</strong></td>
 					<td v-for="dimension in dimensions" :key="dimension.fieldname">
 						<Select v-if="editable" :aria-label="dimension.label" :model-value="entry.dimensions?.[dimension.fieldname] || ''"
-							:options="columnOptions(entry.dimensions?.[dimension.fieldname], dimensionOptions[dimension.fieldname])" show-clear
+							:options="columnOptions(entry.dimensions?.[dimension.fieldname], dimensionOptions[dimension.fieldname])"
 							@update:model-value="setDimension(entry, dimension.fieldname, $event)" />
 						<span v-else>{{ entry.dimensions?.[dimension.fieldname] || '—' }}</span>
 					</td>
 					<td v-for="attribute in nonPrimaryAttributes(group)" :key="attribute">
 						<Select v-if="editable" :aria-label="attribute" :model-value="entry.attributes?.[attribute] || ''"
-							:options="columnOptions(entry.attributes?.[attribute], options[attribute])" show-clear
+							:options="columnOptions(entry.attributes?.[attribute], options[attribute])"
 							@update:model-value="setAttribute(group, entry, attribute, $event)" />
 						<span v-else>{{ entry.attributes?.[attribute] || '—' }}</span>
 					</td>
@@ -113,21 +130,23 @@ function removeSelected() {
 						<InputNumber v-if="editable" :model-value="Number(entry.values[size]?.qty) || 0" :min="0" :max-fraction-digits="6" fluid
 							:aria-label="`${entry.name} ${size} quantity`" @update:model-value="updateCell(entry, size, 'qty', $event)" />
 						<strong v-else>{{ entry.values[size]?.qty || 0 }}</strong>
-						<label v-if="mode !== 'plan'" class="cell-extra">Rate
-							<InputNumber v-if="editable" :model-value="Number(entry.values[size]?.rate) || 0" :min="0" :max-fraction-digits="6" fluid
-								:aria-label="`${entry.name} ${size} rate`" @update:model-value="updateCell(entry, size, 'rate', $event)" />
-							<span v-else>{{ money(entry.values[size]?.rate) }}</span>
-						</label>
-						<small class="cell-extra">{{ entry.values[size]?.uom || entry.default_uom }}</small>
-						<small v-if="entry.uom_hint" class="cell-extra">{{ entry.uom_hint }}</small>
-						<small v-if="mode !== 'plan' && entry.values[size]" class="cell-extra">Amount: {{ money(entry.values[size].amount) }}</small>
+					</td>
+					<td>{{ entry.default_uom || Object.values(entry.values).find(Boolean)?.uom || '—' }}
+						<small v-if="entry.uom_hint" class="last-rate">{{ entry.uom_hint }}</small></td>
+					<td v-if="mode !== 'plan'" class="rate-cell">
+						<InputNumber v-if="editable" :model-value="getRowRate(entry)" :min="0" :max-fraction-digits="6" fluid
+							:aria-label="`${entry.name} rate`" @update:model-value="setRowRate(group, entry, $event)" />
+						<span v-else>{{ money(getRowRate(entry)) }}</span>
 					</td>
 					<td v-if="hasTransferredQuantity">
 						<div v-for="size in sizes(group)" :key="size">{{ size === 'default' ? '' : `${size}: ` }}{{ entry.values[size]?.transferred_qty || 0 }} {{ entry.values[size]?.uom || entry.default_uom }}</div>
 					</td>
-					<td v-if="editable"><div class="editor-actions">
-						<Button label="Add Split" size="small" severity="secondary" outlined @click="emit('split', groupIndex, entryIndex)" />
-						<Button label="Remove" size="small" severity="danger" text @click="emit('remove', groupIndex, entryIndex)" />
+					<td v-if="mode !== 'plan'" class="numeric">{{ money(getRowAmount(group, entry)) }}</td>
+					<td v-if="editable" class="actions-column"><div class="row-actions">
+						<Button icon="pi pi-plus" aria-label="Add split" title="Add split" size="small" severity="secondary" text
+							@click="emit('split', groupIndex, entryIndex)" />
+						<Button icon="pi pi-times" aria-label="Remove row" title="Remove row" size="small" severity="danger" text
+							@click="emit('remove', groupIndex, entryIndex)" />
 					</div></td>
 				</tr></tbody>
 			</table>
@@ -139,6 +158,6 @@ function removeSelected() {
 <style scoped>
 .attribute-columns { min-width: 0; max-width: 100%; }
 .table-scroll { max-width: 100%; overflow-x: auto; }
-.pivot-cell { min-width: 8rem; }
-:deep(.p-select) { min-width: 9rem; }
+.pivot-cell { min-width: 6rem; }
+:deep(.p-select) { min-width: 8rem; }
 </style>

@@ -3,17 +3,17 @@ import { completeTransferActions, pendingTransferRows } from "../shared/transit.
 const method = "mgk_yrp.mgk_yrp.doctype.mgk_delivery_challan.mgk_delivery_challan"
 
 function returnActions(can) {
-	return can("MGK Delivery Challan", "create") ? [{ key: "return", label: "Return", forward: true,
+	return can("MGK Delivery Challan", "create") ? [{ key: "return", label: "Return",
 		method: `${method}.make_return_delivery_challan`, route: "/delivery-challan" }] : []
 }
 
 function jobWorkActions(can) {
 	const result = returnActions(can)
-	if (can("MGK Delivery Challan Close", "create")) result.push({ key: "close", label: "Close", forward: true,
-		method: `${method}.make_delivery_challan_close`, route: "/delivery-challan-close" })
-	if (can("MGK Goods Received Note", "create")) result.push({ key: "create-grn", label: "Create GRN", forward: true,
+	if (can("MGK Delivery Challan Close", "create")) result.push({ key: "close", label: "Close",
+		dialog: () => import("./CloseDcDialog.vue") })
+	if (can("MGK Goods Received Note", "create")) result.push({ key: "create-grn", label: "Create GRN",
 		method: "mgk_yrp.job_work.grn_from_dc.make_job_work_grn", route: "/goods-received-note" })
-	if (can("MGK Process Planning", "write")) result.push({ key: "update-plan", label: "Update Plan", forward: true,
+	if (can("MGK Process Planning", "write")) result.push({ key: "update-plan", label: "Update Plan",
 		dialog: () => import("./UpdatePlanDialog.vue") })
 	return result
 }

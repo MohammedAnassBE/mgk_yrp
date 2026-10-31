@@ -1,5 +1,9 @@
 .action-dialog .table-scroll { overflow-x: auto; max-width: 100%; }
 .action-result .record-id { margin-left: 8px; }
+.action-dialog .form-stack { display: grid; gap: 12px; min-width: 0; }
+.action-dialog .form-stack > .form-banner { margin-bottom: 0; }
+.action-dialog .link-suggestions { position: static; z-index: 1; width: 100%; max-width: 100%; margin-top: 4px; }
+.action-dialog label.check-field:has(input:disabled) { cursor: default; color: var(--color-muted); }
 @media (max-width: 760px) {
 	.action-dialog.p-dialog { width: 100vw !important; max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; border-radius: 0; }
 	.action-dialog .p-dialog-content { flex: 1; overflow: auto; }

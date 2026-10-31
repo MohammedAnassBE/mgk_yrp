@@ -1,7 +1,9 @@
 <script setup>
+import { formatDate } from "../../shared/formatDate.js"
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue"
 import ListPageHeader from "../../shell/ListPageHeader.vue"
 import NoAccess from "../../shared/NoAccess.vue"
+import DateInput from "../../shared/DateInput.vue"
 import { callRead } from "../../api/client.js"
 import { hasPermission } from "../../permissions/usePermissions.js"
 import { subscribeDoctype, onReconnect } from "../../realtime/socket.js"
@@ -59,8 +61,8 @@ onBeforeUnmount(() => { sequence++; refresh.cancel(); disposers.forEach((dispose
 	<section v-else class="page list-page stock-note">
 		<ListPageHeader title="Stock" />
 		<form class="stock-filters" @submit.prevent="load">
-			<label><span>From date</span><input v-model="filters.from_date" type="date" aria-label="From date" required /></label>
-			<label><span>To date</span><input v-model="filters.to_date" type="date" aria-label="To date" required /></label>
+			<label><span>From date</span><DateInput v-model="filters.from_date" input-id="stock-from-date" aria-label="From date" required /></label>
+			<label><span>To date</span><DateInput v-model="filters.to_date" input-id="stock-to-date" aria-label="To date" required /></label>
 			<label v-for="picker in pickers" :key="picker.key">
 				<select v-model="filters[picker.key]" :aria-label="picker.label" @change="picker.key === 'supplier' && supplierChanged()">
 					<option value="">{{ picker.label }}</option><option v-for="option in picker.options" :key="option.name" :value="option.name">{{ option[picker.title] || option.name }}</option>
@@ -87,7 +89,7 @@ onBeforeUnmount(() => { sequence++; refresh.cancel(); disposers.forEach((dispose
 						<td><RouterLink v-if="row.supplier && hasPermission('Supplier')" :to="`/manage/suppliers/${encodeURIComponent(row.supplier)}`">{{ row.supplier_name || row.supplier }}</RouterLink><span v-else>{{ row.supplier_name || row.supplier || 'Company stock' }}</span></td>
 						<td><RouterLink v-if="hasPermission('Warehouse')" :to="`/manage/warehouses/${encodeURIComponent(row.warehouse)}`">{{ row.warehouse_name }}</RouterLink><span v-else>{{ row.warehouse_name }}</span></td><td>{{ row.received_type || '—' }}</td>
 						<td class="numeric"><strong>{{ qty(row.bal_qty) }}</strong><small>{{ row.stock_uom }}</small></td><td class="numeric">{{ money(row.bal_val) }}</td>
-						<td><div v-if="row.inward_date_breakdown?.length" class="inward-list"><span v-for="entry in row.inward_date_breakdown" :key="entry.date"><time>{{ entry.date }}</time><strong>{{ qty(entry.qty) }} {{ row.stock_uom }}</strong></span></div><span v-else>—</span></td>
+						<td><div v-if="row.inward_date_breakdown?.length" class="inward-list"><span v-for="entry in row.inward_date_breakdown" :key="entry.date"><time>{{ formatDate(entry.date) }}</time><strong>{{ qty(entry.qty) }} {{ row.stock_uom }}</strong></span></div><span v-else>—</span></td>
 					</tr></tbody>
 				</table></div>
 			</div>

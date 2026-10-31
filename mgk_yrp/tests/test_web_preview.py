@@ -15,7 +15,7 @@ from mgk_yrp.tests.fixtures import (
 	make_uom,
 	make_warehouse,
 )
-from mgk_yrp.web.preview import CHALLAN, INVOICE, PLAN, get_extra, get_preview
+from mgk_yrp.web.preview import CHALLAN, CLOSE, INVOICE, PLAN, get_extra, get_preview
 
 
 class TestWebPreview(IntegrationTestCase):
@@ -76,6 +76,8 @@ class TestWebPreview(IntegrationTestCase):
 		self.assertIn(result["goods_received_note"], connections["MGK Goods Received Note"])
 		self.assertIn(result["delivery_challan"], connections["MGK Delivery Challan"])
 		self.assertEqual(len(preview["items"]), 1)
+		self.assertEqual(preview["is_submittable"], 1)
+		self.assertIs(type(preview["is_submittable"]), int)
 		self.assertNotIn("__onload", preview["doc"])
 		self.assertEqual(
 			preview["timeline"], sorted(preview["timeline"], key=lambda row: row["at"], reverse=True)
@@ -151,6 +153,51 @@ class TestWebPreview(IntegrationTestCase):
 		with patch("frappe.get_doc") as load:
 			self.assertEqual(get_extra(challan), {"plan_rows": []})
 		load.assert_not_called()
+
+	def test_close_process_uses_challan_read_and_field_permissions(self):
+		close = frappe.get_doc({"doctype": CLOSE, "delivery_challan": "Preview DC"})
+		challan = frappe.get_doc({"doctype": CHALLAN, "process_name": "Dyeing"})
+		with (
+			patch("frappe.has_permission", return_value=True) as permission,
+			patch("frappe.get_doc", return_value=challan) as load,
+			patch.object(Document, "apply_fieldlevel_read_permissions", autospec=True) as apply,
+		):
+			self.assertEqual(get_extra(close), {"process_name": "Dyeing"})
+		permission.assert_called_once_with(CHALLAN, "read", doc="Preview DC")
+		load.assert_called_once_with(CHALLAN, "Preview DC")
+		apply.assert_called_once_with(challan)
+		with (
+			patch("frappe.has_permission", return_value=True),
+			patch("frappe.get_doc", return_value=challan),
+			patch.object(
+				Document,
+				"apply_fieldlevel_read_permissions",
+				autospec=True,
+				side_effect=lambda doc: doc.set("process_name", None),
+			),
+		):
+			self.assertEqual(get_extra(close), {"process_name": None})
+
+	def test_close_without_readable_challan_has_no_process_extra(self):
+		close = frappe.get_doc({"doctype": CLOSE, "delivery_challan": "Preview DC"})
+		with patch("frappe.has_permission", return_value=False), patch("frappe.get_doc") as load:
+			self.assertEqual(get_extra(close), {})
+			close.delivery_challan = None
+			self.assertEqual(get_extra(close), {})
+		load.assert_not_called()
+
+	def test_receipt_lists_challans_dispatched_from_its_rows(self):
+		from mgk_yrp.job_work.dc_from_grn import make_delivery_challan_from_grns
+
+		receipt = make_po_grn(self.make_order())
+		worker = make_supplier()
+		make_warehouse(supplier=worker)
+		result = make_delivery_challan_from_grns([receipt.name], make_process(), worker, 0)
+		challan = result["delivery_challan"]
+		connections = {
+			row["doctype"]: row["names"] for row in get_preview(receipt.doctype, receipt.name)["connections"]
+		}
+		self.assertIn(challan, connections[CHALLAN])
 
 	def test_filtered_receipt_links_do_not_break_connections_or_enrich_status(self):
 		receipt = make_po_grn(self.make_order())

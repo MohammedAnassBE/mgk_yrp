@@ -63,6 +63,7 @@ function dateChanged(value) {
 			:id="id"
 			:model-value="value"
 			:disabled="readOnly"
+			:placeholder="field.placeholder"
 			auto-resize
 			rows="3"
 			fluid
@@ -95,7 +96,7 @@ function dateChanged(value) {
 			:time-only="field.fieldtype === 'Time'"
 			:show-time="field.fieldtype === 'Datetime'"
 			:show-seconds="field.fieldtype === 'Time'"
-			date-format="dd/mm/yy"
+			date-format="dd-mm-yy"
 			hour-format="24"
 			:manual-input="false"
 			fluid

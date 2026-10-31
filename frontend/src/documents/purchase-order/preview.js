@@ -1,11 +1,14 @@
+import { formatDate } from "../../shared/formatDate.js"
 import { displayRows, fact, money, rows, total } from "../previewValues.js"
 
 export function facts(doc, preview) {
-	return [fact("Supplier", doc.supplier), fact("PO Date", doc.po_date),
+	return [fact("PO Date", formatDate(doc.po_date)),
 		fact("Deliver To", [doc.delivery_location, doc.warehouse].filter(Boolean).join(" / ")),
-		...(Number(doc.deliver_to_supplier) ? [fact("Deliver to Supplier", "Yes"), fact("Process", doc.process_name)] : []),
+		...(Number(doc.deliver_to_supplier) ? [fact("Deliver to Supplier", "Yes")] : []),
+		fact("Process", doc.process_name, null, null, { optional: true }),
 		fact("Routing", doc.goods_routing), fact("Order Type", orderType(doc)),
-		fact("Amount", money(doc.total_amount)), fact("Pending qty", total(rows(preview || { doc }), "pending_qty"))]
+		fact("Amount", money(doc.total_amount)), fact("Pending qty", total(rows(preview || { doc }), "pending_qty")),
+		fact("Comments", doc.comments, null, null, { optional: true })]
 }
 
 function orderType(doc) {

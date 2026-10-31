@@ -133,14 +133,14 @@ test("row split, Remove Selected, Remove and Remove All keep editor state and to
 	const totals = []
 	const page = await mountEditor({ onChange: (value) => totals.push(value) })
 	try {
-		nodes(page.root, (node) => node.tag === "button" && textContent(node) === "Add Split")[1].props.onClick()
+		nodes(page.root, (node) => node.tag === "button" && node.props["aria-label"] === "Add split")[0].props.onClick()
 		await settle()
 		input(page.root, "Select row 2").props.onChange({ target: { checked: true } })
 		await settle()
 		button(page.root, "Remove Selected (1)").props.onClick()
 		await settle()
 		assert.equal(page.editor.value.getItems()[0].items.length, 1)
-		button(page.root, "Remove").props.onClick()
+		nodes(page.root, (node) => node.tag === "button" && node.props["aria-label"] === "Remove row")[0].props.onClick()
 		await settle()
 		assert.ok(textContent(page.root).includes("No items yet"))
 		button(page.root, "Add Split").props.onClick()
@@ -150,6 +150,26 @@ test("row split, Remove Selected, Remove and Remove All keep editor state and to
 		await settle()
 		assert.deepEqual(page.editor.value.getItems(), [])
 		assert.deepEqual(totals.at(-1), { total_qty: 0, total_amount: 0 })
+	} finally { page.close(); network.restore() }
+})
+
+test("job-work rows edit one inline rate across size cells and show the summed amount before icon actions", async () => {
+	const network = mockFetch()
+	const totals = []
+	const page = await mountEditor({ onChange: (value) => totals.push(value) })
+	try {
+		const rate = input(page.root, "Yarn rate")
+		assert.equal(rate.props.value, 2)
+		rate.props.onInput({ target: { value: "3" } })
+		await settle()
+		const entry = page.editor.value.getItems()[0].items[0]
+		assert.equal(entry.values.S.rate, 3)
+		assert.equal(entry.values.M.rate, 3)
+		assert.deepEqual(totals.at(-1), { total_qty: 5, total_amount: 15 })
+		const headers = nodes(page.root, (node) => node.tag === "th").map(textContent)
+		assert.deepEqual(headers.slice(-3), ["Rate", "Amount", "Actions"])
+		const actions = nodes(page.root, (node) => node.tag === "button" && ["Add split", "Remove row"].includes(node.props.title))
+		assert.equal(actions.length, 2)
 	} finally { page.close(); network.restore() }
 })
 

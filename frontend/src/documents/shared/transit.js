@@ -10,7 +10,7 @@ export function pendingTransferRows(doc) {
 export function completeTransferActions(doc, can) {
 	return Number(doc.docstatus) === 1 && doc.is_internal_transfer && pendingTransferRows(doc).length
 		&& can("YRP Stock Entry", "create")
-		? [{ key: "complete-transfer", label: "Complete Transfer", forward: true,
+		? [{ key: "complete-transfer", label: "Complete Transfer",
 			dialog: () => import("./CompleteTransferDialog.vue") }] : []
 }
 

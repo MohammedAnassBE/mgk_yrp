@@ -10,6 +10,7 @@ import { metaDefaults } from "../document/newDocDefaults.js"
 import { missingFields } from "../document/fieldConditions.js"
 import { readNewDefaults } from "../list/listState.js"
 import { canEditMaster } from "./mastersConfig.js"
+import { derivedItemValues } from "./itemConversions.js"
 import { disableField, disabledValue, dynamicLinkFields, masterSections, safeReturnPath } from "./masterFields.js"
 
 export function useMasterForm(master, options = {}) {
@@ -44,6 +45,7 @@ export function useMasterForm(master, options = {}) {
 	function change(name, value) {
 		if (!editing.value || busy.value) return
 		doc.value[name] = value
+		if (master.doctype === "Item") Object.assign(doc.value, derivedItemValues(name, value, isNew.value))
 		if (master.doctype === "Item" && name === "stock_uom") {
 			for (const row of doc.value.mgk_process_conversions || []) row.from_uom = value
 		}

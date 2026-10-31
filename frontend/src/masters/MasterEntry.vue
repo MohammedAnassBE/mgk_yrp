@@ -9,8 +9,10 @@ import NoAccess from "../shared/NoAccess.vue"
 import FieldControl from "../document/fields/FieldControl.vue"
 import ActivityPanel from "../document/ActivityPanel.vue"
 import PartyAddresses from "./PartyAddresses.vue"
+import SupplierWarehouses from "./SupplierWarehouses.vue"
 import UserAccess from "./UserAccess.vue"
 import { fieldState } from "../document/fieldConditions.js"
+import { hasPermission } from "../permissions/usePermissions.js"
 import { masterHeading, safeReturnPath } from "./masterFields.js"
 import { useMasterForm } from "./useMasterForm.js"
 import "../document/document.css"
@@ -44,9 +46,8 @@ function confirm() {
 		</div>
 		<template v-else-if="doc && meta">
 			<header class="detail-head">
-				<div class="book-entry-title"><span class="book-entry-mark cover-masters"><small>MGK</small><strong>{{ master.code }}</strong></span><div><div class="book-entry-kicker">{{ heading.kicker }}</div><h1 class="doc-hero">{{ heading.title }}</h1><p>{{ heading.description }}</p></div></div>
+				<div class="book-entry-title"><RouterLink class="head-back" :to="back" aria-label="Back" title="Back"><i class="pi pi-arrow-left" aria-hidden="true" /></RouterLink><span class="book-entry-mark cover-masters"><small>MGK</small><strong>{{ master.code }}</strong></span><div class="book-entry-heading"><div class="book-entry-kicker">{{ heading.kicker }}</div><h1 class="doc-hero">{{ heading.title }}</h1></div></div>
 				<div class="head-actions">
-					<RouterLink class="button secondary small" :to="back">← Back</RouterLink>
 					<Button v-if="dirty && !isNew && editing" label="Discard changes" severity="secondary" outlined size="small" :disabled="busy" @click="pending = 'discard'" />
 					<Button v-if="canDelete" label="Delete" severity="secondary" outlined size="small" :disabled="busy" @click="pending = 'delete'" />
 					<Button v-if="editing && dirty" label="Save" class="forward-cta" size="small" :loading="busy" :disabled="accessBusy || Boolean(accessError)" @click="save" />
@@ -66,6 +67,7 @@ function confirm() {
 						<UserAccess :doc="doc" :disabled="busy || !editing" @change="change" @loading="accessBusy = $event" @error="accessError = $event" />
 					</section>
 					<PartyAddresses v-if="master.party && !isNew" :doc="doc" :modified="doc.modified" :step="sections.length + 1" :blocked="dirty" />
+					<SupplierWarehouses v-if="master.doctype === 'Supplier' && !isNew && hasPermission('Warehouse')" :doc="doc" :modified="doc.modified" :step="sections.length + 2" :blocked="dirty" />
 				</div>
 				<aside class="book-entry-aside"><section class="order-summary-card">
 					<div class="book-entry-kicker">{{ master.label }}</div><h2>{{ isNew ? 'New entry' : doc.name }}</h2>

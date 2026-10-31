@@ -2,7 +2,6 @@ import definition from "./config.js"
 
 export default {
 	...definition,
-	card: () => import("./DeliveryChallanCloseCard.vue"),
 	routes: [{
 		path: definition.routePath,
 		name: definition.key,

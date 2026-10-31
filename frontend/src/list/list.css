@@ -14,9 +14,6 @@
 .quick-filters { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px; border: 1px solid var(--color-line); border-radius: 13px; background: var(--color-card); }
 .quick-filter { flex: 1 1 150px; min-width: 0; }
 .column-search { display: grid; gap: 6px; margin-bottom: 6px; font-size: var(--type-label); font-weight: 700; color: var(--color-muted); }
-.quick-date { position: relative; }
-.quick-date-placeholder { position: absolute; inset: 1px 34px 1px 11px; display: flex; align-items: center; overflow: hidden; white-space: nowrap; pointer-events: none; background: var(--color-card); color: var(--color-muted); font-size: 13px; }
-.quick-date:focus-within .quick-date-placeholder { display: none; }
 .quick-filters input::placeholder { color: var(--color-muted); opacity: 1; }
 .list-tabs-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .status-filters { display: flex; flex-wrap: wrap; gap: 8px; }

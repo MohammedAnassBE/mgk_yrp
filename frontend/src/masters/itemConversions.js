@@ -13,3 +13,9 @@ export async function conversionOutputUom(item) {
 	const output = await callRead("frappe.client.get_value", { doctype: "Item", filters: { name: item }, fieldname: "stock_uom" })
 	return output.stock_uom
 }
+
+export function derivedItemValues(name, value, isNew) {
+	if (name === "attributes") return { has_variants: value?.length ? 1 : 0 }
+	if (name === "item_name" && isNew) return { item_code: value }
+	return {}
+}

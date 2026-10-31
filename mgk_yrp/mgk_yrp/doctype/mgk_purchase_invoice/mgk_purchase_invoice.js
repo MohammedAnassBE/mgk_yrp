@@ -78,7 +78,7 @@ async function select_invoice_grns(frm) {
 		title: __("Get GRNs"), size: "large",
 		fields: [{ fieldname: "grns", fieldtype: "MultiCheck", label: __("Unbilled GRNs"),
 			options: receipts.map(receipt => ({ value: receipt.name,
-				label: `${receipt.name} · ${receipt.posting_date} · ${receipt.total_qty}` })),
+				label: `${receipt.name} · ${frappe.datetime.str_to_user(receipt.posting_date)} · ${receipt.total_qty}` })),
 		}],
 		primary_action_label: __("Fetch"),
 		async primary_action(values) {

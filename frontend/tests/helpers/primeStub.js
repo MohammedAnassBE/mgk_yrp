@@ -1,4 +1,16 @@
-import { h } from "vue"
+import { h, ref } from "vue"
+import { toIsoDate } from "../../src/shared/formatDate.js"
+
+export const Menu = {
+	props: ["model", "popup"],
+	setup(props, { expose }) {
+		const is_open = ref(false)
+		expose({ toggle: () => { is_open.value = !is_open.value }, hide: () => { is_open.value = false } })
+		return () => is_open.value ? h("div", { role: "menu" }, props.model.map((item) => h("button", {
+			role: "menuitem", disabled: item.disabled, onClick: () => { is_open.value = false; return item.command() },
+		}, item.label))) : null
+	},
+}
 
 export const Button = {
 	props: ["label", "disabled"],
@@ -24,7 +36,12 @@ export const InputText = {
 		onInput: (event) => emit("update:modelValue", event.target.value) }),
 }
 export const Textarea = InputText
-export const DatePicker = InputText
+export const DatePicker = {
+	props: ["modelValue", "disabled", "inputId", "dateFormat"],
+	setup: (props, { attrs, emit }) => () => h("input", { ...attrs, id: props.inputId ?? attrs.id, disabled: props.disabled,
+		value: props.modelValue instanceof Date ? toIsoDate(props.modelValue) : props.modelValue, "data-date-format": props.dateFormat,
+		onInput: (event) => emit("update:modelValue", event.target.value ? new Date(`${event.target.value}T00:00:00`) : null) }),
+}
 export const ToggleSwitch = {
 	props: ["modelValue", "disabled"],
 	setup: (props, { attrs, emit }) => () => h("input", { ...attrs, type: "checkbox", checked: props.modelValue, disabled: props.disabled,

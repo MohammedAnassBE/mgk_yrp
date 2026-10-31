@@ -11,8 +11,10 @@ import { recalculate, usesAttributeColumns } from "./editorModes.js"
 import { splitLines } from "./attributeColumns.js"
 import { clone } from "../document/mappedDraft.js"
 import { formatFieldValue } from "../document/fieldDisplay.js"
+import { useLastRates } from "./useLastRates.js"
 
-const props = defineProps({ mode: String, editable: Boolean, permissions: Object, defaults: Object, dimensions: Array, poEntries: Array, hasTransferredQuantity: Boolean })
+const props = defineProps({ mode: String, editable: Boolean, permissions: Object, defaults: Object, dimensions: Array, poEntries: Array, hasTransferredQuantity: Boolean,
+	supplier: String, currentDocument: String })
 const emit = defineEmits(["change"])
 const groups = ref([])
 const editPosition = ref(null)
@@ -71,6 +73,9 @@ function max(cell) {
 	const value = cell[props.permissions.inlineQtyMaxField]
 	return value == null ? undefined : Number(value)
 }
+const isFlat = (group) => !group.primary_attribute_values?.length
+const lastRates = useLastRates({ groups, supplier: () => props.supplier, currentDocument: () => props.currentDocument,
+	enabled: () => props.mode === "po" && props.editable })
 const money = (value) => formatFieldValue({ fieldtype: "Currency" }, value || 0)
 defineExpose({ loadData, getItems })
 </script>
@@ -96,6 +101,8 @@ defineExpose({ loadData, getItems })
 						<th v-for="attribute in group.attributes" :key="attribute">{{ attribute }}</th>
 						<th v-for="key in keys(group)" :key="key">{{ key === 'default' ? 'Qty' : key }}</th>
 						<th>UOM</th>
+						<th v-if="isFlat(group)">Rate</th>
+						<th v-if="isFlat(group)">Amount</th>
 						<th v-if="hasTransferredQuantity">Transferred Qty</th>
 						<th v-if="permissions.canEdit || permissions.canRemove">Actions</th>
 					</tr>
@@ -121,6 +128,7 @@ defineExpose({ loadData, getItems })
 									@update:model-value="updateCell(entry.values[key], 'qty', $event)"
 								/>
 								<strong v-else>{{ entry.values[key].qty || 0 }}</strong>
+								<template v-if="!isFlat(group)">
 								<label class="cell-extra">
 									Rate
 									<InputNumber
@@ -134,7 +142,9 @@ defineExpose({ loadData, getItems })
 									/>
 									<span v-else>{{ money(entry.values[key].rate) }}</span>
 								</label>
-									<small class="cell-extra">Amount: {{ money(Number(entry.values[key].qty || 0) * Number(entry.values[key].rate || 0)) }}</small>
+								<small v-if="lastRates.hint(groupIndex, entryIndex, key)" class="cell-extra last-rate">{{ lastRates.hint(groupIndex, entryIndex, key) }}</small>
+								<small class="cell-extra">Amount: {{ money(Number(entry.values[key].qty || 0) * Number(entry.values[key].rate || 0)) }}</small>
+								</template>
 								<template v-if="mode === 'grn_po'">
 									<small class="cell-extra">Pending: {{ entry.values[key].pending_qty || 0 }}</small>
 									<small class="cell-extra">Allowed: {{ entry.values[key].allowed_qty || 0 }}</small>
@@ -143,6 +153,23 @@ defineExpose({ loadData, getItems })
 							<span v-else>—</span>
 						</td>
 						<td>{{ entry.default_uom || '—' }}</td>
+						<td v-if="isFlat(group)" class="rate-cell">
+							<template v-if="entry.values.default">
+								<InputNumber
+									v-if="permissions.rateEditable"
+									:model-value="Number(entry.values.default.rate) || 0"
+									:min="0"
+									:max-fraction-digits="6"
+									fluid
+									:aria-label="`${entry.name} default rate`"
+									@update:model-value="updateCell(entry.values.default, 'rate', $event)"
+								/>
+								<span v-else>{{ money(entry.values.default.rate) }}</span>
+								<small v-if="lastRates.hint(groupIndex, entryIndex, 'default')" class="last-rate">{{ lastRates.hint(groupIndex, entryIndex, 'default') }}</small>
+							</template>
+							<span v-else>—</span>
+						</td>
+						<td v-if="isFlat(group)" class="numeric">{{ entry.values.default ? money(Number(entry.values.default.qty || 0) * Number(entry.values.default.rate || 0)) : '—' }}</td>
 						<td v-if="hasTransferredQuantity">
 							<div v-for="key in keys(group)" :key="key">{{ key === 'default' ? '' : `${key}: ` }}{{ entry.values[key]?.transferred_qty || 0 }} {{ entry.values[key]?.uom || entry.default_uom }}</div>
 						</td>

@@ -48,7 +48,6 @@ function mockNetwork(respond = () => undefined) {
 test("job-work DC action visibility matches Desk and plan requires write rather than create", () => {
 	const keys = (doc, can = () => true) => challanActions(doc, can).filter((action) => ["create-grn", "update-plan"].includes(action.key))
 	assert.deepEqual(keys(source).map((action) => action.key), ["create-grn", "update-plan"])
-	assert.ok(keys(source).every((action) => action.forward))
 	for (const flags of [{ docstatus: 0 }, { docstatus: 2 }, { is_return: 1 }, { is_internal_transfer: 1 },
 		{ close_status: "Closed" }, { close_status: "Reopening" }, { close_status: undefined }]) assert.deepEqual(keys({ ...source, ...flags }), [])
 	assert.deepEqual(keys(source, () => false), [])
@@ -60,7 +59,6 @@ test("job-work DC action visibility matches Desk and plan requires write rather 
 test("Create DC matches submitted non-internal Desk visibility and create permission", () => {
 	const doc = { doctype: receipt.doctype, docstatus: 1 }
 	const keys = (record, can = () => true) => receiptActions(record, can).filter((action) => action.key === "create-dc")
-	assert.equal(keys(doc)[0].forward, true)
 	for (const flags of [{ docstatus: 0 }, { docstatus: 2 }, { is_internal_transfer: 1 }]) assert.deepEqual(keys({ ...doc, ...flags }), [])
 	assert.deepEqual(keys(doc, (doctype, permission) => doctype === challan.doctype && permission === "write"), [])
 	assert.equal(keys(doc, (doctype, permission) => doctype === challan.doctype && permission === "create").length, 1)
@@ -304,4 +302,39 @@ test("connected records re-read after a cancel replaces the document", async () 
 		assert.equal(reads, 2)
 		assert.ok(textContent(page.root).includes("0"))
 	} finally { page.close(); network.close() }
+})
+
+test("Close DC dialog previews via the server, closes once, and keeps server errors inside the dialog", async () => {
+	const preview = { posting_date: "2026-10-31", supplier: "Worker", warehouse: "Worker WH", total_dc_value: 100, total_output_qty: 10,
+		output_stock_uom: "Nos", value_per_unit: 10, loss_value: 0, docstatus: 0,
+		items: [{ name: "i1", item: "Fabric", stock_uom: "Kg", remaining_stock_qty: 4, own_value: 100 }],
+		outputs: [{ name: "o1", item: "Shirt", input_item: "Fabric", goods_received_note: "GRN-1", stock_qty: 10, allocated_value: 100 }] }
+	let finishClose, done, fail = true
+	const network = mockNetwork((method) => {
+		if (method === jobWorkMethods.previewClose) return preview
+		if (method === jobWorkMethods.closeDc) {
+			if (fail) { fail = false; throw new Error("Draft GRN GRN-2 links this Delivery Challan") }
+			return new Promise((resolve) => { finishClose = () => resolve("DCC/1") })
+		}
+	})
+	const page = await mountComponent("../../src/documents/delivery-challan/CloseDcDialog.vue", { doc: source, onDone: (result) => { done = result } })
+	try {
+		assert.equal(button(page.root, "Close DC").props.disabled, true)
+		nodes(page.root, (node) => node.tag === "dialog")[0].props.onShow()
+		await settle(); await settle()
+		assert.deepEqual(network.requests[0], { method: jobWorkMethods.previewClose, args: { source_name: "DC-1" } })
+		const text = textContent(page.root)
+		for (const expected of ["31-10-2026", "Inputs consumed", "Linked GRN outputs", "GRN-1", "Shirt", "Fabric", "Allocated value"]) assert.match(text, new RegExp(expected))
+		assert.doesNotMatch(text, /2026-10-31/)
+		const form = nodes(page.root, (node) => node.tag === "form")[0]
+		await form.props.onSubmit({ preventDefault() {} }); await settle()
+		assert.match(textContent(page.root), /Draft GRN GRN-2/)
+		assert.equal(done, undefined)
+		const pending = form.props.onSubmit({ preventDefault() {} })
+		await form.props.onSubmit({ preventDefault() {} }); await settle()
+		assert.equal(button(page.root, "Close DC").props.disabled, true)
+		assert.equal(network.requests.filter((row) => row.method === jobWorkMethods.closeDc).length, 2)
+		finishClose(); await pending; await settle()
+		assert.deepEqual(done, { message: "Delivery Challan DC-1 closed:", links: [{ label: "DCC/1", to: "/delivery-challan-close/DCC%2F1" }] })
+	} finally { finishClose?.(); page.close(); network.close() }
 })

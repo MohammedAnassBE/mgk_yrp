@@ -124,13 +124,14 @@ class TestGRNFromDC(IntegrationTestCase):
 		with self.assertRaisesRegex(frappe.ValidationError, "Process must match Delivery Challan"):
 			receipt.insert(ignore_permissions=True)
 
-	def test_po_grn_ignores_process(self):
+	def test_po_grn_does_not_keep_manual_job_work_process(self):
 		order = make_purchase_order(supplier=self.supplier, warehouse=self.main,
 			items=[{"item": self.output, "qty": 1, "rate": 1}])
 		receipt = make_po_grn(order, submit=False)
 		receipt.process_name = make_process()
 		receipt.save(ignore_permissions=True)
 		self.assertFalse(receipt.delivery_challans)
+		self.assertFalse(receipt.process_name)
 
 	def test_draft_keeps_prefilled_zero_rows(self):
 		receipt = self.mapped().insert(ignore_permissions=True)

@@ -2,7 +2,7 @@ import test from "node:test"
 import assert from "node:assert/strict"
 import vm from "node:vm"
 import { readFile } from "node:fs/promises"
-import { rateChanged, invoiceTotals, invoiceChanges, flt, canGetGrns, groupGrnRows } from "../src/documents/purchase-invoice/fieldEvents.js"
+import { rateChanged, invoiceTotals, invoiceChanges, flt, canGetGrns, groupGrnRows, groupItemRows, setGroupRate, grnSummaries } from "../src/documents/purchase-invoice/fieldEvents.js"
 import { createGrnFlow, noGrnsMessage } from "../src/documents/purchase-invoice/grnFlow.js"
 import { summary, viewFacts } from "../src/documents/purchase-invoice/presentation.js"
 import { canAmendDocument } from "../src/document/lifecycle.js"
@@ -128,4 +128,22 @@ test("bill summary/facts contain paper and GST totals, GRN grouping preserves so
 	assert.equal(canAmendDocument({ docstatus: 2, __onload: { valuation_pending: true } }, () => true), false)
 	assert.equal(canAmendDocument({ docstatus: 2, __onload: { valuation_pending: false } }, () => true), true)
 	assert.equal(canAmendDocument({ docstatus: 2 }, () => false), false)
+})
+
+test("Billing groups items by item + GRN rate across GRNs, sums qty/amount, shows the first bill rate and a group rate edit sets every row", () => {
+	const rows = [
+		{ item: "Yarn", uom: "Kg", qty: 2, grn_rate: 10, rate: 10, amount: 20, goods_received_note: "GRN-1" },
+		{ item: "Yarn", uom: "Kg", qty: 3, grn_rate: 12, rate: 12, amount: 36, goods_received_note: "GRN-1" },
+		{ item: "Yarn", uom: "Kg", qty: 4, grn_rate: 10, rate: 11, amount: 44, goods_received_note: "GRN-2" },
+	]
+	const groups = groupItemRows(rows)
+	assert.deepEqual(groups.map((group) => [group.item, group.grn_rate, group.qty, group.amount, group.rate, group.indices]), [["Yarn", 10, 6, 64, 10, [0, 2]], ["Yarn", 12, 3, 36, 12, [1]]])
+	const edited = setGroupRate(rows, groups[0].indices, 15)
+	assert.deepEqual(edited.map((row) => row.rate), [15, 12, 15])
+	const doc = { docstatus: 0, tax_type: "CGST + SGST", items: edited.map((row) => ({ ...row, gst_rate: 5 })) }
+	const totals = invoiceChanges("items", doc)
+	assert.deepEqual(doc.items.map((row) => [row.amount, row.cgst_amount]), [[30, 0.75], [36, 0.9], [60, 1.5]])
+	assert.equal(totals.net_total, 126)
+	assert.deepEqual(grnSummaries(groupGrnRows(rows), { "GRN-1": "2026-10-29" }), [
+		{ name: "GRN-1", posting_date: "2026-10-29", total_qty: 5, total_amount: 56 }, { name: "GRN-2", posting_date: "", total_qty: 4, total_amount: 40 }])
 })

@@ -38,7 +38,6 @@ test("Complete Transfer uses the same Stock Entry create permission on DC and GR
 		const doc = { ...source, doctype }
 		const actions = documentModule(doctype).actions(doc, (target, permission) => target === "YRP Stock Entry" && permission === "create")
 		assert.equal(actions[0].key, "complete-transfer")
-		assert.equal(actions[0].forward, true)
 		assert.equal(typeof actions[0].dialog, "function")
 		for (const flags of [{ docstatus: 0 }, { docstatus: 2 }, { is_internal_transfer: 0 }, { items: [] }]) {
 			assert.equal(documentModule(doctype).actions({ ...doc, ...flags }, () => true).some((action) => action.key === "complete-transfer"), false)
@@ -153,6 +152,11 @@ test("shared dialog uses the existing full-screen mobile rule and keeps wide tab
 	const css = await readFile(new URL("../src/documents/shared/actionDialog.css", import.meta.url), "utf8")
 	assert.match(css, /max-width: 760px/)
 	assert.match(css, /width: 100vw/)
+	const dialog = await readFile(new URL("../src/documents/shared/ActionDialog.vue", import.meta.url), "utf8")
+	const fields = await readFile(new URL("../src/document/fields/fields.css", import.meta.url), "utf8")
+	assert.match(dialog, /document\/fields\/fields\.css/)
+	assert.match(fields, /\.action-dialog \.link-input input/)
+	assert.match(css, /\.action-dialog \.form-stack \{ display: grid; gap: 12px/)
 	const page = await mountComponent("../../src/documents/shared/TransferItems.vue", { rows: transferItems(source) })
 	try {
 		assert.equal(nodes(page.root, (node) => node.tag === "input").length, 0)

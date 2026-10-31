@@ -4,6 +4,8 @@ export const jobWorkMethods = {
 	getPlan: "mgk_yrp.job_work.process_plan.get_process_plan",
 	savePlan: "mgk_yrp.job_work.process_plan.save_process_plan",
 	createDc: "mgk_yrp.job_work.dc_from_grn.make_delivery_challan_from_grns",
+	previewClose: "mgk_yrp.mgk_yrp.doctype.mgk_delivery_challan.mgk_delivery_challan.make_delivery_challan_close",
+	closeDc: "mgk_yrp.mgk_yrp.doctype.mgk_delivery_challan.mgk_delivery_challan.close_delivery_challan",
 }
 
 export function dispatchSelection({ doc, names, rows = [] }) {
@@ -33,4 +35,10 @@ export async function createDcFromSelection(selection, values, call) {
 		message: entries.length ? `Dispatch submitted (Stock Entries: ${entries.join(", ")}):` : "Dispatch submitted:",
 		links: [{ label: result.delivery_challan, to: `/delivery-challan/${encodeURIComponent(result.delivery_challan)}` }],
 	}
+}
+
+export async function closeDeliveryChallan(source_name, call) {
+	const close = await call(jobWorkMethods.closeDc, { source_name })
+	return { message: `Delivery Challan ${source_name} closed:`,
+		links: [{ label: close, to: `/delivery-challan-close/${encodeURIComponent(close)}` }] }
 }

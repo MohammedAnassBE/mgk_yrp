@@ -1,0 +1,32 @@
+.ledger-filters { display: grid; grid-template-columns: minmax(180px, 2fr) repeat(2, minmax(120px, 1fr)) auto; align-items: end; gap: 8px; padding: 8px; border: 1px solid var(--color-line); border-radius: 15px; background: var(--color-card); }
+.ledger-filters label { display: flex; flex-direction: column; gap: 6px; min-width: 0; margin: 0; }
+.ledger-filters label span { display: block; margin: 0; line-height: 1.2; color: var(--color-muted); font-size: var(--type-label); font-weight: 800; text-transform: uppercase; }
+.ledger-filters .link-input, .ledger-filters .p-datepicker { display: flex; width: 100%; margin: 0; }
+.ledger-filters input, .ledger-filters select { box-sizing: border-box; margin: 0; line-height: 20px; width: 100%; min-width: 0; height: 38px; padding: 8px 10px; border: 1px solid var(--color-line); border-radius: 9px; background: var(--color-card); color: var(--color-text); font-size: 13px; }
+.ledger-filters .button { box-sizing: border-box; height: 38px; min-height: 38px; margin: 0; padding: 8px 12px; font-size: 13px; }
+.ledger-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.ledger-summary article { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 8px 12px; border: 1px solid var(--color-line); border-radius: 10px; background: var(--color-card); }
+.ledger-summary span { display: block; color: var(--color-muted); font-size: var(--type-label); font-weight: 700; }
+.ledger-summary strong { font-size: 15px; font-variant-numeric: tabular-nums; }
+.ledger-table-card { min-width: 0; overflow: hidden; border: 1px solid var(--color-line); border-radius: 15px; background: var(--color-card); box-shadow: var(--shadow-card); }
+.ledger-table-card > header { display: flex; align-items: center; gap: 12px; padding: 14px 17px; border-bottom: 1px solid var(--color-inner-line); }
+.ledger-table-card h2 { margin: 0; font-size: var(--type-card-title); }
+.ledger-table-card header > span { margin-left: auto; white-space: nowrap; font-size: var(--type-label); }
+.ledger-table-card .table-scroll { overflow-x: auto; }
+.ledger-table-card table { width: 100%; border-collapse: collapse; }
+.ledger-table-card th { padding: 8px 12px; background: var(--color-table-head); color: var(--color-muted); font-size: 11px; text-align: left; text-transform: uppercase; white-space: nowrap; }
+.ledger-table-card td { padding: 5px 12px; border-bottom: 1px solid var(--color-soft-line); font-size: 13px; vertical-align: top; }
+.ledger-table-card td a { color: var(--color-accent); font-weight: 800; text-decoration: none; }
+.ledger-table-card td small { display: block; margin-top: 3px; color: var(--color-muted); font-size: var(--type-label); }
+.ledger-table-card .numeric { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ledger-link { padding: 0; border: 0; background: none; color: var(--color-accent); font: inherit; font-weight: 800; text-align: left; cursor: pointer; }
+.ledger-type { display: inline-block; padding: 1px 7px; border-radius: 999px; background: var(--color-table-head); color: var(--color-muted); font-size: 11px; font-weight: 700; white-space: nowrap; }
+.ledger-type.bill { background: var(--color-accent); color: var(--color-card); }
+.ledger-type.debit { background: var(--color-info-bg); color: var(--color-text); }
+.ledger-empty { color: var(--color-muted); text-align: center; }
+.ledger-total td { padding: 8px 12px; border-top: 2px solid var(--color-line); background: var(--color-table-head); font-size: 13px; font-weight: 800; }
+.ledger-toggle { display: flex; align-items: center; gap: 8px; padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
+.ledger-suppliers > header { border-bottom: 0; }
+.ledger-suppliers .table-scroll { border-top: 1px solid var(--color-inner-line); }
+.ledger-opening td { background: var(--color-table-head); font-weight: 700; }
+@media (max-width: 760px) { .ledger-filters { grid-template-columns: minmax(0, 1fr); } .ledger-summary { grid-template-columns: minmax(0, 1fr); } }

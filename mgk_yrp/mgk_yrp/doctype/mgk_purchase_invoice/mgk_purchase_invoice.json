@@ -12,6 +12,7 @@
   "supplier_gstin",
   "company_gstin",
   "tax_type",
+  "comments",
   "items",
   "total_qty",
   "net_total",
@@ -79,6 +80,13 @@
    "label": "Tax Type",
    "read_only": 1,
    "options": "No Tax\nCGST + SGST\nIGST"
+  },
+  {
+   "fieldname": "comments",
+   "fieldtype": "Small Text",
+   "label": "Comments",
+   "allow_on_submit": 1,
+   "placeholder": "Add a note…"
   },
   {
    "fieldname": "items",
@@ -203,5 +211,6 @@
  "autoname": "MGK-PI-.YY.-.#####",
  "naming_rule": "Expression",
  "is_submittable": 1,
- "track_changes": 1
+ "track_changes": 1,
+ "modified": "2026-10-31 12:45:00.000000"
 }

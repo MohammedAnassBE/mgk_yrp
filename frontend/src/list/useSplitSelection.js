@@ -13,7 +13,7 @@ export async function navigateSelection({ rows, selected, direction, hasMore, lo
 }
 
 export function ignoresNavigation(event, hasDialog = false) {
-	return hasDialog || Boolean(event.target?.closest?.("input, select, textarea, [contenteditable='true'], [role='dialog'], dialog"))
+	return hasDialog || Boolean(event.target?.closest?.("input, select, textarea, button, a, [role='menu'], [role='menuitem'], [contenteditable='true'], [role='dialog'], dialog"))
 }
 
 export function recordParty(doctype, row) {
@@ -21,7 +21,7 @@ export function recordParty(doctype, row) {
 }
 
 export function selectionTotals(rows) {
-	const amountFields = ["grand_total", "total_amount", "total_declared_value", "total_dc_value"]
+	const amountFields = ["grand_total", "total_amount", "total_declared_value", "total_dc_value", "amount"]
 	return {
 		quantity: rows.reduce((total, row) => total + Number(row.total_qty ?? row.total_output_qty ?? 0), 0),
 		hasAmount: rows.some((row) => amountFields.some((field) => row[field] != null)),

@@ -1,23 +1,26 @@
+import { formatDate } from "../../shared/formatDate.js"
 import { displayRows, fact, money, rows } from "../previewValues.js"
 import { statusPill } from "../../list/statusPill.js"
 import { transferIntro } from "../shared/transit.js"
 
 export function facts(doc) {
 	const is_internal = Number(doc.is_internal_transfer)
-	return [fact("Supplier", doc.supplier), fact("Posting Date", doc.posting_date),
-		fact("Against", is_internal ? "Internal transfer" : Number(doc.against_purchase_order) ? "Purchase Order" : "Job Work"),
-		...(doc.purchase_order ? [fact("Purchase Order", doc.purchase_order, "/purchase-order")] : []),
-		...(doc.delivery_challans || []).map((row, index, links) => fact(links.length > 1 ? `DC ${index + 1}` : "DC", row.delivery_challan, "/delivery-challan")),
-		fact("Process", doc.process_name), fact("Warehouse", doc.warehouse),
+	const deliveryChallans = [...new Set((doc.delivery_challans || []).map((row) => row.delivery_challan).filter(Boolean))]
+	return [fact("Posting Date", formatDate(doc.posting_date)), fact("Delivery Location", doc.delivery_location),
+		...(is_internal ? [fact("Against", "Internal transfer")] : []),
+		...(doc.purchase_order ? [fact("PO", doc.purchase_order, "/purchase-order")] : []),
+		...deliveryChallans.map((name, index, links) => fact(links.length > 1 ? `DC ${index + 1}` : "DC", name, "/delivery-challan")),
+		fact("Process", doc.process_name),
 		...(is_internal ? [fact("Transfer status", doc.transfer_status)] : []),
 		fact("Bill status", statusPill("MGK Goods Received Note", { ...doc, is_internal_transfer: 0 }).label, "/billing", doc.purchase_invoice || null),
-		fact("Amount", money(doc.total_amount))]
+		fact("Amount", money(doc.total_amount)),
+		fact("Comments", doc.comments, null, null, { optional: true })]
 }
 
 export const itemColumns = [
 	{ key: "item", label: "Item" }, { key: "received_type", label: "Received type" },
 	{ key: "qty", label: "Qty", numeric: true }, { key: "rate", label: "Rate", money: true },
-	{ key: "amount", label: "Amount", money: true }, { key: "transferred_qty", label: "Transferred Qty", numeric: true },
+	{ key: "amount", label: "Amount", money: true }, { key: "transferred_qty", label: "Transferred Qty", numeric: true, internalOnly: true },
 ]
 
 export function itemRows(preview) {

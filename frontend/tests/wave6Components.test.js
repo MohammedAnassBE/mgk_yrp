@@ -22,10 +22,11 @@ test("billing shows only paper columns, two-decimal currencies and the tax colum
 		for (const [type, taxColumns] of [["CGST + SGST", ["CGST", "SGST"]], ["IGST", ["IGST"]], ["No Tax", []]]) {
 			props.doc.tax_type = type
 			await settle()
-			assert.deepEqual(nodes(page.root, (node) => node.tag === "th").map(textContent), ["Item", "Quantity", "UOM", "GRN Rate", "Rate", "Amount", "GST %", ...taxColumns])
-			const values = nodes(page.root, (node) => node.tag === "td").map(textContent)
+			const table = nodes(page.root, (node) => node.tag === "table" && node.props.class === "invoice-item-table")[0]
+			assert.deepEqual(nodes(table, (node) => node.tag === "th").map(textContent), ["Item", "Total Qty", "UOM", "GRN Rate", "Rate", "Amount", "GST %", ...taxColumns])
+			const values = nodes(table, (node) => node.tag === "td").map(textContent)
 			assert.deepEqual(values.slice(3, 6), ["50.00", "50.00", "100.00"])
-			assert.ok(nodes(page.root, (node) => node.tag === "td" && node.props.class.includes("numeric")).length >= 5)
+			assert.ok(nodes(table, (node) => node.tag === "td" && node.props.class.includes("numeric")).length >= 5)
 		}
 	} finally { page.close(); globalThis.window = original }
 })

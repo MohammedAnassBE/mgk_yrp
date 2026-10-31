@@ -39,6 +39,7 @@ frappe.ui.form.on("MGK Purchase Order", {
 		}));
 	},
 	async supplier(frm) {
+		frm.itemEditor?.update_status();
 		await frm.set_value({
 			supplier_address: "", address_display: "", contact_person: "", contact_display: "", contact_mobile: "",
 		});

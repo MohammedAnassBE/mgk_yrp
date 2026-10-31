@@ -1,3 +1,4 @@
+import { formatDate } from "../../shared/formatDate.js"
 export { transferIntro as intro } from "../shared/transit.js"
 
 export function summary(doc, itemCount = doc.items?.length || 0) {
@@ -16,6 +17,6 @@ export function summary(doc, itemCount = doc.items?.length || 0) {
 export function viewFacts(doc) {
 	return [["From Location", doc.from_location], ["From Warehouse", doc.from_warehouse],
 		["To Location", doc.to_location], ["To Warehouse", doc.to_warehouse], ["Process", doc.process_name],
-		["Posting Date", doc.posting_date], ["DC Number", doc.dc_number], ["Vehicle Number", doc.vehicle_number],
+		["Posting Date", formatDate(doc.posting_date)], ["DC Number", doc.dc_number], ["Vehicle Number", doc.vehicle_number],
 		...(doc.is_return ? [["Return Against", doc.return_against]] : [])].map(([label, value]) => ({ label, value }))
 }

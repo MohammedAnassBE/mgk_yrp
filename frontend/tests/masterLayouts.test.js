@@ -58,25 +58,16 @@ test("Item process conversions use the fixture visibility rule for templates onl
 	}
 })
 
-test("Process groups keep Desk conditional transformation and sub-process tables", () => {
+test("Process shows only Process Name in the form and list", () => {
 	const meta = metadata([field("process_name"), field("is_group", "Check"), field("is_item_conversion", "Check"), field("input_uom"), field("output_uom"),
-		field("transformation", "Section Break", { depends_on: "eval:doc.is_group != 1" }), field("value_change_attributes", "Table"),
-		field("details", "Section Break", { depends_on: "eval:doc.is_group == 1" }), field("process_details", "Table"), field("unexpected")])
+		field("details", "Section Break"), field("process_details", "Table"), field("value_change_attributes", "Table"), field("unexpected")])
+	const master = getMaster("processes")
+	assert.deepEqual(master.columns, ["process_name"])
 	for (const is_group of [0, 1]) {
-		const sections = masterSections(getMaster("processes"), meta, { is_group }, user)
-		assert.deepEqual(sections.map((section) => section.label), ["Process identity", "Units and defaults", is_group ? "Sub-processes" : "Transformation"])
-		assert.deepEqual(names(sections), [["process_name", "is_item_conversion", "is_group"], ["input_uom", "output_uom"], [is_group ? "process_details" : "value_change_attributes"]])
+		const sections = masterSections(master, meta, { is_group }, user)
+		assert.deepEqual(names(sections), [["process_name"]])
+		assert.equal(sections[0].fields[0].label, "Process Name")
 	}
-})
-
-test("User has the MCY identity, access defaults and contact groups; role tables stay in UserAccess", () => {
-	const meta = metadata([field("first_name"), field("email"), field("enabled", "Check"), field("language"), field("mobile_no"),
-		field("full_name"), field("roles", "Table"), field("social_logins", "Table"), field("api_key"),
-		field("send_welcome_email", "Check", { depends_on: "eval:in_list(['System User', 'Website User'], doc.user_type) && doc.enabled == 1" })])
-	const sections = masterSections(getMaster("users"), meta, { enabled: 1, user_type: "System User" }, user)
-	assert.deepEqual(sections.map((section) => section.label), ["User identity", "Access defaults", "Contact details"])
-	assert.deepEqual(names(sections), [["enabled", "email", "first_name", "send_welcome_email"], ["language"], ["mobile_no"]])
-	assert.equal(sections[0].fields[1].description, "This becomes the User ID used to sign in.")
 })
 
 test("Agent and Received Type use MCY grouping, labels and help", () => {

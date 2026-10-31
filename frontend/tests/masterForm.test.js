@@ -27,7 +27,7 @@ async function openMaster(master, { isNew = false, manager = true, defaults, ret
 		sessionStorage: { getItem: (key) => store.get(key), setItem: (key, value) => store.set(key, value) } }
 	const requests = []
 	const primary = master.fields?.find((name) => !["enabled", "disabled"].includes(name)) || "title"
-	const fields = metadataFields || [...new Set([primary, ...(master.doctype === "User" ? ["enabled"] : ["disabled"])])].map((fieldname) => ({ fieldname, label: fieldname, fieldtype: ["disabled", "enabled"].includes(fieldname) ? "Check" : "Data", read_only: master.doctype === "User" && fieldname === "enabled" ? 1 : 0, reqd: fieldname === primary ? 1 : 0 }))
+	const fields = metadataFields || [...new Set([primary, "disabled"])].map((fieldname) => ({ fieldname, label: fieldname, fieldtype: fieldname === "disabled" ? "Check" : "Data", read_only: 0, reqd: fieldname === primary ? 1 : 0 }))
 	let record = { doctype: master.doctype, name: "Record / 1", docstatus: 0, modified: "first", [primary]: "Initial", disabled: 0, enabled: 1, roles: [{ role: "Stock User" }], ...initialRecord }
 	let conflict = false
 	globalThis.fetch = async (url, options) => {
@@ -172,7 +172,7 @@ test("conversion rows autofill UOMs, reset From Qty, exclude the template and re
 		assert.deepEqual(JSON.parse(query.searchParams.get("filters")), { name: "Output" })
 		assert.equal(query.searchParams.get("fieldname"), "stock_uom")
 		const picker = page.find((node) => node.props?.field?.fieldname === "item")[0]
-		assert.deepEqual(fieldQuery(picker.props.field, picker.props.doc), { filters: { name: ["!=", "Template / 1"] } })
+		assert.deepEqual(fieldQuery(picker.props.field, picker.props.doc), { filters: { variant_of: ["is", "not set"], disabled: 0 } })
 		assert.equal(page.find((node) => ["from_uom", "to_uom"].includes(node.props?.field?.fieldname)).length, 0)
 		page.change("item", "")
 		await settle()
@@ -238,41 +238,6 @@ test("every Manage master uses client insert, full document save, optional disab
 			assert.deepEqual(JSON.parse(page.requests.findLast((request) => request.url.endsWith("frappe.client.delete")).options.body), { doctype: master.doctype, name: "Record / 1" })
 		} finally { page.close() }
 	}
-})
-
-test("User writes and deletion require System Manager even when boot grants write permission", async () => {
-	const page = await openMaster(getMaster("users"), { manager: false })
-	try {
-		assert.equal(page.model.editing.value, false)
-		assert.equal(page.model.canDelete.value, false)
-		page.model.change(page.primary, "Changed")
-		await page.model.save()
-		await page.model.remove()
-		assert.equal(page.model.doc.value[page.primary], "Initial")
-		assert.equal(page.requests.some((request) => request.options.method === "POST"), false)
-	} finally { page.close() }
-})
-
-test("User saves roles child rows and access loading blocks keyboard Save", async () => {
-	const page = await openMaster(getMaster("users"))
-	try {
-		assert.equal(page.model.meta.value.fields.find((field) => field.fieldname === "enabled").read_only, 0)
-		page.model.change("enabled", 0)
-		page.model.change("roles", [{ doctype: "Has Role", role: "Stock Manager" }])
-		let prevented = false
-		page.keydown({ ctrlKey: true, key: "s", preventDefault() { prevented = true } })
-		await settle()
-		assert.equal(prevented, true)
-		assert.deepEqual(JSON.parse(page.requests.findLast((request) => request.url.endsWith("frappe.client.save")).options.body).doc.roles, [{ doctype: "Has Role", role: "Stock Manager" }])
-		assert.equal(JSON.parse(page.requests.findLast((request) => request.url.endsWith("frappe.client.save")).options.body).doc.enabled, 0)
-	} finally { page.close() }
-	const blocked = await openMaster(getMaster("users"), { blocked: true })
-	try {
-		blocked.model.change("roles", [])
-		await blocked.model.save()
-		assert.match(blocked.model.error.value, /access options/)
-		assert.equal(blocked.requests.some((request) => request.url.endsWith("frappe.client.save")), false)
-	} finally { blocked.close() }
 })
 
 test("party-prefilled links survive insertion and return to the party after saving", async () => {

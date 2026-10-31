@@ -152,6 +152,11 @@ class TestItemProcessConversion(IntegrationTestCase):
 		self.assertEqual(self.template.mgk_process_conversions[0].item, self.template.name)
 		self.assertEqual(self.template.mgk_process_conversions[0].to_uom, "Kg")
 
+	def test_variant_output_item_throws(self):
+		variant = create_variant(self.template.name, self.attributes).insert(ignore_permissions=True).name
+		self.add_conversion(item=variant)
+		self.assert_save_error(self.template, f"Row 1: Output Item {variant} is a variant.")
+
 	def test_duplicate_process_item_pair_throws(self):
 		self.add_conversion()
 		self.add_conversion()

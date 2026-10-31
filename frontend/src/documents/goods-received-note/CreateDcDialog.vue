@@ -44,10 +44,10 @@ function close() { if (!is_saving.value) emit("close") }
 				<LinkField v-model="supplier" doctype="Supplier" label="Supplier" input-id="dispatch-supplier"
 					:filters="supplierFilters" :disabled="is_saving" />
 			</div>
-			<label class="form-field">
-				<span class="field-label">Move stock to Head Office</span>
+			<label class="check-field">
 				<input v-model="move_to_head_office" type="checkbox" aria-label="Move stock to Head Office"
 					:disabled="selection.is_forced || is_saving" :aria-readonly="selection.is_forced" />
+				<span>Move stock to Head Office</span>
 			</label>
 		</form>
 		<template #footer>

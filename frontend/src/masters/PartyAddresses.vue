@@ -7,7 +7,7 @@ import { subscribeDoctype, onReconnect } from "../realtime/socket.js"
 import { trailingTask } from "../list/listQuery.js"
 import { stageNewDefaults } from "../list/listState.js"
 import { partyLinkFilters, linkedPartyDraft, partyReturnPath } from "./masterFields.js"
-import { getMaster } from "./mastersConfig.js"
+import { getMaster, masters } from "./mastersConfig.js"
 
 const props = defineProps({ doc: Object, modified: String, step: Number, blocked: Boolean })
 const router = useRouter()
@@ -20,7 +20,13 @@ const loading = ref(true)
 const error = ref("")
 let sequence = 0
 let disposers = []
-const partyPath = () => partyReturnPath(getMaster(props.doc.doctype === "Supplier" ? "suppliers" : "agents"), props.doc.name)
+const partyMaster = () => masters.find((master) => master.party && master.doctype === props.doc.doctype)
+const partyPath = () => partyReturnPath(partyMaster(), props.doc.name)
+const partyTitle = () => partyMaster().titleFields.map((field) => props.doc[field]).find((value) => String(value || "").trim()) || props.doc.name
+function newDraft(group) {
+	const draft = linkedPartyDraft(props.doc.doctype, props.doc.name)
+	return group.doctype === "Address" ? { address_title: partyTitle(), ...draft } : draft
+}
 async function load() {
 	const current = ++sequence
 	loading.value = true
@@ -39,7 +45,7 @@ async function open(group, name) {
 	try {
 		const path = `${getMaster(group.master).route}/${name ? encodeURIComponent(name) : "new"}`
 		const query = { returnTo: partyPath() }
-		if (!name) query.defaults = stageNewDefaults(group.doctype, linkedPartyDraft(props.doc.doctype, props.doc.name), partyPath())
+		if (!name) query.defaults = stageNewDefaults(group.doctype, newDraft(group), partyPath())
 		await router.push({ path, query })
 	} catch (cause) { error.value = cause.message }
 }
@@ -62,7 +68,7 @@ onBeforeUnmount(() => { sequence++; refresh.cancel(); disposers.forEach((dispose
 			<template v-else>
 				<p v-if="!groups.length" class="empty-state">You do not have access to addresses or contacts.</p>
 				<section v-for="group in groups" :key="group.doctype">
-					<div class="manage-foot"><h3>{{ group.label }}</h3><button v-if="hasPermission(group.doctype, 'create')" class="button secondary small" :disabled="blocked" @click="open(group)">Add {{ group.singular }}</button></div>
+					<div class="manage-foot"><h3>{{ group.label }}</h3><button v-if="hasPermission(group.doctype, 'create')" class="button secondary small" :disabled="blocked" @click="open(group)">Create {{ group.singular }}</button></div>
 					<p v-if="!rows[group.doctype]?.length" class="field-help">No linked {{ group.label.toLowerCase() }} yet.</p>
 					<div v-for="row in rows[group.doctype]" :key="row.name" class="master-party-row"><a :href="`/web/manage/${group.master}/${encodeURIComponent(row.name)}`" @click.prevent="open(group, row.name)">{{ row.address_title || row.full_name || row.name }} ›</a><p>{{ detail(group, row) }}</p></div>
 				</section>

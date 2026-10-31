@@ -1,59 +1,19 @@
 import test from "node:test"
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
-import { reactive } from "vue"
-import { createMemoryHistory, createRouter } from "vue-router"
+import { h } from "vue"
 import { ignoresNavigation, navigateSelection, reconcileSelection, selectionTotals } from "../src/list/useSplitSelection.js"
 import { realtime } from "../src/realtime/socket.js"
-import { clearReadCaches } from "../src/api/client.js"
 import { formatDisplayDatetime } from "../src/document/activityFormat.js"
+import { documentModule } from "../src/documents/registry.js"
 import challan from "../src/books/delivery-challan/config.js"
 import receipt from "../src/books/goods-received-note/config.js"
-import { FakeSocket } from "./helpers/fakeSocket.js"
+import { button, mountSplit, options, records, runMenuAction } from "./helpers/splitList.js"
 import { mountComponent, nodes, settle, textContent } from "./helpers/component.js"
 
-const records = () => ["A", "B", "C"].map((name) => ({ name, supplier: `Supplier ${name}`, po_date: "2026-10-30", total_qty: 10, total_amount: 50, docstatus: 1, modified: "one" }))
-
-async function mountSplit({ phone = false, selected = "", rows = records(), doctype = "MGK Purchase Order", preview = {}, user = {}, respond } = {}) {
-	const original = { window: globalThis.window, document: globalThis.document, fetch: globalThis.fetch, realtime: { ...realtime } }
-	const scrolls = []
-	const socket = new FakeSocket()
-	globalThis.document = { querySelector: (selector) => selector === ".ops-topbar" ? { getBoundingClientRect: () => ({ height: 58 }) } : null }
-	globalThis.window = { frappe: { boot: { user: { name: "Administrator", can_read: [doctype], ...user } } },
-		matchMedia: () => ({ matches: phone, addEventListener() {}, removeEventListener() {} }),
-		scrollY: 640, scrollTo: (position) => scrolls.push(position.top), sessionStorage: { getItem: () => null, setItem() {} } }
-	Object.assign(realtime, { socket: null, pending: null, connectedBefore: false, rooms: new Map(),
-		reconnectHandlers: new Set(), stateHandlers: new Set(), factory: () => socket })
-	const requests = []
-	globalThis.fetch = async (url, options) => {
-		requests.push(url)
-		const name = new URL(url, "http://site").searchParams.get("name")
-		const message = {
-			items: [], connections: [], timeline: [], extra: {}, ...preview,
-			doc: { ...rows.find((row) => row.name === name), name, ...preview.doc },
-		}
-		const result = respond ? await respond(url, options, message) : message
-		return { ok: true, status: 200, json: async () => ({ message: result }) }
-	}
-	const router = createRouter({ history: createMemoryHistory(), routes: [{ path: "/:pathMatch(.*)*", component: { render: () => null } }] })
-	await router.push({ path: "/purchase-order", query: selected ? { selected } : {} })
-	const props = reactive({ doctype, rows,
-		columns: [{ fieldname: "name" }, { fieldname: "po_date", label: "Date" }, { fieldname: "warehouse", label: "Warehouse" }],
-		selected: "", total: rows.length, loadMore: async () => {}, documentRoute: (name) => `/purchase-order/${name}`,
-		displayValue: (row, column) => row[column.fieldname] || "—", queryKey: "one", bulkActions: [],
-		savePosition() {}, refresh: async () => {}, "onUpdate:selected": (name) => { props.selected = name } })
-	const page = await mountComponent("../../src/list/SplitListView.vue", props, [router])
-	nodes(page.root, (node) => node.props.class === "split-preview")[0].getBoundingClientRect = () => ({ top: 420 })
-	await settle()
-	return { ...page, props, router, requests, socket, scrolls, close() {
-		page.close(); Object.assign(realtime, original.realtime); globalThis.window = original.window; globalThis.document = original.document; globalThis.fetch = original.fetch; clearReadCaches()
-	} }
-}
-const options = (page) => nodes(page.root, (node) => node.props.role === "option")
 const selectedOption = (page) => options(page).find((node) => node.props["aria-selected"])
 const checkboxes = (page) => nodes(page.root, (node) => node.tag === "input" && node.props.type === "checkbox")
 const key = (page, value, target = {}) => nodes(page.root, (node) => node.props.onKeydown)[0].props.onKeydown({ key: value, target, preventDefault() {} })
-const button = (page, label) => nodes(page.root, (node) => node.tag === "button" && textContent(node) === label)[0]
 
 test("split list renders accessible rows, selects first row and shows columns in secondary line", async () => {
 	const page = await mountSplit()
@@ -63,7 +23,7 @@ test("split list renders accessible rows, selects first row and shows columns in
 		assert.match(textContent(selectedOption(page)), /A/)
 		assert.equal(page.props.selected, "A")
 		assert.equal(page.router.currentRoute.value.query.selected, "A")
-		assert.match(textContent(options(page)[0]), /Supplier A.*2026-10-30.*10 qty.*50.00/)
+		assert.match(textContent(options(page)[0]), /Supplier A.*30-10-2026.*10 qty.*50.00/)
 	} finally { page.close() }
 })
 
@@ -171,7 +131,7 @@ test("selection summary formats Currency with two decimals and Float with list p
 	} finally { page.close() }
 })
 
-test("DC preview hides unavailable and non-internal transit columns and shows shared transit intro", async (context) => {
+test("DC preview shows pending quantities only in its internal transit columns", async (context) => {
 	context.mock.timers.enable({ apis: ["setTimeout"] })
 	for (const is_internal_transfer of [0, 1]) {
 		const page = await mountSplit({ doctype: "MGK Delivery Challan", preview: {
@@ -185,9 +145,28 @@ test("DC preview hides unavailable and non-internal transit columns and shows sh
 			assert.equal(headers.includes("Out"), false)
 			assert.doesNotMatch(textContent(page.root), /Still Out/)
 			for (const label of ["Transferred", "Returned", "Pending in transit"]) assert.equal(headers.includes(label), Boolean(is_internal_transfer))
-			assert.equal(textContent(page.root).includes("Pending in transit: Yarn 5 Kg"), Boolean(is_internal_transfer))
+			assert.doesNotMatch(textContent(page.root), /Pending in transit:/)
+			if (is_internal_transfer) assert.equal(textContent(nodes(page.root, (node) => node.tag === "td").at(-1)), "5")
 		} finally { page.close() }
 	}
+})
+
+test("preview header uses the book cover colour and items show a totals row", async (context) => {
+	context.mock.timers.enable({ apis: ["setTimeout"] })
+	const page = await mountSplit({ doctype: "MGK Delivery Challan", preview: {
+		doc: { docstatus: 1 }, timeline: [{ at: "2026-10-30 18:16:10", text: "Submitted" }, { at: "2026-10-30 18:17:10", text: "Updated" }],
+		items: [{ item: "Yarn", qty: 5 }, { item: "Yarn", qty: 7 }],
+	} })
+	try {
+		context.mock.timers.tick(120); await settle()
+		const pane = nodes(page.root, (node) => node.tag === "article")[0]
+		assert.match(JSON.stringify(pane.props.style), /var\(--cover-dc\)/)
+		const footer = nodes(page.root, (node) => node.tag === "tfoot")[0]
+		assert.equal(textContent(nodes(footer, (node) => node.tag === "td")[0]), "Total")
+		assert.match(textContent(footer), /12/)
+		assert.ok(button(page, "▸ Timeline · 2 events"))
+		assert.match(textContent(page.root), /Items · 2/)
+	} finally { page.close() }
 })
 
 test("preview timeline uses the Activity datetime formatter without microseconds", async (context) => {
@@ -196,8 +175,21 @@ test("preview timeline uses the Activity datetime formatter without microseconds
 	const page = await mountSplit({ preview: { timeline: [{ at, text: "Submitted" }] } })
 	try {
 		context.mock.timers.tick(120); await settle()
+		assert.equal(button(page, "▸ Timeline · 1 event").props["aria-expanded"], false)
+		assert.equal(nodes(page.root, (node) => node.tag === "time").length, 0)
+		button(page, "▸ Timeline · 1 event").props.onClick()
+		await settle()
 		assert.equal(textContent(nodes(page.root, (node) => node.tag === "time")[0]), formatDisplayDatetime(at))
 		assert.doesNotMatch(textContent(page.root), /355306/)
+		const toggle = button(page, "▾ Timeline · 1 event")
+		assert.equal(toggle.props["aria-expanded"], true)
+		assert.equal(nodes(page.root, (node) => node.tag === "ol")[0].props.id, toggle.props["aria-controls"])
+		toggle.props.onClick(); await settle()
+		assert.equal(button(page, "▸ Timeline · 1 event").props["aria-expanded"], false)
+		button(page, "▸ Timeline · 1 event").props.onClick(); await settle()
+		await options(page)[1].props.onClick(); await settle()
+		context.mock.timers.tick(120); await settle()
+		assert.equal(button(page, "▸ Timeline · 1 event").props["aria-expanded"], false)
 	} finally { page.close() }
 })
 
@@ -276,6 +268,8 @@ test("split CSS uses existing tokens and confines tables at the phone breakpoint
 	assert.match(css, /@media \(max-width: 760px\)/)
 	assert.match(css, /\.split-preview[^}]+min-height: calc\(100dvh - 58px\)/)
 	assert.match(css, /\.preview-pane \.table-scroll[^}]+min-width: 0/)
+	assert.match(css, /\.preview-action-menu[^}]+max-width: calc\(100vw - 24px\); min-width: 0/)
+	assert.match(css, /\.preview-head[^}]+flex-wrap: wrap/)
 	assert.doesNotMatch(css, /#[\da-f]{3,8}\b|--[\w-]+\s*:/i)
 })
 
@@ -343,16 +337,16 @@ test("selection changes suppress mapped navigation and retain mutation single fl
 	const tick = async () => { context.mock.timers.tick(120); await settle() }
 	try {
 		await tick()
-		const running = button(page, "Create GRN").props.onClick()
+		const running = runMenuAction(page, "Create GRN")
 		await settle()
 		await options(page)[1].props.onClick(); await settle(); await tick()
-		assert.equal(button(page, "Create GRN").props.disabled, true)
-		await button(page, "Create GRN").props.onClick()
+		assert.equal(button(page, "Actions").props.disabled, true)
+		await runMenuAction(page, "Create GRN")
 		assert.equal(mutations, 1)
 		finish({ doctype: receipt.doctype, name: "new" }); await running; await settle()
 		assert.equal(page.router.currentRoute.value.path, "/purchase-order")
 		assert.equal(page.router.currentRoute.value.query.selected, "B")
-		assert.equal(button(page, "Create GRN").props.disabled, false)
+		assert.equal(button(page, "Actions").props.disabled, false)
 		assert.equal(nodes(page.root, (node) => node.props.class === "server-error").length, 0)
 	} finally { finish?.({}); page.close() }
 })
@@ -370,7 +364,7 @@ test("selection changes clear completed action errors and results", async (conte
 		const tick = async () => { context.mock.timers.tick(120); await settle() }
 		try {
 			await tick()
-			const running = button(page, hasError ? "Create GRN" : "Mark as Received").props.onClick()
+			const running = runMenuAction(page, hasError ? "Create GRN" : "Mark as Received")
 			if (!hasError) { await settle(); button(page, "Confirm").props.onClick() }
 			await running; await settle()
 			assert.ok(textContent(page.root).includes(message))
@@ -378,4 +372,118 @@ test("selection changes clear completed action errors and results", async (conte
 			assert.equal(textContent(page.root).includes(message), false)
 		} finally { page.close() }
 	}
+})
+
+test("preview actions refresh list rows once, reload the preview and retain selection", async (context) => {
+	context.mock.timers.enable({ apis: ["setTimeout"] })
+	for (const [label, docstatus] of [["Mark as Received", 1], ["Submit", 0], ["Cancel", 1]]) {
+		const page = await mountSplit({ user: { can_submit: ["MGK Purchase Order"], can_cancel: ["MGK Purchase Order"], can_create: [receipt.doctype] },
+			preview: { is_submittable: 1, doc: { docstatus, items: [{ pending_qty: 1 }] } },
+			respond: (url, options, preview) => {
+				if (url.includes("load.getdoc")) return { docs: [{ ...preview.doc, doctype: "MGK Purchase Order" }] }
+				if (options.method !== "POST") return preview
+				return label === "Mark as Received" ? { goods_received_note: "GRN-A" } : preview.doc
+			} })
+		let refreshes = 0
+		try {
+			page.props.refresh = async () => {
+				refreshes++
+				page.props.rows = page.props.rows.map((row) => ({ ...row }))
+			}
+			context.mock.timers.tick(120); await settle()
+			const running = runMenuAction(page, label)
+			await settle(); button(page, "Confirm").props.onClick()
+			await running; await settle()
+			assert.equal(refreshes, 1)
+			assert.equal(page.props.selected, "A")
+			assert.equal(page.requests.filter((url) => url.includes("get_preview")).length, 2)
+		} finally { page.close() }
+	}
+})
+
+test("Ctrl+S in the preview confirms submit only for a submittable draft", async (context) => {
+	context.mock.timers.enable({ apis: ["setTimeout"] })
+	for (const docstatus of [0, 1]) {
+		const page = await mountSplit({ user: { can_submit: ["MGK Purchase Order"] },
+			preview: { is_submittable: 1, doc: { docstatus, items: [] } },
+			respond: (url, options, preview) => url.includes("load.getdoc") ? { docs: [{ ...preview.doc, doctype: "MGK Purchase Order" }] }
+				: options.method === "POST" ? { ...preview.doc, docstatus: 1 } : preview })
+		try {
+			context.mock.timers.tick(120); await settle()
+			let prevented = false
+			page.listeners.keydown({ ctrlKey: true, key: "s", preventDefault() { prevented = true } })
+			await settle()
+			assert.equal(prevented, true)
+			assert.equal(Boolean(button(page, "Confirm")), docstatus === 0)
+			if (docstatus === 0) {
+				button(page, "Confirm").props.onClick()
+				await settle(); await settle()
+				assert.equal(page.requests.filter((url) => url.includes("frappe.client.submit")).length, 1)
+			}
+		} finally { page.close() }
+	}
+})
+
+test("linked item cells honor read permission and duplicate connected records disappear", async (context) => {
+	context.mock.timers.enable({ apis: ["setTimeout"] })
+	for (const has_read of [false, true]) {
+		const page = await mountSplit({ doctype: "MGK Purchase Invoice", user: { can_read: has_read ? [receipt.doctype] : [] }, preview: {
+			items: [{ item: "Yarn", goods_received_note: "GRN / 1" }],
+			connections: [{ doctype: receipt.doctype, label: "GRN", names: ["GRN / 1"] }],
+		} })
+		try {
+			context.mock.timers.tick(120); await settle()
+			assert.equal(nodes(page.root, (node) => node.tag === "a" && node.props.href === "/goods-received-note/GRN%20%2F%201").length, has_read ? 1 : 0)
+			assert.doesNotMatch(textContent(page.root), /Connected records|Nothing linked yet/)
+			assert.match(textContent(page.root), /GRN \/ 1/)
+		} finally { page.close() }
+	}
+})
+
+test("timeline buttons and popup menus cannot drive split-list arrow navigation", async () => {
+	for (const selector of ["button", "a", "[role='menu']", "[role='menuitem']"]) {
+		assert.equal(ignoresNavigation({ target: { closest: (selectors) => selectors.includes(selector) } }), true)
+	}
+	const page = await mountSplit()
+	try {
+		globalThis.document.querySelector = (selector) => selector.includes('[role="menu"]') ? {} : null
+		key(page, "ArrowDown"); await settle()
+		assert.equal(page.props.selected, "A")
+	} finally { page.close() }
+})
+
+test("preview dialog completion refreshes both the preview and list through ActionHost", async (context) => {
+	context.mock.timers.enable({ apis: ["setTimeout"] })
+	const module = documentModule("MGK Purchase Order")
+	const original = module.actions
+	module.actions = () => [{ key: "dialog", label: "Edit plan", dialog: async () => ({
+		setup: (_props, { emit }) => () => h("button", { onClick: () => emit("done", { message: "Plan saved." }) }, "Save plan"),
+	}) }]
+	const page = await mountSplit()
+	let refreshes = 0
+	try {
+		page.props.refresh = async () => { refreshes++ }
+		context.mock.timers.tick(120); await settle()
+		await runMenuAction(page, "Edit plan"); await settle()
+		assert.equal(button(page, "Actions").props.disabled, true)
+		await button(page, "Save plan").props.onClick(); await settle()
+		assert.equal(refreshes, 1)
+		assert.equal(page.requests.filter((url) => url.includes("get_preview")).length, 2)
+		assert.match(textContent(page.root), /Plan saved\./)
+	} finally { page.close(); module.actions = original }
+})
+
+test("PO receipt preview shows the supplier and source PO exactly once", async (context) => {
+	context.mock.timers.enable({ apis: ["setTimeout"] })
+	const page = await mountSplit({ doctype: receipt.doctype, preview: {
+		doc: { supplier: "Buying Supplier", against_purchase_order: 1, purchase_order: "PO-1" },
+		connections: [{ doctype: "MGK Purchase Order", label: "PO", names: ["PO-1"] }],
+	} })
+	try {
+		context.mock.timers.tick(120); await settle()
+		const article = nodes(page.root, (node) => node.tag === "article")[0]
+		assert.equal(textContent(article).split("Buying Supplier").length - 1, 1)
+		assert.equal(textContent(article).split("PO-1").length - 1, 1)
+		assert.doesNotMatch(textContent(article), /Connected records|Warehouse|Transferred Qty/)
+	} finally { page.close() }
 })

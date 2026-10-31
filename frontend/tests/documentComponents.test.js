@@ -67,6 +67,22 @@ test("link suggestions show a description only when it differs from the value", 
 	} finally { page.close() }
 })
 
+test("link suggestions scroll into view as they open and fill", async () => {
+	const page = await mountComponent("../../src/document/fields/LinkField.vue", { doctype: "Item", candidates: ["Yarn", "Yarn Dyed", "Fabric"] })
+	try {
+		await inputs(page.root)[0].props.onFocus()
+		await settle()
+		const suggestions = nodes(page.root, (node) => node.props.class === "link-suggestions")[0]
+		const scrolls = []
+		suggestions.scrollIntoView = (options) => scrolls.push(options)
+		inputs(page.root)[0].props.onInput({ target: { value: "Yarn" } })
+		await new Promise((resolve) => setTimeout(resolve, 250))
+		await settle()
+		assert.deepEqual(scrolls.at(-1), { block: "nearest", behavior: "smooth" })
+		assert.equal(nodes(page.root, (node) => node.tag === "li").length, 2)
+	} finally { page.close() }
+})
+
 test("list filter link suggestions also omit repeated descriptions", async () => {
 	const original = globalThis.fetch
 	globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ message: [{ value: "Vendor", description: "Vendor" }] }) })
@@ -96,6 +112,38 @@ test("Details renders address and contact beneath their owning rows and hides dr
 	} finally { page.close() }
 })
 
+test("Details fields edit inline without Done: Enter and blur keep the value, Esc restores it, Enter never re-activates the row button", async () => {
+	const fields = [{ fieldname: "vehicle_number", fieldtype: "Data", label: "Vehicle Number", reqd: 1 }, { fieldname: "dc_number", fieldtype: "Data", label: "DC Number" }]
+	const props = reactive({ fields, meta: { permissions: [] }, user, doc: { doctype: "MGK Delivery Challan", docstatus: 0, vehicle_number: "" },
+		onChange: (name, value) => { props.doc[name] = value } })
+	const page = await mountComponent("../../src/document/DetailsPanel.vue", props)
+	const row = (fieldname) => nodes(page.root, (node) => node.props["data-field"] === fieldname)[0]
+	const rowButton = (fieldname) => nodes(row(fieldname), (node) => node.tag === "button")[0]
+	const open = async (fieldname) => { rowButton(fieldname).props.onClick(); await settle() }
+	try {
+		assert.match(textContent(page.root), /1 missing/)
+		await open("vehicle_number")
+		assert.equal(rowButton("vehicle_number"), undefined)
+		props.doc.vehicle_number = "TN 01"
+		let prevented = false
+		row("vehicle_number").props.onKeydown({ key: "Enter", target: {}, preventDefault: () => { prevented = true } })
+		await settle()
+		assert.equal(prevented, true, "Enter's default action would click the refocused row button and reopen the editor")
+		assert.match(textContent(rowButton("vehicle_number")), /TN 01/)
+		assert.doesNotMatch(textContent(page.root), /missing/)
+		await open("vehicle_number")
+		props.doc.vehicle_number = "TN 02"
+		row("vehicle_number").props.onKeydown({ key: "Escape", target: {} })
+		await settle()
+		assert.equal(props.doc.vehicle_number, "TN 01")
+		await open("dc_number")
+		props.doc.dc_number = "D-9"
+		row("dc_number").props.onFocusout({ relatedTarget: { closest: () => null } })
+		await settle()
+		assert.match(textContent(rowButton("dc_number")), /D-9/)
+	} finally { page.close() }
+})
+
 test("document actions omit Edit for every status and expose the correct lifecycle actions", async () => {
 	const original = globalThis.window
 	globalThis.window = { frappe: { boot: { user: Object.fromEntries(["write", "submit", "cancel", "delete", "amend"].map((key) => [`can_${key}`, [purchaseOrder.doctype]])) } } }
@@ -109,6 +157,50 @@ test("document actions omit Edit for every status and expose the correct lifecyc
 			assert.deepEqual(nodes(page.root, (node) => node.tag === "button").map(textContent), expected)
 		}
 	} finally { page.close(); globalThis.window = original }
+})
+
+test("Ctrl+S saves new or dirty drafts, confirms submit for clean drafts and never reaches the browser", async () => {
+	const original = globalThis.window
+	const listeners = {}
+	globalThis.window = { frappe: { boot: { user: Object.fromEntries(["create", "write", "submit", "cancel"].map((key) => [`can_${key}`, [purchaseOrder.doctype]])) } },
+		addEventListener: (name, handler) => { listeners[name] = handler }, removeEventListener: (name) => { delete listeners[name] } }
+	const emitted = []
+	const props = reactive({ doc: { doctype: purchaseOrder.doctype, name: "PO-1", docstatus: 0 }, meta: { is_submittable: 1 }, editing: true,
+		isNew: true, dirty: true, busy: false, onAction: (action) => emitted.push(action) })
+	const page = await mountComponent("../../src/document/DocumentActions.vue", props)
+	const press = (event = { ctrlKey: true, key: "s" }) => { let prevented = false; listeners.keydown({ ...event, preventDefault() { prevented = true } }); return prevented }
+	const dialogText = () => textContent(nodes(page.root, (node) => node.tag === "p")[0] || { text: "", children: [] })
+	try {
+		assert.equal(press(), true)
+		props.isNew = false
+		await settle()
+		assert.equal(press({ metaKey: true, key: "S" }), true)
+		assert.deepEqual(emitted, ["save", "save"])
+		props.dirty = false
+		props.busy = true
+		await settle()
+		press()
+		await settle()
+		assert.equal(dialogText(), "")
+		props.busy = false
+		await settle()
+		press()
+		await settle()
+		assert.equal(dialogText(), "Confirm submit for PO-1?")
+		press()
+		assert.deepEqual(emitted, ["save", "save"])
+		button(page.root, "Confirm").props.onClick()
+		assert.deepEqual(emitted, ["save", "save", "submit"])
+		for (const docstatus of [1, 2]) {
+			props.doc.docstatus = docstatus
+			await settle()
+			assert.equal(press(), true)
+			await settle()
+			assert.equal(dialogText(), "")
+		}
+		assert.deepEqual(emitted, ["save", "save", "submit"])
+	} finally { page.close(); globalThis.window = original }
+	assert.equal(listeners.keydown, undefined)
 })
 
 test("submitted and cancelled hero names include the party without Update", async () => {

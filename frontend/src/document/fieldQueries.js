@@ -4,7 +4,7 @@ export function fieldQuery(field, doc) {
 	const name = field.fieldname
 	if (doc.doctype === "Item" && name === "stock_uom") return { filters: { enabled: 1, secondary_only: 0 } }
 	if (doc.doctype === "Item" && name === "item_group") return { filters: { is_group: 0 } }
-	if (doc.doctype === "MGK Item Process Conversion" && name === "item" && doc.parenttype === "Item" && doc.parent) return { filters: { name: ["!=", doc.parent] } }
+	if (doc.doctype === "MGK Item Process Conversion" && name === "item") return { filters: { variant_of: ["is", "not set"], disabled: 0 } }
 	if (name === "mgk_gst_tax_slab") return { filters: { enabled: 1 } }
 	if (name === "additional_parameter_value") return { filters: { key: doc.additional_parameter_key || "" } }
 	if (doc.doctype === "MGK Purchase Order" && name === "supplier") return { filters: { disabled: 0, is_company_location: 0 } }

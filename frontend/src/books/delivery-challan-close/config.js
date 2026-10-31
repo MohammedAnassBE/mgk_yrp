@@ -9,6 +9,7 @@ const definition = {
 	routePath: "/delivery-challan-close",
 	listPath: "/delivery-challan-close",
 	presentation: "book",
+	showOnHome: false,
 	allowCreate: false,
 	tabs: [
 		{ key: "all", label: "All", filters: [] },

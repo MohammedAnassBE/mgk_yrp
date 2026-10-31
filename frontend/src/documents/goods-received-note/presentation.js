@@ -1,3 +1,4 @@
+import { formatDate } from "../../shared/formatDate.js"
 import { statusPill } from "../../list/statusPill.js"
 import { purchaseOrderFilters } from "./fieldEvents.js"
 export { transferIntro as intro } from "../shared/transit.js"
@@ -17,7 +18,7 @@ export function summary(doc, itemCount = doc.items?.length || 0) {
 export function viewFacts(doc) {
 	const source = doc.against_purchase_order ? { label: "Source PO", value: doc.purchase_order,
 		doctype: "MGK Purchase Order", to: `/purchase-order/${encodeURIComponent(doc.purchase_order)}` } : { label: "Source", value: "Job Work" }
-	return [source, { label: "Supplier", value: doc.supplier }, { label: "Posting date", value: doc.posting_date },
+	return [source, { label: "Supplier", value: doc.supplier }, { label: "Posting date", value: formatDate(doc.posting_date) },
 		{ label: "Posting time", value: doc.posting_time }, { label: "Delivery location", value: doc.delivery_location },
 		{ label: "Warehouse", value: doc.warehouse },
 		...(doc.delivery_challans || []).map((row) => ({ label: "Delivery Challan", value: row.delivery_challan,

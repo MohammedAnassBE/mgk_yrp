@@ -71,6 +71,17 @@ test("all eight new and edit forms render numbered configured sections and the m
 	}
 })
 
+test("master forms lead back through Manage and their master list", async () => {
+	for (const master of masters) {
+		const page = await mountMaster(master, false)
+		try {
+			const crumbs = nodes(nodes(page.root, (node) => node.tag === "nav")[0], (node) => node.tag === "a").map((node) => [textContent(node), node.props.href])
+			assert.deepEqual(crumbs, [["All books", "/"], ["Manage", "/manage"], [master.label, master.route]], master.key)
+			assert.deepEqual(nodes(page.root, (node) => node.props.class === "head-back").map((node) => node.props.href), [master.route], master.key)
+		} finally { page.close() }
+	}
+})
+
 test("a variant URL renders its encoded template link instead of the master form", async () => {
 	const page = await mountMaster(getMaster("items"), false, false, { variant_of: "Template / 1" })
 	try {

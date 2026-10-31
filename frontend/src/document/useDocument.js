@@ -14,6 +14,8 @@ import { LiveDocument } from "./liveDocument.js"
 import { documentModule } from "../documents/registry.js"
 import { mutationScope } from "./mutationScope.js"
 import { useActionRunner } from "./useActionRunner.js"
+import { lifecycleActions } from "./lifecycleActions.js"
+import { isSaveShortcut } from "./lifecycle.js"
 
 export function useDocument(book) {
 	const route = useRoute()
@@ -141,7 +143,8 @@ export function useDocument(book) {
 				if (!hasPermission(book.doctype, "create")) throw new Error("You do not have permission to create this document.")
 				const staged = route.query.defaults ? readNewDefaults(route.query.defaults, book.doctype) : null
 				const mapped = route.query.draft ? readMappedDraft(route.query.draft, book.doctype) : {}
-				record = { ...metaDefaults(meta.value), ...staged?.defaults, ...mapped, __islocal: 1, docstatus: 0 }
+				const queried = Object.fromEntries((book.queryDefaults || []).filter((field) => route.query[field]).map((field) => [field, String(route.query[field])]))
+				record = { ...metaDefaults(meta.value), ...queried, ...staged?.defaults, ...mapped, __islocal: 1, docstatus: 0 }
 			}
 			if (disposed || current !== loadSequence) return
 			apply(record)
@@ -219,49 +222,61 @@ export function useDocument(book) {
 	}
 
 	async function action(name) {
-		if (busy.value || runner.busy.value || fieldsLoading.value || itemsLoading.value) return
-		if (name === "submit" && fieldError.value) { error.value = fieldError.value; return }
+		if (isActionBlocked(name)) return
 		if (name === "save") return save()
 		const mapped = extraActions.value.find((entry) => entry.key === name)
-		if (mapped?.run || mapped?.dialog) return runner.run(mapped, { doc: doc.value })
-		if (mapped?.to) return router.push(mapped.to)
-		if (mapped?.key === "finish-reopen") return perform((operation) => module.finishReopen(doc.value, {
-			call: callMethod, reload: () => { if (operation.current()) return reload() }, message: (message) => { if (operation.current()) messages.value = [message] },
-		}))
-		if (mapped?.method) return perform((operation) => openMappedDraft(mapped, doc.value.name, { call: callMethod,
+		if (mapped) return runMappedAction(mapped)
+		return runDocumentAction(name)
+	}
+
+	function isActionBlocked(name) {
+		if (name === "submit" && fieldError.value) { error.value = fieldError.value; return true }
+		return busy.value || runner.busy.value || fieldsLoading.value || itemsLoading.value
+	}
+
+	function runMappedAction(mapped) {
+		if (mapped.run || mapped.dialog) return runner.run(mapped, { doc: doc.value })
+		if (mapped.to) return router.push(mapped.to)
+		return perform((operation) => openMappedDraft(mapped, doc.value.name, { call: callMethod,
 			isCurrent: operation.current, navigate: (target) => router.push(target) }))
+	}
+
+	async function runDocumentAction(name) {
 		if (!["submit", "cancel", "delete", "amend"].includes(name)) { error.value = `Unknown document action: ${name}`; return }
-		const permission = name === "submit" ? "submit" : name === "cancel" ? "cancel" : name === "delete" ? "delete" : "amend"
-		if (!hasPermission(book.doctype, permission)) return
-		await perform(async (operation) => {
-			if (name === "amend") {
-				const latest = await getDocument(book.doctype, doc.value.name)
-				if (!operation.current()) return
-				operation.apply(() => apply(latest))
-				if (latest.__onload?.valuation_pending || ["Reversing", "Reopening"].includes(latest.reopen_status)) throw new Error("Wait for valuation or reopening to finish before amending.")
-				const draft = stageMappedDraft(amendmentDraft(latest, metas.value))
-				await router.push({ path: `${book.routePath}/new`, query: { draft } })
-				return
-			}
-			const args = name === "submit" ? { doc: clone(doc.value) } : { doctype: book.doctype, name: doc.value.name }
-			const result = await callMethod(`frappe.client.${name}`, args, (values) => { if (operation.current()) messages.value = values })
-			if (!operation.current()) return
-			if (name === "delete") await router.push(book.listPath || book.routePath)
-			else {
-				if (name === "cancel" && book.doctype === "MGK Purchase Invoice") {
-					result.__onload = { ...result.__onload, valuation_pending: true }
-				}
-				operation.apply(() => apply(result))
-				await reload()
-			}
-		})
+		if (!hasPermission(book.doctype, name)) return
+		const lifecycle = lifecycleActions(doc.value, meta.value, hasPermission).find((entry) => entry.key === name)
+		if (["submit", "cancel"].includes(name) && !lifecycle) return
+		await perform((operation) => mutateDocument(name, lifecycle, operation))
+	}
+
+	async function mutateDocument(name, lifecycle, operation) {
+		if (name === "amend") return amendDocument(operation)
+		const call = (method, args) => callMethod(method, args, (values) => { if (operation.current()) messages.value = values })
+		const result = lifecycle ? (await lifecycle.run({ doc: doc.value }, { call, isCurrent: operation.current }))?.doc
+			: await call("frappe.client.delete", { doctype: book.doctype, name: doc.value.name })
+		if (!operation.current()) return
+		if (name === "delete") return router.push(book.listPath || book.routePath)
+		if (name === "cancel" && book.doctype === "MGK Purchase Invoice") {
+			result.__onload = { ...result.__onload, valuation_pending: true }
+		}
+		operation.apply(() => apply(result))
+		await reload()
+	}
+
+	async function amendDocument(operation) {
+		const latest = await getDocument(book.doctype, doc.value.name)
+		if (!operation.current()) return
+		operation.apply(() => apply(latest))
+		if (latest.__onload?.valuation_pending || ["Reversing", "Reopening"].includes(latest.reopen_status)) throw new Error("Wait for valuation or reopening to finish before amending.")
+		const draft = stageMappedDraft(amendmentDraft(latest, metas.value))
+		await router.push({ path: `${book.routePath}/new`, query: { draft } })
 	}
 
 	async function focusStart() {
 		await nextTick()
 		document.querySelector('.book-entry .form-stack input:not(:disabled), .book-entry .form-stack select:not(:disabled)')?.focus()
 	}
-	function keydown(event) { if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") { event.preventDefault(); save() } }
+	function keydown(event) { if (isSaveShortcut(event)) event.preventDefault() }
 	watch(() => route.fullPath, () => { if (routeKey !== route.fullPath) initialize() })
 	onMounted(() => { window.addEventListener("keydown", keydown); initialize() })
 	onBeforeUnmount(() => {

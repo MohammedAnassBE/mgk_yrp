@@ -42,7 +42,7 @@ export function useListView(props) {
 	let disposers = []
 	const currentQuery = () => JSON.parse(JSON.stringify({ ...query, baseFilters: props.baseFilters, baseOrFilters: props.baseOrFilters, tabs: props.tabs, quickFields: quickFields.value }))
 	const fetchFields = () => [...new Set(["name", "docstatus", ...(props.extraFields || []), ...columns.value.filter((column) => !column.indicator && !column.clientOnly).map((column) => column.fieldname), ...indicatorFields(props.doctype, hasPermission("MGK Purchase Invoice"))])]
-	const splitFields = () => props.layout === "split" ? meta.value.fields.filter((field) => ["modified", "supplier", "from_location", "to_location", "po_date", "posting_date", "total_qty", "total_output_qty", "total_amount", "grand_total", "total_declared_value", "total_dc_value"].includes(field.fieldname)).map((field) => field.fieldname).concat("modified") : []
+	const splitFields = () => props.layout === "split" ? meta.value.fields.filter((field) => ["modified", "supplier", "from_location", "to_location", "po_date", "posting_date", "total_qty", "total_output_qty", "total_amount", "grand_total", "total_declared_value", "total_dc_value", "amount"].includes(field.fieldname)).map((field) => field.fieldname).concat("modified") : []
 	const loader = new ListLoader({ doctype: props.doctype, getRows, getCounts, query: currentQuery, fields: () => [...new Set([...fetchFields(), ...splitFields()])], state: data })
 	let pendingMore
 	function loadMore() {

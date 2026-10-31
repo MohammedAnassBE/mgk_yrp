@@ -1,5 +1,6 @@
 <script setup>
 import Dialog from "primevue/dialog"
+import "../../document/fields/fields.css"
 import "./actionDialog.css"
 defineProps({ visible: Boolean, header: { type: String, required: true }, width: { type: String, default: "min(560px, 94vw)" } })
 defineEmits(["close", "show"])

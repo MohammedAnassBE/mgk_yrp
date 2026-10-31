@@ -67,13 +67,13 @@ function remove(index) {
 	<div v-if="meta" class="simple-table">
 		<p v-if="error" class="form-banner" role="alert">{{ error }}</p>
 		<p v-if="!modelValue.length" class="empty-state compact">No rows yet.</p>
-		<div v-else class="table-scroll">
+		<div v-else class="table-scroll" :class="{ natural: field.columns }">
 			<table>
 				<thead>
 					<tr>
 						<th>#</th>
 						<th v-for="field in fields" :key="field.fieldname">{{ field.label }}</th>
-						<th v-if="!disabled" />
+						<th v-if="!disabled" class="row-actions" />
 					</tr>
 				</thead>
 				<tbody>

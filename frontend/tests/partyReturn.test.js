@@ -32,7 +32,7 @@ test("party return paths survive query serialization once, including spaces and 
 test("Add address/contact saves linked defaults, returns to a spaced party name and lists the new record", async () => {
 	const original = { window: globalThis.window, fetch: globalThis.fetch, realtime: { ...realtime } }
 	const store = new Map()
-	const permissions = Object.fromEntries(["read", "create", "write"].map((key) => [`can_${key}`, ["Supplier", "MGK Agent", "Address", "Contact"]]))
+	const permissions = Object.fromEntries(["read", "create", "write"].map((key) => [`can_${key}`, ["Supplier", "MGK Agent", "Warehouse", "Address", "Contact"]]))
 	globalThis.window = { frappe: { boot: { defaults: { country: "India" }, user: { name: "Tester", ...permissions } } },
 		addEventListener() {}, removeEventListener() {},
 		sessionStorage: { getItem: (key) => store.get(key), setItem: (key, value) => store.set(key, value) } }
@@ -66,18 +66,25 @@ test("Add address/contact saves linked defaults, returns to a spaced party name 
 	}
 	let page
 	try {
-		for (const partyType of ["Supplier", "MGK Agent"]) for (const doctype of ["Address", "Contact"]) {
-			const name = partyType === "Supplier" ? "IE2 Knit Works" : "Agent One"
-			const party = { doctype: partyType, name }
-			const master = getMaster(partyType === "Supplier" ? "suppliers" : "agents")
+		const parties = {
+			Supplier: { master: "suppliers", name: "IE2 Knit Works", supplier_name: "IE2 Knit Works" },
+			"MGK Agent": { master: "agents", name: "Agent One", agent_name: "Agent One" },
+			Warehouse: { master: "warehouses", name: "Dyeing Store - E", warehouse_name: "Dyeing Store" },
+		}
+		for (const partyType of Object.keys(parties)) for (const doctype of ["Address", "Contact"]) {
+			const { master: key, ...fields } = parties[partyType]
+			const name = fields.name
+			const party = { doctype: partyType, ...fields }
+			const master = getMaster(key)
 			const router = partyRouter()
 			await router.push(`${master.route}/${encodeURIComponent(name)}`)
 			page = await mountComponent("../../src/masters/PartyAddresses.vue", { doc: party }, [router])
-			const button = nodes(page.root, (node) => node.tag === "button" && textContent(node) === `Add ${doctype.toLowerCase()}`)[0]
+			const button = nodes(page.root, (node) => node.tag === "button" && textContent(node) === `Create ${doctype.toLowerCase()}`)[0]
 			await button.props.onClick()
 			assert.doesNotMatch(router.currentRoute.value.fullPath, /%2520/)
 			const draft = readNewDefaults(router.currentRoute.value.query.defaults, doctype)
 			assert.deepEqual(draft.defaults.links, [{ doctype: "Dynamic Link", link_doctype: partyType, link_name: name }])
+			assert.equal(draft.defaults.address_title, doctype === "Address" ? fields.warehouse_name || name : undefined)
 			const newPath = router.currentRoute.value.fullPath
 			page.close()
 			await router.push(newPath)

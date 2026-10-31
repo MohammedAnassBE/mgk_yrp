@@ -6,9 +6,10 @@ import * as receipt from "../src/documents/goods-received-note/preview.js"
 import * as challan from "../src/documents/delivery-challan/preview.js"
 import * as billing from "../src/documents/purchase-invoice/preview.js"
 import * as close from "../src/documents/delivery-challan-close/preview.js"
+import { fact, remainingConnections, visibleFacts } from "../src/documents/previewValues.js"
 
 const modules = [purchaseOrder, receipt, challan, billing, close]
-const values = (module, doc, preview) => Object.fromEntries(module.facts(doc, preview).map((fact) => [fact.label, fact.value]))
+const values = (module, doc, preview) => Object.fromEntries(visibleFacts(module.facts(doc, preview)).map((fact) => [fact.label, fact.value]))
 const schema = async (name) => JSON.parse(await readFile(new URL(`../../mgk_yrp/mgk_yrp/doctype/${name}/${name}.json`, import.meta.url), "utf8"))
 
 test("all preview modules handle missing extras and empty documents without mutating the response", () => {
@@ -38,7 +39,9 @@ test("PO deliver-to-supplier facts include Process, stored pending quantity and 
 	assert.equal(facts.Amount, "200.00")
 	assert.deepEqual(purchaseOrder.progress(doc), { label: "Received / ordered", value: 4, max: 10 })
 	assert.equal(purchaseOrder.itemRows({ doc })[0].item, "Yarn · Fresh")
-	assert.equal(values(purchaseOrder, { ...doc, deliver_to_supplier: "0" }).Process, undefined)
+	assert.equal(values(purchaseOrder, { ...doc, deliver_to_supplier: "0" }).Process, "Dyeing")
+	assert.equal(values(purchaseOrder, {}).Process, undefined)
+	assert.equal(facts.Supplier, undefined)
 	for (const [flags, expected] of [[{}, "Regular"], [{ is_karigan_order: 1 }, "Karigan"], [{ is_salavai_cone_order: 1 }, "Salavai Cone"]]) {
 		assert.equal(values(purchaseOrder, flags)["Order Type"], expected)
 	}
@@ -46,12 +49,12 @@ test("PO deliver-to-supplier facts include Process, stored pending quantity and 
 
 test("GRN facts distinguish PO, job work and internal transfer and use web document links", () => {
 	const doc = { docstatus: 1, against_purchase_order: 1, purchase_order: "PO / 1", purchase_invoice: "PI / 1", purchase_invoice_docstatus: 1 }
-	assert.equal(values(receipt, doc).Against, "Purchase Order")
+	assert.equal(values(receipt, doc).Against, undefined)
 	assert.equal(values(receipt, doc)["Bill status"], "Billed")
-	assert.equal(receipt.facts(doc).find((fact) => fact.label === "Purchase Order").to, "/purchase-order/PO%20%2F%201")
+	assert.equal(receipt.facts(doc).find((fact) => fact.label === "PO").to, "/purchase-order/PO%20%2F%201")
 	assert.equal(receipt.facts(doc).find((fact) => fact.label === "Bill status").to, "/billing/PI%20%2F%201")
 	const job = { docstatus: 1, against_purchase_order: 0, delivery_challans: [{ delivery_challan: "DC / 1" }] }
-	assert.equal(values(receipt, job).Against, "Job Work")
+	assert.equal(values(receipt, job).Against, undefined)
 	assert.equal(receipt.facts(job).find((fact) => fact.label === "DC").to, "/delivery-challan/DC%20%2F%201")
 	const internal = { ...job, is_internal_transfer: "1", transfer_status: "Partly Transferred" }
 	assert.equal(values(receipt, internal).Against, "Internal transfer")
@@ -62,15 +65,16 @@ test("GRN facts distinguish PO, job work and internal transfer and use web docum
 	assert.equal(receipt.facts({}).find((fact) => fact.label === "Bill status").to, undefined)
 })
 
-test("DC facts link source and close documents while Plan remains read-only text", () => {
+test("DC facts link source and close documents and omit duplicate context", () => {
 	const doc = { from_location: "Mill", to_location: "Worker", process_name: "Dyeing", purchase_order: "PO / 1",
 		goods_received_note: "GRN / 1", return_against: "DC / 1", mgk_process_planning: "Plan-1", delivery_challan_close: "Close / 1", close_status: "Closed" }
 	const facts = challan.facts(doc)
-	assert.equal(values(challan, doc)["From → To"], "Mill → Worker")
+	assert.equal(values(challan, doc)["From → To"], undefined)
 	assert.equal(values(challan, { ...doc, is_internal_transfer: 1 }).Process, "Internal transfer")
-	assert.equal(facts.find((fact) => fact.label === "Plan").to, undefined)
+	assert.equal(facts.find((fact) => fact.label === "Plan"), undefined)
 	assert.equal(facts.find((fact) => fact.label === "GRN source").to, "/goods-received-note/GRN%20%2F%201")
-	assert.equal(facts.find((fact) => fact.label === "Close status").to, "/delivery-challan-close/Close%20%2F%201")
+	assert.equal(facts.find((fact) => fact.label === "DC Close").to, "/delivery-challan-close/Close%20%2F%201")
+	assert.equal(facts.find((fact) => fact.label === "Close status"), undefined)
 	assert.equal(facts.find((fact) => fact.label === "Return Against").to, "/delivery-challan/DC%20%2F%201")
 	const row = challan.itemRows({ doc: { is_internal_transfer: 1 }, items: [{ qty: 10, transferred_qty: 3, returned_qty: 4, conversion_factor: 2 }] })[0]
 	assert.equal(row.transferred_qty, 3)
@@ -80,10 +84,11 @@ test("DC facts link source and close documents while Plan remains read-only text
 	assert.equal(values(challan, doc)["Still Out"], undefined)
 })
 
-test("DC transit columns are internal-only and preview intros reuse document transit quantities", () => {
+test("DC transit columns are internal-only and only GRN retains the pending quantity intro", () => {
 	assert.deepEqual(challan.itemColumns.filter((column) => column.internalOnly).map((column) => column.key),
 		["transferred_qty", "returned_qty", "pending_in_transit"])
-	for (const module of [challan, receipt]) {
+	assert.equal(challan.intro, undefined)
+	for (const module of [receipt]) {
 		const doc = { docstatus: 1, is_internal_transfer: 1 }
 		const items = [{ item: "Yarn", qty: 10, transferred_qty: 3, returned_qty: 4, conversion_factor: 2, uom: "Kg" }]
 		assert.equal(module.intro({ doc, items }), "Pending in transit: Yarn 5 Kg")
@@ -105,8 +110,8 @@ test("DC plan rows form a second read-only table and absent extra is empty", () 
 test("Billing uses invoice totals and GRN child fields", () => {
 	const doc = { supplier: "Worker", against: "Job Work", posting_date: "2026-10-30", bill_no: "Bill 7", bill_date: "2026-10-29",
 		tax_type: "IGST", net_total: 100, grand_total: 118 }
-	assert.deepEqual(values(billing, doc), { Supplier: "Worker", Against: "Job Work", "Posting Date": "2026-10-30",
-		"Bill No": "Bill 7", "Bill Date": "2026-10-29", "Tax Type": "IGST", "Net Total": "100.00", "Grand Total": "118.00" })
+	assert.deepEqual(values(billing, doc), { Against: "Job Work", "Posting Date": "30-10-2026",
+		"Bill No": "Bill 7", "Bill Date": "29-10-2026", "Tax Type": "IGST", "Net Total": "100.00", "Grand Total": "118.00" })
 	const row = { item: "Yarn", goods_received_note: "GRN-1", qty: 5, rate: 20, amount: 100 }
 	assert.deepEqual(billing.itemRows({ items: [row] }), [row])
 })
@@ -121,6 +126,35 @@ test("DC Close previews outputs and stored allocation values, not delivered inpu
 	assert.equal(close.facts(doc)[0].to, "/delivery-challan/DC%20%2F%201")
 	assert.equal(values(close, doc)["Loss Value"], "0.00")
 	assert.equal(values(close, doc)["Reopen status"], "Reopened")
+	assert.equal(values(close, doc, { extra: { process_name: "Dyeing" } }).Process, "Dyeing")
+})
+
+test("optional plumbing is hidden while key context and zero values stay visible", () => {
+	assert.deepEqual(visibleFacts([fact("Optional", "", null, null, { optional: true }), fact("Process", ""),
+		fact("Zero", 0, null, null, { optional: true })]).map((fact) => fact.value), ["—", 0])
+	assert.deepEqual(Object.keys(values(challan, {})), ["Process", "Posting Date", "Declared Value"])
+	assert.equal(values(close, {})["Reopen status"], undefined)
+	for (const module of [receipt, close]) {
+		assert.equal(values(module, {}).Process, "—")
+		for (const label of ["Supplier", "Warehouse"]) assert.equal(values(module, {})[label], undefined)
+	}
+	assert.equal(receipt.itemColumns.find((column) => column.key === "transferred_qty").internalOnly, true)
+	const facts = receipt.facts({ delivery_challans: [{ delivery_challan: "DC-1" }, { delivery_challan: "DC-2" }, { delivery_challan: "DC-1" }] })
+	assert.deepEqual(facts.filter((fact) => fact.to).map(({ label, name }) => [label, name]), [["DC 1", "DC-1"], ["DC 2", "DC-2"]])
+})
+
+test("connections exclude fact and linked item names without changing the response", () => {
+	const connections = [{ doctype: "MGK Purchase Order", names: ["PO / 1"] },
+		{ doctype: "MGK Goods Received Note", names: ["GRN-1", "GRN-2"] }]
+	const original = structuredClone(connections)
+	const facts = [fact("PO", "PO / 1", "/purchase-order"), fact("Unlinked", "GRN-2")]
+	const items = [{ goods_received_note: "GRN-1" }, { goods_received_note: "GRN-1" }]
+	assert.deepEqual(remainingConnections(connections, facts, billing.itemColumns, items),
+		[{ doctype: "MGK Goods Received Note", names: ["GRN-2"] }])
+	assert.deepEqual(connections, original)
+	assert.deepEqual(remainingConnections(connections.slice(0, 1), facts), [])
+	assert.deepEqual(remainingConnections(), [])
+	for (const module of [billing, close]) assert.equal(module.itemColumns.find((column) => column.key === "goods_received_note").link, "/goods-received-note")
 })
 
 test("preview columns use verified child schema fields and shared pending transit calculation", async () => {
@@ -136,4 +170,15 @@ test("preview columns use verified child schema fields and shared pending transi
 	for (const column of challan.planColumns) assert.ok(fields.has(column.key) || column.key === "received_type")
 	const dimensions = await readFile(new URL("../../mgk_yrp/stock/dimension_fields.py", import.meta.url), "utf8")
 	assert.ok(dimensions.includes('"MGK Process Planning Item"'))
+})
+
+test("book previews show Comments only when set and schemas allow it on submit", async () => {
+	const books = [[purchaseOrder, "mgk_purchase_order"], [receipt, "mgk_goods_received_note"], [challan, "mgk_delivery_challan"], [billing, "mgk_purchase_invoice"]]
+	for (const [module, name] of books) {
+		assert.equal(values(module, { comments: "Check shade" }).Comments, "Check shade")
+		assert.ok(!("Comments" in values(module, {})))
+		const field = (await schema(name)).fields.find((entry) => entry.fieldname === "comments")
+		assert.equal(field.fieldtype, "Small Text")
+		assert.equal(field.allow_on_submit, 1)
+	}
 })

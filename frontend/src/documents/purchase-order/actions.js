@@ -3,9 +3,9 @@ import { makeGoodsReceivedNote } from "../goods-received-note/fieldEvents.js"
 export function actions(doc, can) {
 	if (Number(doc.docstatus) !== 1 || !(doc.items || []).some((row) => Number(row.pending_qty) > 0)
 		|| !can("MGK Goods Received Note", "create")) return []
-	const result = [{ key: "create-grn", label: "Create GRN", method: makeGoodsReceivedNote, route: "/goods-received-note", forward: true }]
+	const result = [{ key: "create-grn", label: "Create GRN", method: makeGoodsReceivedNote, route: "/goods-received-note" }]
 	if (!doc.deliver_to_supplier || can("MGK Delivery Challan", "create")) result.push({
-		key: "mark-as-received", label: "Mark as Received", forward: true,
+		key: "mark-as-received", label: "Mark as Received",
 		confirm: receiptConfirmation, run: receivePurchaseOrder,
 	})
 	return result

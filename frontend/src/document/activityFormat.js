@@ -1,7 +1,6 @@
+import { formatDatetime } from "../shared/formatDate.js"
 export function formatDisplayDatetime(value) {
-	if (!value) return ""
-	const date = new Date(String(value).replace(" ", "T"))
-	return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })
+	return formatDatetime(value)
 }
 
 export function isSavedDocumentName(name) { return Boolean(name) && !String(name).startsWith("new-") }

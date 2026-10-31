@@ -14,11 +14,14 @@
         :inline-qty-edit="true" :inline-qty-max-field="locked ? 'allowed_qty' : ''"
         @itemadded="itemAdded" @itemupdated="changed" @itemremoved="changed" />
     </div>
+    <div v-if="lastRateHints.length" class="mgk-last-rates small text-muted mb-2">
+        <div v-for="hint in lastRateHints" :key="hint.key">{{ hint.label }}: {{ hint.text }}</div>
+    </div>
     </div>
 </template>
 
 <script setup>
-import { computed, ref, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import ItemDimensionFetch from '../../../../yrp/yrp/public/js/Stock/components/ItemDimensionFetch.vue';
 import AttributeColumns from './AttributeColumns.vue';
 
@@ -30,6 +33,10 @@ const ready = ref(false);
 const initializedControls = new WeakSet();
 let observer;
 const editable = ref(props.frm.doc.docstatus === 0);
+const supplier = ref(props.frm.doc.supplier || '');
+const lastRates = ref({});
+let lastRateSequence = 0;
+let lastRateTimer;
 const locked = computed(() => ['dc_return', 'grn_po'].includes(props.mode));
 const attributeGrid = computed(() => ['grn_job', 'plan'].includes(props.mode));
 const tableFields = computed(() => {
@@ -99,7 +106,50 @@ onMounted(async () => {
     observer.observe(root.value, { childList: true, subtree: true });
     prefillDimensions();
 });
-onBeforeUnmount(() => observer?.disconnect());
+onBeforeUnmount(() => {
+    observer?.disconnect();
+    lastRateSequence += 1;
+    clearTimeout(lastRateTimer);
+});
+
+const lastRateSignature = computed(() => {
+    if (props.mode !== 'po' || !editable.value || !supplier.value || !items.value.length) return '';
+    return JSON.stringify([supplier.value, items.value.map(group => [group.primary_attribute || '',
+        group.items.map(entry => [entry.name, entry.attributes || {},
+            Object.keys(entry.values || {}).filter(key => entry.values[key])])])]);
+});
+
+watch(lastRateSignature, (signature) => {
+    lastRateSequence += 1;
+    clearTimeout(lastRateTimer);
+    if (!signature) { lastRates.value = {}; return; }
+    lastRateTimer = setTimeout(loadLastRates, 300);
+}, { immediate: true });
+
+async function loadLastRates() {
+    const sequence = ++lastRateSequence;
+    try {
+        const { message } = await frappe.call({
+            method: 'mgk_yrp.purchase.last_rate.get_last_purchase_rates',
+            args: { item_details: JSON.stringify(items.value), supplier: supplier.value,
+                current_purchase_order: props.frm.is_new() ? null : props.frm.doc.name },
+        });
+        if (sequence === lastRateSequence) lastRates.value = message || {};
+    } catch {
+        if (sequence === lastRateSequence) lastRates.value = {};
+    }
+}
+
+const lastRateHints = computed(() => Object.entries(lastRates.value).map(([key, history]) => {
+    const [groupIndex, entryIndex, valueKey] = key.split(':');
+    const entry = items.value[groupIndex]?.items[entryIndex];
+    if (!entry?.values?.[valueKey]) return null;
+    const label = [entry.name, ...Object.values(entry.attributes || {}).filter(Boolean),
+        valueKey === 'default' ? '' : valueKey].filter(Boolean).join(' / ');
+    const text = `${__('Last')}: ₹${format_number(history.rate, null, 2)} · ${history.purchase_order}`
+        + (history.po_date ? ` · ${frappe.datetime.str_to_user(history.po_date)}` : '');
+    return { key, label, text };
+}).filter(Boolean));
 
 function prefillDimensions(reset = false) {
     for (const [fieldname, value] of Object.entries(context.value.defaults)) {
@@ -192,7 +242,10 @@ function load_data(data) {
 }
 
 function get_items() { return items.value; }
-function update_status() { editable.value = props.frm.doc.docstatus === 0; }
+function update_status() {
+    editable.value = props.frm.doc.docstatus === 0;
+    supplier.value = props.frm.doc.supplier || '';
+}
 defineExpose({ get_items, load_data, update_status });
 </script>
 

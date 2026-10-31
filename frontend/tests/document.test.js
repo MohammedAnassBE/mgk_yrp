@@ -27,6 +27,7 @@ async function context({ book = billing, path = `${book.routePath}/PI-1`, record
 	let saved = record || { doctype: book.doctype, name: "PI-1", docstatus: 0, modified: "one", note: "initial", __onload: { valuation_pending: false } }
 	let conflict = false
 	let readGate = null
+	let readsBeforeGate = 0
 	Object.assign(realtime, { socket: null, pending: null, connectedBefore: false, rooms: new Map(), reconnectHandlers: new Set(), stateHandlers: new Set(), factory: () => socket })
 	globalThis.window = { csrf_token: "csrf", frappe: { boot: { ...boot, user: { ...user, roles: ["Tester"], name: "tester", ...boot.user } } }, scrollY: 400,
 		scrollTo: ({ top }) => { window.scrollY = top }, addEventListener: () => {}, removeEventListener: () => {},
@@ -38,7 +39,11 @@ async function context({ book = billing, path = `${book.routePath}/PI-1`, record
 		const method = new URL(url, "http://site").pathname.split("/").at(-1)
 		if (methods[method]) response = await methods[method](url, options)
 		else if (url.includes("getdoctype")) response = { docs: [{ name: book.doctype, fields: [{ fieldname: "note", fieldtype: "Data", label: "Note" }, ...fields], permissions: [{ role: "Tester", read: 1, write: 1 }], is_submittable: 1 }] }
-		else if (url.includes("getdoc")) { if (readGate) await readGate; response = { docs: [saved] } }
+		else if (url.includes("getdoc")) {
+			if (readsBeforeGate) readsBeforeGate--
+			else if (readGate) await readGate
+			response = { docs: [saved] }
+		}
 		else if (url.includes("get_own_location")) response = { message: { location: null, warehouse: null, warehouses: [] } }
 		else if (url.includes("party_defaults")) response = { message: { warehouses: [], addresses: [], contacts: [] } }
 		else if (url.endsWith("frappe.client.save")) {
@@ -67,7 +72,7 @@ async function context({ book = billing, path = `${book.routePath}/PI-1`, record
 	const first = await open()
 	return { ...first, open, requests, socket, saved: () => saved, setSaved: (value) => { saved = value }, conflict: () => { conflict = true },
 		abandon: () => { apps.splice(0).forEach((app) => app.unmount()) },
-		holdReads: () => { let release; readGate = new Promise((resolve) => { release = resolve }); return () => { readGate = null; release() } },
+		holdReads: (skip = 0) => { readsBeforeGate = skip; let release; readGate = new Promise((resolve) => { release = resolve }); return () => { readGate = null; release() } },
 		close: () => { apps.forEach((app) => app.unmount()); Object.assign(realtime, originals.realtime); Object.assign(globalThis, { window: originals.window, document: originals.document, fetch: originals.fetch }); clearReadCaches() } }
 }
 
@@ -200,7 +205,7 @@ test("submit and cancel apply the server response while the onload reload is sti
 	let release
 	try {
 		for (const [action, docstatus] of [["submit", 1], ["cancel", 2]]) {
-			release = page.holdReads()
+			release = page.holdReads(action === "submit" ? 1 : 0)
 			const pending = page.model.action(action)
 			await settle()
 			assert.equal(page.model.doc.value.docstatus, docstatus)

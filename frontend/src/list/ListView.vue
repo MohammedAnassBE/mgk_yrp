@@ -35,7 +35,7 @@ function displayValue(row, column) {
 	const value = row[column.fieldname]
 	if (value === null || value === undefined || value === "") return "—"
 	if (column.fieldtype === "Check") return Number(value) ? "Yes" : "No"
-	if (column.fieldtype === "Currency") return formatFieldValue(column, value)
+	if (["Currency", "Date", "Datetime"].includes(column.fieldtype)) return formatFieldValue(column, value)
 	if (["Float", "Int", "Percent"].includes(column.fieldtype)) return Number(value).toLocaleString("en-IN", { maximumFractionDigits: column.fieldtype === "Int" ? 0 : 2 })
 	return String(value)
 }
@@ -46,8 +46,7 @@ function ariaSort(column) { return query.sortField === column.fieldname ? (query
 
 <template>
 	<section class="page list-page book-list-page">
-		<ListPageHeader :title="title">
-			<RouterLink v-if="backRoute !== '/'" :to="backRoute">← {{ backLabel }}</RouterLink>
+		<ListPageHeader :title="title" :back="backRoute === '/' ? '' : backRoute" :crumbs="backRoute === '/' ? [] : [{ label: backLabel, to: backRoute }]">
 			<button v-if="canCreate" class="button primary" type="button" :disabled="!ready" @click="create">+ New</button>
 		</ListPageHeader>
 		<div v-if="notice" class="list-notice" role="alert">{{ notice }}</div>

@@ -24,7 +24,7 @@ defineProps({ runner: { type: Object, required: true } })
 		<p>{{ runner.confirmation.value?.text }}</p>
 		<template #footer>
 			<Button label="Keep working" severity="secondary" outlined @click="runner.answer(false)" />
-			<Button label="Confirm" @click="runner.answer(true)" />
+			<Button label="Confirm" autofocus @click="runner.answer(true)" />
 		</template>
 	</ActionDialog>
 </template>

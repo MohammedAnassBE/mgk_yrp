@@ -1,5 +1,10 @@
 (() => {
 	frappe.ui.form.on("Item", {
+		setup(frm) {
+			frm.set_query("item", "mgk_process_conversions", () => ({
+				filters: { variant_of: ["is", "not set"], disabled: 0 },
+			}));
+		},
 		stock_uom(frm) {
 			return Promise.all((frm.doc.mgk_process_conversions || []).map(row =>
 				frappe.model.set_value(row.doctype, row.name, "from_uom", frm.doc.stock_uom)

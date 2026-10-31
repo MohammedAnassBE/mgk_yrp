@@ -40,6 +40,7 @@
 	--cover-dc: #53727c;
 	--cover-stock: #356d78;
 	--cover-masters: #2869a7;
+	--cover-credit: var(--color-live);
 	--shadow-card: 0 7px 24px rgba(25, 35, 53, .04);
 	--shadow-card-hover: 0 12px 30px rgba(25, 35, 53, .08);
 	--shadow-brand: inset 6px 0 rgba(0, 0, 0, .16);

@@ -4,7 +4,8 @@ import { deliveryChallanChanges, createFieldEvents as dcEvents, processFilters }
 import { actions as dcActions } from "../src/documents/delivery-challan/actions.js"
 import { intro, summary, valuationChip } from "../src/documents/delivery-challan-close/presentation.js"
 import { createFieldEvents as closeEvents } from "../src/documents/delivery-challan-close/fieldEvents.js"
-import { actions as closeActions, finishReopen, reopenConfirmation } from "../src/documents/delivery-challan-close/actions.js"
+import { actions as closeActions, reopenConfirmation } from "../src/documents/delivery-challan-close/actions.js"
+import { runAction } from "../src/document/actionRunner.js"
 import { editorMode, editorPermissions } from "../src/item-editor/editorModes.js"
 import { editorSavePayload } from "../src/item-editor/editorPayload.js"
 import { fieldState } from "../src/document/fieldConditions.js"
@@ -61,7 +62,6 @@ test("DC process default uses actual enable fields, fills only one candidate, pr
 test("DC Return/Close actions gate status and permissions and stage mapped drafts on the correct route", async () => {
 	const doc = { doctype: dcType, name: "DC-1", docstatus: 1, close_status: "Open" }
 	assert.deepEqual(dcActions(doc, () => true).map((action) => action.key), ["return", "close", "create-grn", "update-plan"])
-	assert.ok(dcActions(doc, () => true).every((action) => action.forward === true))
 	for (const flags of [{ docstatus: 0 }, { docstatus: 2 }, { is_return: 1 }, { close_status: "Closed" }, { close_status: "Reopening" }]) {
 		assert.deepEqual(dcActions({ ...doc, ...flags }, () => true), [])
 	}
@@ -69,12 +69,16 @@ test("DC Return/Close actions gate status and permissions and stage mapped draft
 	assert.deepEqual(dcActions({ ...doc, delivery_challan_close: "C/1" }, () => false), [])
 	assert.equal(dcActions({ ...doc, delivery_challan_close: "C/1" }, () => true).at(-1).to, "/delivery-challan-close/C%2F1")
 	const store = new Map(), storage = { setItem: (key, value) => store.set(key, value), getItem: (key) => store.get(key) }
-	for (const action of dcActions(doc, () => true).filter((action) => ["return", "close"].includes(action.key))) {
-		const target = { doctype: action.key === "return" ? dcType : closeType, delivery_challan: doc.name, is_return: action.key === "return" ? 1 : 0 }
+	const closeAction = dcActions(doc, () => true).find((action) => action.key === "close")
+	assert.equal(closeAction.route, undefined)
+	assert.equal(typeof closeAction.dialog, "function")
+	assert.match(closeAction.dialog.toString(), /CloseDcDialog\.vue/)
+	for (const action of dcActions(doc, () => true).filter((action) => action.key === "return")) {
+		const target = { doctype: dcType, delivery_challan: doc.name, is_return: 1 }
 		await openMappedDraft(action, doc.name, { storage, call: async (method, args) => {
 			assert.equal(method, "frappe.model.mapper.make_mapped_doc")
 			assert.equal(args.source_name, "DC-1")
-			assert.ok(args.method.endsWith(action.key === "return" ? "make_return_delivery_challan" : "make_delivery_challan_close"))
+			assert.ok(args.method.endsWith("make_return_delivery_challan"))
 			return target
 		}, navigate: async (route) => {
 			assert.equal(route.path, `${action.route}/new`)
@@ -130,10 +134,10 @@ test("Finish Reopen uses close_name, reports pending reversal, reloads and requi
 	assert.deepEqual(closeActions(doc, () => false), [])
 	for (const result of [false, true]) {
 		const effects = []
-		await finishReopen(doc, { call: async (method, args) => {
+		await runAction(closeActions(doc, () => true)[0], { doc }, { call: async (method, args) => {
 			assert.equal(method, "mgk_yrp.job_work.reopen.finish_reopen")
 			assert.deepEqual(args, { close_name: "CLOSE-1" }); return result
-		}, message: (message) => effects.push(message), reload: async () => effects.push("reload") })
+		}, finished: async (value) => { if (value) effects.push(value.message); effects.push("reload") } })
 		assert.deepEqual(effects, result ? ["reload"] : ["The reversal is still processing.", "reload"])
 	}
 	for (const reopen_status of ["Reversing", "Reopening"]) assert.equal(canAmendDocument({ ...doc, reopen_status }, () => true), false)

@@ -28,7 +28,7 @@ function metaSections(master, meta, doc, user) {
 function configuredField(master, field) {
 	return { ...field, label: master.labels?.[field.fieldname] ?? field.label,
 		description: master.help?.[field.fieldname] ?? field.description,
-		boolLabels: master.boolLabels?.[field.fieldname] }
+		boolLabels: master.boolLabels?.[field.fieldname], columns: master.childColumns?.[field.fieldname] }
 }
 
 export function masterSections(master, meta, doc, user) {
@@ -79,4 +79,9 @@ export function partyReturnPath(master, name) {
 
 export function safeReturnPath(value) {
 	return typeof value === "string" && /^\/manage\/[^/?#]+\/[^/?#]+$/.test(value) ? value.replaceAll(" ", "%20") : null
+}
+
+export function supplierWarehouseDraft(supplier, companies = []) {
+	return { supplier: supplier.name, warehouse_name: supplier.supplier_name || supplier.name, is_group: 0,
+		...(companies.length === 1 ? { company: companies[0].name } : {}) }
 }

@@ -2,7 +2,7 @@ const definition = {
 	type: "mgk-masters",
 	key: "masters",
 	doctype: null,
-	label: "Manage masters & access",
+	label: "Manage masters",
 	code: "MGK",
 	cover: "cover-masters",
 	description: "Manage the masters you can access.",

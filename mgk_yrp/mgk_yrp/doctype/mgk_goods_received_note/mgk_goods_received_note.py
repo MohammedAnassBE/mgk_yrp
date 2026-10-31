@@ -54,6 +54,7 @@ class MGKGoodsReceivedNote(Document):
 	def validate(self):
 		if self.against_purchase_order:
 			order = self.validate_purchase_order()
+			self.process_name = order.process_name
 			self.set_purchase_order_rows(order)
 		else:
 			self.set_job_work_rows()

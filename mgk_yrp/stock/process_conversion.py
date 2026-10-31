@@ -28,9 +28,15 @@ def validate_conversion_row(doc, row):
 		frappe.throw(_("Row {0}: From Qty and To Qty must be greater than zero.").format(row.idx))
 	if not row.item:
 		frappe.throw(_("Row {0}: Output Item is required.").format(row.idx))
-	output = frappe.db.get_value("Item", row.item, ["name", "stock_uom"], as_dict=True)
+	output = frappe.db.get_value("Item", row.item, ["name", "stock_uom", "variant_of"], as_dict=True)
 	if not output:
 		frappe.throw(_("Row {0}: Output Item {1} does not exist.").format(row.idx, row.item))
+	if output.variant_of:
+		frappe.throw(
+			_("Row {0}: Output Item {1} is a variant. Select its template {2} or an Item without attributes.").format(
+				row.idx, row.item, output.variant_of
+			)
+		)
 	row.from_uom = doc.stock_uom
 	row.to_uom = output.stock_uom
 

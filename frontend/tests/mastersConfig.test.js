@@ -1,13 +1,15 @@
 import test from "node:test"
 import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
-import { masters, getMaster, contactMaster, canEditMaster, stockItemFields } from "../src/masters/mastersConfig.js"
+import { derivedItemValues } from "../src/masters/itemConversions.js"
+import { masters, getMaster, contactMaster, canEditMaster, stockItemFields, hiddenItemFields } from "../src/masters/mastersConfig.js"
 import { childChange, dynamicTarget, dynamicLinkFields, masterSections, linkedPartyDraft, partyLinkFilters, safeReturnPath } from "../src/masters/masterFields.js"
 import { fieldQuery } from "../src/document/fieldQueries.js"
 import { listColumnMeta, columnDraft } from "../src/list/listColumns.js"
+import { tableFields } from "../src/document/fields/tableFields.js"
 
 test("Manage exposes exactly the eight requested masters with list, route and read gates", () => {
-	assert.deepEqual(masters.map((master) => master.doctype), ["Item", "YRP Process", "User", "YRP Received Type", "Warehouse", "MGK Agent", "Supplier", "Address"])
+	assert.deepEqual(masters.map((master) => master.doctype), ["Item", "YRP Process", "YRP Received Type", "Warehouse", "MGK Agent", "Supplier", "Address"])
 	for (const master of [...masters, contactMaster]) {
 		assert.equal(master.route, `/manage/${master.key}`)
 		assert.equal(master.permission, "read")
@@ -16,9 +18,11 @@ test("Manage exposes exactly the eight requested masters with list, route and re
 		assert.equal(getMaster(master.key), master)
 	}
 	assert.equal(getMaster("prices"), undefined)
-	assert.equal(canEditMaster(getMaster("users"), { roles: ["Stock User"] }), false)
-	assert.equal(canEditMaster(getMaster("users"), { roles: ["System Manager"] }), true)
-	assert.equal(canEditMaster(getMaster("users"), { name: "Administrator" }), true)
+	assert.equal(getMaster("users"), undefined)
+	const adminOnly = { adminEditOnly: true }
+	assert.equal(canEditMaster(adminOnly, { roles: ["Stock User"] }), false)
+	assert.equal(canEditMaster(adminOnly, { roles: ["System Manager"] }), true)
+	assert.equal(canEditMaster(adminOnly, { name: "Administrator" }), true)
 })
 
 test("Dynamic Link Select changes its target and clears the old link name only when the DocType changes", () => {
@@ -56,12 +60,41 @@ test("meta sections preserve field order, ancestor visibility, allowlists and pe
 })
 
 test("Item keeps ERPNext required fields, YRP stock fields and MGK GST while omitting accounting/sales/website", async () => {
-	for (const name of ["item_code", "item_name", "item_group", "stock_uom", "purchase_uom", "uoms", "secondary_unit_of_measure", "mgk_gst_tax_slab", "mgk_is_karigan", "mgk_is_salavai_cone"]) assert.ok(stockItemFields.includes(name), name)
+	for (const name of ["item_name", "stock_uom", "purchase_uom", "uoms", "attributes", "secondary_unit_of_measure", "mgk_gst_tax_slab", "mgk_process_conversions"]) assert.ok(stockItemFields.includes(name), name)
+	for (const name of hiddenItemFields) assert.equal(stockItemFields.includes(name), false, name)
 	for (const name of ["item_defaults", "sales_uom", "website_image", "deferred_revenue_account"]) assert.equal(stockItemFields.includes(name), false)
 	const config = getMaster("items")
 	assert.ok(config.hiddenSections.includes("accounting"))
 	const fixtures = JSON.parse(await readFile(new URL("../../mgk_yrp/fixtures/custom_field.json", import.meta.url)))
-	for (const field of fixtures.filter((field) => field.dt === "Item" && field.fieldtype !== "Section Break")) assert.ok(stockItemFields.includes(field.fieldname), field.fieldname)
+	for (const field of fixtures.filter((field) => field.dt === "Item" && field.fieldtype !== "Section Break")) assert.ok(stockItemFields.includes(field.fieldname) || hiddenItemFields.includes(field.fieldname), field.fieldname)
+	assert.deepEqual(config.columns, ["item_name", "stock_uom", "hsn_code"])
+	assert.deepEqual(config.defaults, { item_group: "Products", is_stock_item: 1, disabled: 0, has_variants: 0 })
+	assert.deepEqual(config.fieldOverrides.attributes, { hidden: 0, depends_on: "" })
+})
+
+test("Item child tables show only the Desk columns; Variant Attributes is just the Item Attribute link", async () => {
+	const childMeta = JSON.parse(await readFile(new URL("../../../erpnext/erpnext/stock/doctype/item_variant_attribute/item_variant_attribute.json", import.meta.url)))
+	const itemMeta = { name: "Item", permissions: [], fields: [
+		{ fieldname: "units_section", fieldtype: "Section Break", label: "Units" },
+		{ fieldname: "attributes", fieldtype: "Table", label: "Variant Attributes", options: "Item Variant Attribute" }] }
+	const [field] = masterSections({ ...getMaster("items"), formGroups: null }, itemMeta, {}, { name: "Administrator" })[0].fields
+	const columns = tableFields({ ...childMeta, name: "Item Variant Attribute" }, field, { doctype: "Item", docstatus: 0 }, { ...childMeta, permissions: [] }, {}, { name: "Administrator" })
+	assert.deepEqual(columns.map((column) => [column.fieldname, column.fieldtype, column.options]), [["attribute", "Link", "Item Attribute"]])
+	assert.deepEqual(getMaster("items").childColumns, { attributes: ["attribute"], uoms: ["uom", "conversion_factor"],
+		mgk_process_conversions: ["process_name", "item", "from_uom", "from_qty", "to_uom", "to_qty"] })
+})
+
+test("Item derives item_code from a new item name and has_variants from attribute rows", () => {
+	assert.deepEqual(derivedItemValues("item_name", "Yarn 40's", true), { item_code: "Yarn 40's" })
+	assert.deepEqual(derivedItemValues("item_name", "Renamed", false), {})
+	assert.deepEqual(derivedItemValues("attributes", [{ attribute: "Colour" }], false), { has_variants: 1 })
+	assert.deepEqual(derivedItemValues("attributes", [], false), { has_variants: 0 })
+})
+
+test("form checkbox width rule leaves the PrimeVue toggle input clickable", async () => {
+	const css = await readFile(new URL("../src/document/fields/fields.css", import.meta.url), "utf8")
+	assert.doesNotMatch(css, /\.form-field input\[type="checkbox"\]\s*\{/)
+	assert.match(css, /\.form-field input\[type="checkbox"\]:not\(\.p-toggleswitch-input\)/)
 })
 
 test("Supplier Head Office follows Company Location in the form and has a list column and toggle labels", () => {
@@ -85,6 +118,12 @@ test("master Link queries use enabled suppliers, Warehouse groups and YRP stock 
 	assert.deepEqual(fieldQuery({ fieldname: "parent_warehouse", options: "Warehouse" }, { company: "MGK" }), { filters: { is_group: 1, disabled: 0, company: "MGK" } })
 	assert.deepEqual(fieldQuery({ fieldname: "stock_uom" }, { doctype: "Item" }), { filters: { enabled: 1, secondary_only: 0 } })
 	assert.deepEqual(fieldQuery({ fieldname: "mgk_gst_tax_slab" }, {}), { filters: { enabled: 1 } })
+})
+
+test("Process conversion Item link suggests only enabled templates and plain Items, including the edited Item", () => {
+	const filters = { variant_of: ["is", "not set"], disabled: 0 }
+	assert.deepEqual(fieldQuery({ fieldname: "item", options: "Item" }, { doctype: "MGK Item Process Conversion", parent: "Yarn 2-30's", parenttype: "Item" }), { filters })
+	assert.deepEqual(fieldQuery({ fieldname: "item", options: "Item" }, { doctype: "MGK Item Process Conversion", __islocal: 1 }), { filters })
 })
 
 test("Address linked parties are a display-only selectable list column, and the original table meta stays intact", () => {

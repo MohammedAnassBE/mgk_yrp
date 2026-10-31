@@ -12,7 +12,7 @@ async function desk(doctype, initial, count = 1) {
 			const changed = Object.keys(values).filter((key) => this.doc[key] !== values[key])
 			Object.assign(this.doc, values)
 			for (const key of changed) await handlers[doctype][key]?.(form)
-		}, clear_table: (name) => { form.doc[name] = [] }, refresh_field: () => {} }
+		}, clear_table: (name) => { form.doc[name] = [] }, refresh_field: () => {}, refresh_fields() {}, set_df_property() {} }
 	const frappe = { ui: { form: { on: (name, events) => { handlers[name] = events } } },
 		call: async ({ method, args }) => {
 			calls.push({ method, args })
@@ -81,4 +81,13 @@ test("Desk GRN defaults its receiving warehouse from own location, and mapped PO
 	await returned.events.from_location(returned.form)
 	assert.equal(returned.calls.length, 0)
 	assert.equal(returned.form.doc.from_warehouse, "Source-W")
+})
+
+test("Desk GRN clears the saved PO process on switching to job work or clearing the PO", async () => {
+	for (const field of ["against_purchase_order", "purchase_order"]) {
+		const page = await desk("MGK Goods Received Note", { against_purchase_order: 1, purchase_order: "PO-1", process_name: "Dyeing" })
+		await page.form.set_value(field, field === "purchase_order" ? "" : 0)
+		assert.equal(page.form.doc.process_name, "")
+		assert.equal(page.calls.length, 0)
+	}
 })

@@ -26,6 +26,7 @@ function itemDetails() {
 }
 function mappedReceipt(supplier = "Vendor") {
 	return { doctype: "MGK Goods Received Note", against_purchase_order: 1, purchase_order: "PO-1", supplier,
+		process_name: "Dyeing",
 		delivery_location: "Own", warehouse: "Main", total_qty: 10, total_amount: 50, __onload: { item_details: itemDetails() } }
 }
 
@@ -82,7 +83,7 @@ test("PO address/contact display methods use Desk arguments and drop stale respo
 test("GRN source toggle clears PO, child rows, cached editor data, DC links and totals", () => {
 	for (const against_purchase_order of [0, 1]) {
 		const patch = goodsReceivedNoteChanges("against_purchase_order", { against_purchase_order, __onload: { other: "keep" } })
-		assert.deepEqual(patch, { items: [], item_details: null, __onload: { other: "keep", item_details: [] },
+		assert.deepEqual(patch, { process_name: "", items: [], item_details: null, __onload: { other: "keep", item_details: [] },
 			total_qty: 0, total_amount: 0, purchase_order: "", delivery_challans: [] })
 	}
 	assert.deepEqual(goodsReceivedNoteChanges("supplier", {}), { delivery_challans: [] })
@@ -101,8 +102,21 @@ test("GRN PO mapping fills server headers and editor data, including selecting a
 		return result
 	} })
 	await events.change("purchase_order")
-	for (const key of ["supplier", "delivery_location", "warehouse", "total_qty", "total_amount"]) assert.equal(doc[key], result[key])
+	for (const key of ["supplier", "process_name", "delivery_location", "warehouse", "total_qty", "total_amount"]) assert.equal(doc[key], result[key])
 	assert.deepEqual(doc.__onload.item_details, result.__onload.item_details)
+})
+
+test("GRN PO to job work and cleared PO discard the inherited process", async () => {
+	for (const field of ["against_purchase_order", "purchase_order"]) {
+		const doc = { against_purchase_order: 1, purchase_order: "PO-1" }
+		const events = receiptEvents({ getDoc: () => doc, call: async () => mappedReceipt() })
+		await events.change("purchase_order")
+		assert.equal(doc.process_name, "Dyeing")
+		doc[field] = field === "purchase_order" ? "" : 0
+		await events.change(field)
+		assert.equal(doc.process_name, "")
+	}
+	assert.equal("process_name" in goodsReceivedNoteChanges("delivery_challans", { process_name: "Weaving" }), false)
 })
 
 test("GRN stale mappings cannot apply after newer PO, toggle, cleared PO or document replacement", async () => {
@@ -133,11 +147,25 @@ test("PO and DC pickers use supplier-scoped Desk filters; against-PO party field
 		{ docstatus: 1, is_return: 0, close_status: "Open", to_location: "Vendor" })
 	assert.deepEqual(fieldQuery({ fieldname: "warehouse", options: "Warehouse" }, { delivery_location: "Own" }).filters,
 		{ disabled: 0, is_group: 0, supplier: "Own" })
-	const meta = { fields: ["supplier", "delivery_location"].map((fieldname) => ({ fieldname, fieldtype: "Link" })) }
+	const meta = { fields: ["supplier", "delivery_location", "process_name"].map((fieldname) => ({ fieldname, fieldtype: "Link" })) }
 	const layout = documentLayout("MGK Goods Received Note", meta)
 	for (const field of [...layout.paper, ...layout.panel]) {
 		assert.equal(fieldState(field, { against_purchase_order: 1 }, meta, { name: "Administrator" }).readOnly, true)
 		assert.equal(fieldState(field, { against_purchase_order: 0 }, meta, { name: "Administrator" }).readOnly, false)
+	}
+})
+
+test("GRN Process is always visible and follows the PO field in the web panel", async () => {
+	const meta = JSON.parse(await readFile(new URL("../../mgk_yrp/mgk_yrp/doctype/mgk_goods_received_note/mgk_goods_received_note.json", import.meta.url)))
+	const layout = documentLayout("MGK Goods Received Note", meta)
+	const process = layout.panel.find((field) => field.fieldname === "process_name")
+	assert.equal(process.depends_on, undefined)
+	assert.equal(process.read_only_depends_on, "eval:doc.against_purchase_order")
+	assert.equal(layout.panel.indexOf(process), layout.panel.findIndex((field) => field.fieldname === "purchase_order") + 1)
+	for (const against_purchase_order of [0, 1]) {
+		const state = fieldState(process, { against_purchase_order }, meta, { name: "Administrator" })
+		assert.equal(state.visible, true)
+		assert.equal(state.readOnly, Boolean(against_purchase_order))
 	}
 })
 

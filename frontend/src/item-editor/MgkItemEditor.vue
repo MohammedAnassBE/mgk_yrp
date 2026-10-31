@@ -68,6 +68,8 @@ defineExpose({ getItems: () => grid.value?.getItems() || [], isReady: () => !loa
 		:dimensions="dimensions"
 		:po-entries="context.po_entries"
 		:has-transferred-quantity="hasTransferredQuantity"
+		:supplier="doc.supplier || ''"
+		:current-document="doc.__islocal ? '' : doc.name || ''"
 		@change="$emit('change', $event)"
 	/>
 </template>

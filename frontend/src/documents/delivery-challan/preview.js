@@ -1,13 +1,16 @@
+import { formatDate } from "../../shared/formatDate.js"
 import { displayRows, fact, money, rows } from "../previewValues.js"
-import { pendingTransferQuantity, transferIntro } from "../shared/transit.js"
+import { pendingTransferQuantity } from "../shared/transit.js"
 
 export function facts(doc) {
-	return [fact("From → To", `${doc.from_location || doc.from_warehouse || "—"} → ${doc.to_location || doc.to_warehouse || "—"}`),
-		fact("Process", Number(doc.is_internal_transfer) ? "Internal transfer" : doc.process_name),
-		fact("Posting Date", doc.posting_date), fact("Vehicle", doc.vehicle_number),
-		fact("Declared Value", money(doc.total_declared_value)), fact("Return Against", doc.return_against, "/delivery-challan"),
-		fact("Purchase Order", doc.purchase_order, "/purchase-order"), fact("GRN source", doc.goods_received_note, "/goods-received-note"),
-		fact("Plan", doc.mgk_process_planning), fact("Close status", doc.close_status, "/delivery-challan-close", doc.delivery_challan_close || null)]
+	return [fact("Process", Number(doc.is_internal_transfer) ? "Internal transfer" : doc.process_name),
+		fact("Posting Date", formatDate(doc.posting_date)), fact("Vehicle", doc.vehicle_number, null, null, { optional: true }),
+		fact("Declared Value", money(doc.total_declared_value)),
+		fact("Return Against", doc.return_against, "/delivery-challan", doc.return_against, { optional: true }),
+		fact("Purchase Order", doc.purchase_order, "/purchase-order", doc.purchase_order, { optional: true }),
+		fact("GRN source", doc.goods_received_note, "/goods-received-note", doc.goods_received_note, { optional: true }),
+		fact("DC Close", doc.delivery_challan_close, "/delivery-challan-close", doc.delivery_challan_close, { optional: true }),
+		fact("Comments", doc.comments, null, null, { optional: true })]
 }
 
 export const itemColumns = [
@@ -35,7 +38,3 @@ export const planColumns = [
 export function planRows(preview) { return displayRows(preview?.extra?.plan_rows || [], planColumns) }
 
 export function progress() { return null }
-
-export function intro(preview) {
-	return transferIntro({ ...preview?.doc, items: rows(preview) })?.text || null
-}

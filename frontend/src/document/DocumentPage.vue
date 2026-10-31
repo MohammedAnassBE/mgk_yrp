@@ -64,9 +64,8 @@ function fieldValue(field) {
 				:doc="doc"
 				:is-new="isNew"
 				:dirty="dirty"
+				:back="book.listPath || book.routePath"
 			>
-				<div>
-					<RouterLink class="button secondary small" :to="book.listPath || book.routePath">← Back</RouterLink>
 					<DocumentActions
 						:doc="doc"
 						:meta="meta"
@@ -79,7 +78,6 @@ function fieldValue(field) {
 						@action="action"
 						@discard="reload()"
 					/>
-				</div>
 			</DocumentHeader>
 			<Message v-if="intro" :severity="intro.severity" :closable="false" class="form-banner">{{ intro.text }}</Message>
 			<ActionHost :runner="runner" />
@@ -136,7 +134,7 @@ function fieldValue(field) {
 			<Message v-if="factsError" severity="error" :closable="false" class="form-banner">
 				{{ factsError }} <Button label="Retry details" size="small" severity="secondary" @click="retryFacts" />
 			</Message>
-			<div :class="editing ? 'form-layout' : 'po-saved-layout'">
+			<div :class="[editing ? 'form-layout' : 'po-saved-layout', { 'compact-layout': layout.compact }]">
 				<div class="form-stack">
 					<section v-if="editing" class="form-section">
 						<header class="mgk-card__head">
@@ -217,7 +215,7 @@ function fieldValue(field) {
 						</div>
 					</section>
 				</div>
-				<aside :class="editing ? 'book-entry-aside' : 'po-saved-side'">
+				<aside v-if="!layout.compact" :class="editing ? 'book-entry-aside' : 'po-saved-side'">
 					<DetailsPanel
 						v-if="(editing || !viewFacts) && !layout.gridForm"
 						:fields="layout.panel"

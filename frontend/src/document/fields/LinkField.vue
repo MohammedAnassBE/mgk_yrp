@@ -17,6 +17,7 @@ const loading = ref(false)
 const error = ref("")
 const active = ref(0)
 const inputElement = ref(null)
+const suggestionsElement = ref(null)
 const text = ref(props.modelValue || "")
 let sequence = 0
 
@@ -78,6 +79,9 @@ function keydown(event) {
 	}
 }
 onBeforeUnmount(close)
+watch([open, loading, () => results.value.length], () => {
+	if (open.value) suggestionsElement.value?.scrollIntoView?.({ block: "nearest", behavior: "smooth" })
+}, { flush: "post" })
 watch(() => props.modelValue, (value) => { text.value = value || "" })
 watch(selectedLabel, (value) => { if (!open.value) text.value = value })
 watch(() => [props.doctype, props.filters, props.candidates, props.searchArgs], () => { close(); results.value = [] }, { deep: true })
@@ -102,7 +106,7 @@ defineExpose({ focus: () => inputElement.value?.focus() })
 			@keydown="keydown"
 		/>
 		<small v-if="labelError" role="alert">{{ labelError }}</small>
-		<div v-if="open" class="link-suggestions">
+		<div v-if="open" ref="suggestionsElement" class="link-suggestions">
 			<div v-if="loading" role="status">Searching…</div>
 			<div v-else-if="error" role="alert">
 				{{ error }}

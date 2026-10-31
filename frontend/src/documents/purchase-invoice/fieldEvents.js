@@ -55,3 +55,27 @@ export function groupGrnRows(rows) {
 	}
 	return [...groups].map(([name, rows]) => ({ name, rows }))
 }
+
+const summedFields = ["qty", "amount", "cgst_amount", "sgst_amount", "igst_amount"]
+
+export function groupItemRows(rows) {
+	const groups = new Map()
+	for (const [index, row] of rows.entries()) {
+		const key = JSON.stringify([row.item, row.uom, flt(row.grn_rate)])
+		if (!groups.has(key)) groups.set(key, { key, ...row, ...Object.fromEntries(summedFields.map((field) => [field, 0])), indices: [] })
+		const group = groups.get(key)
+		for (const field of summedFields) group[field] = flt(group[field] + flt(row[field]), 6)
+		group.indices.push(index)
+	}
+	return [...groups.values()]
+}
+
+export function setGroupRate(rows, indices, rate) {
+	return rows.map((row, index) => indices.includes(index) ? { ...row, rate: rate ?? 0 } : row)
+}
+
+export function grnSummaries(groups, dates = {}) {
+	return groups.map(({ name, rows }) => ({ name, posting_date: dates[name] || "",
+		total_qty: flt(rows.reduce((total, { row }) => total + flt(row.qty), 0), 6),
+		total_amount: flt(rows.reduce((total, { row }) => total + flt(row.qty) * flt(row.grn_rate), 0), 2) }))
+}

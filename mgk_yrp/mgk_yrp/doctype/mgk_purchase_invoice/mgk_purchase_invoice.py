@@ -199,17 +199,22 @@ def validate_billing_link(receipt, invoice):
 		frappe.throw(_("GRN {0} is already billed by Purchase Invoice {1}.").format(receipt.name, billed_by))
 
 
+def get_unbilled_grn_filters(supplier=None, against=None) -> dict:
+	filters = {"docstatus": 1, "purchase_invoice": ["is", "not set"]}
+	if supplier:
+		filters["supplier"] = supplier
+	if against:
+		validate_against(against)
+		filters["against_purchase_order"] = int(against == "Purchase Order")
+	return filters
+
+
 @frappe.whitelist()
 def get_unbilled_grns(supplier: str, against: str) -> list[dict]:
 	validate_against(against)
 	return frappe.get_list(
 		"MGK Goods Received Note",
-		filters={
-			"supplier": supplier,
-			"docstatus": 1,
-			"purchase_invoice": ["is", "not set"],
-			"against_purchase_order": int(against == "Purchase Order"),
-		},
+		filters=get_unbilled_grn_filters(supplier, against),
 		fields=["name", "posting_date", "total_qty", "total_amount"],
 		order_by="posting_date, name",
 		limit_page_length=0,

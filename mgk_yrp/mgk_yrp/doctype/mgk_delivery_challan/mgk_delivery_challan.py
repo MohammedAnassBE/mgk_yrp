@@ -371,6 +371,15 @@ def make_delivery_challan_close(source_name: str) -> Document:
 	return target
 
 
+@frappe.whitelist(methods=["POST"])
+def close_delivery_challan(source_name: str) -> str:
+	"""Create and submit the Close for an open job-work DC in one transaction."""
+	close = make_delivery_challan_close(source_name)
+	close.insert()
+	close.submit()
+	return close.name
+
+
 @frappe.whitelist()
 def make_return_delivery_challan(source_name: str) -> Document:
 	frappe.has_permission("MGK Delivery Challan", "create", throw=True)

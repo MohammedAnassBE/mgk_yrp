@@ -1,68 +1,43 @@
 const itemGroups = [
-	{ label: "Item identity", fields: ["item_code", "item_name", "name1", "mgk_tamil_name", "item_group", "brand", "hsn_code", "gst_hsn_code", "mgk_gst_tax_slab", "disabled"] },
-	{ label: "Stock and purchasing", fields: ["is_stock_item", "allow_negative_stock", "is_purchase_item", "is_sales_item", "over_delivery_receipt_allowance", "po_excess_allowed_percentage", "is_ineligible_for_itc", "is_yarn_item", "mgk_is_karigan", "mgk_is_salavai_cone"] },
-	{ label: "Units and attributes", fields: ["stock_uom", "default_unit_of_measure", "secondary_unit_of_measure", "purchase_uom", "has_variants", "primary_attribute", "dependent_attribute", "uoms"] },
+	{ label: "Item identity", fields: ["item_name", "name1", "mgk_tamil_name", "hsn_code", "gst_hsn_code", "mgk_gst_tax_slab", "is_purchase_item"] },
+	{ label: "Stock and purchasing", fields: ["over_delivery_receipt_allowance", "po_excess_allowed_percentage", "is_ineligible_for_itc", "is_yarn_item"] },
+	{ label: "Units and attributes", fields: ["stock_uom", "default_unit_of_measure", "secondary_unit_of_measure", "purchase_uom", "attributes", "primary_attribute", "dependent_attribute", "uoms"] },
 	{ label: "Process conversions", fields: ["mgk_process_conversions"] },
 ]
 
 export const stockItemFields = itemGroups.flatMap((group) => group.fields)
+export const hiddenItemFields = ["item_code", "item_group", "is_stock_item", "allow_negative_stock", "disabled", "is_sales_item", "mgk_is_karigan", "mgk_is_salavai_cone", "has_variants"]
 
 const definitions = [
 	{
 		key: "items", doctype: "Item", entityLabel: "Item", titleFields: ["item_name", "name1"], label: "Items", code: "ITM",
-		description: "Yarn, fabric and other stock items.", columns: ["item_name", "item_group", "stock_uom", "hsn_code", "disabled"],
-		formOrder: stockItemFields, formGroups: itemGroups,
+		description: "Yarn, fabric and other stock items.", columns: ["item_name", "stock_uom", "hsn_code"],
+		formOrder: stockItemFields, formGroups: itemGroups, defaults: { item_group: "Products", is_stock_item: 1, disabled: 0, has_variants: 0 },
+		fieldOverrides: { item_name: { reqd: 1 }, attributes: { hidden: 0, depends_on: "" } },
 		baseFilters: [["variant_of", "is", "not set"]], baseOrFilters: [["has_variants", "=", 1], ["disabled", "=", 0]],
 		hiddenSections: ["accounting", "accounting_tab", "sales_details", "sales", "sales_tab", "website", "website_tab", "deferred_accounting_section", "customer_details"],
-		hideFormFields: ["weight_per_unit", "weight_uom"], hideChildTables: ["categories"],
+		hideFormFields: ["weight_per_unit", "weight_uom"], hideChildTables: ["categories"], childColumns: { attributes: ["attribute"], uoms: ["uom", "conversion_factor"],
+			mgk_process_conversions: ["process_name", "item", "from_uom", "from_qty", "to_uom", "to_qty"] },
 		boolLabels: {
 			is_yarn_item: { on: "Yarn item", off: "Not a yarn item" },
-			mgk_is_karigan: { on: "Karigan item", off: "Not a Karigan item" },
-			mgk_is_salavai_cone: { on: "Salavai Cone item", off: "Not a Salavai Cone item" },
 		},
 		labels: { item_name: "Item name", name1: "Item name", mgk_tamil_name: "Item name (Tamil)",
 			stock_uom: "Primary UOM", default_unit_of_measure: "Primary UOM", secondary_unit_of_measure: "Secondary UOM",
 			over_delivery_receipt_allowance: "Delivery tolerance (%)", po_excess_allowed_percentage: "PO receipt excess (%)" },
 		help: {
 			mgk_tamil_name: "Enter the Tamil name shown throughout purchasing, production and stock screens.",
-			item_group: "Choose the group that controls this Item's working behaviour.",
 			stock_uom: "The unit used for normal purchasing and stock movement.",
 			default_unit_of_measure: "The unit used for normal purchasing and stock movement.",
 			primary_attribute: "The main variant dimension, such as Size or Colour.",
-			allow_negative_stock: "", po_excess_allowed_percentage: "", mgk_is_karigan: "", mgk_is_salavai_cone: "",
+			attributes: "Add attributes such as Colour to make this Item a template with variants.", po_excess_allowed_percentage: "",
 		},
 	},
 	{
 		key: "processes", doctype: "YRP Process", entityLabel: "Process", titleFields: ["process_name"], label: "Processes", code: "PRC",
-		description: "Production and job work stages and defaults.", columns: ["process_name", "input_uom", "output_uom", "is_group", "is_item_conversion"],
-		formOrder: ["process_name", "is_yarn_process", "is_item_conversion", "is_group", "is_manual_entry_in_grn", "input_uom", "output_uom", "default_wastage", "default_excess", "default_lead_time_days", "wo_excess_allowed_percentage", "value_change_attributes", "process_details"],
-		formGroups: [
-			{ label: "Process identity", fields: ["process_name", "is_yarn_process", "is_item_conversion", "is_group", "is_manual_entry_in_grn"] },
-			{ label: "Units and defaults", fields: ["input_uom", "output_uom", "default_wastage", "default_excess", "default_lead_time_days", "wo_excess_allowed_percentage"] },
-			{ label: "Transformation", fields: ["value_change_attributes"] },
-			{ label: "Sub-processes", fields: ["process_details"] },
-		],
-		labels: { is_yarn_process: "Yarn process", is_item_conversion: "Changes the Item", is_manual_entry_in_grn: "Allow manual GRN entry", wo_excess_allowed_percentage: "Work Order receipt excess allowed %" },
-		help: {
-			is_yarn_process: "Enable when this Process participates in the MGK yarn production route.",
-			is_item_conversion: "Enable when the input Item becomes a different output Item.",
-			value_change_attributes: "Choose attributes such as Colour whose values this Process may change.",
-			wo_excess_allowed_percentage: "Maximum extra quantity allowed when receiving against a Work Order.",
-		},
-	},
-	{
-		key: "users", doctype: "User", entityLabel: "User", titleFields: ["full_name", "first_name", "email"], label: "Users & Access", code: "USR",
-		description: "Users, enabled state and roles.", adminEditOnly: true,
-		columns: ["full_name", "email", "mobile_no", "last_active", "enabled"],
-		formOrder: ["enabled", "email", "first_name", "middle_name", "last_name", "username", "user_type", "send_welcome_email", "language", "time_zone", "module_profile", "mobile_no", "phone", "location", "gender", "birth_date"],
-		formGroups: [
-			{ label: "User identity", fields: ["enabled", "email", "first_name", "middle_name", "last_name", "username", "user_type", "send_welcome_email"] },
-			{ label: "Access defaults", fields: ["language", "time_zone", "module_profile"] },
-			{ label: "Contact details", fields: ["mobile_no", "phone", "location", "gender", "birth_date"] },
-		],
-		hideChildTables: ["user_emails", "social_logins", "active_sessions", "roles", "role_profiles", "block_modules", "defaults"],
-		defaults: { send_welcome_email: 0 }, fieldOverrides: { enabled: { read_only: 0 } },
-		help: { email: "This becomes the User ID used to sign in.", send_welcome_email: "Send the new user a link to set their password.", module_profile: "Optionally limit which Desk modules this user can open." },
+		description: "Production and job work stages.", columns: ["process_name"],
+		formOrder: ["process_name"],
+		formGroups: [{ label: "Process identity", fields: ["process_name"] }],
+		labels: { process_name: "Process Name" },
 	},
 	{
 		key: "received-types", doctype: "YRP Received Type", entityLabel: "Received Type", titleFields: ["received_type_name"], label: "Received Types", code: "RT",
@@ -74,7 +49,7 @@ const definitions = [
 	},
 	{
 		key: "warehouses", doctype: "Warehouse", entityLabel: "Warehouse", titleFields: ["warehouse_name", "name1"], label: "Warehouses", code: "WH",
-		description: "Company stores and supplier warehouses.", columns: ["warehouse_name", "supplier", "is_group", "parent_warehouse", "disabled"],
+		description: "Company stores and supplier warehouses.", party: true, columns: ["warehouse_name", "supplier", "is_group", "parent_warehouse", "disabled"],
 		formOrder: ["warehouse_name", "name1", "mgk_tamil_name", "supplier", "disabled", "is_group", "parent_warehouse", "company"],
 		formGroups: [{ label: "Warehouse identity", fields: ["warehouse_name", "name1", "mgk_tamil_name", "supplier", "disabled", "is_group", "parent_warehouse", "company"] }],
 		labels: { warehouse_name: "Warehouse name", name1: "Warehouse name", mgk_tamil_name: "Warehouse name (Tamil)", supplier: "Linked supplier" },

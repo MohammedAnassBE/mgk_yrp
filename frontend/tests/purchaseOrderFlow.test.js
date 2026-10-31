@@ -169,7 +169,6 @@ test("W15 action visibility matches Desk submission, pending rows and both creat
 			const isAvailable = docstatus === 1 && pending_qty > 0 && canCreateReceipt
 			assert.equal(result.some((action) => action.key === "create-grn"), isAvailable)
 			assert.equal(result.some((action) => action.key === "mark-as-received"), isAvailable && (!deliver_to_supplier || canCreateChallan))
-			assert.ok(result.every((action) => action.forward === true))
 		}
 	}
 	assert.equal(actions({ ...order, items: [] }, allow).length, 0)

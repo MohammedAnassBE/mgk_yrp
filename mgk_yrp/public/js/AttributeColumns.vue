@@ -59,8 +59,10 @@
                         </div>
                     </td>
                     <td v-if="props.edit" class="text-nowrap">
-                        <button type="button" class="btn btn-xs btn-default" @click="emit('split', groupIndex, rowIndex)">{{ __('Add Split') }}</button>
-                        <button type="button" class="btn btn-xs btn-default" @click="removeRow(groupIndex, rowIndex)">{{ __('Remove') }}</button>
+                        <button type="button" class="btn btn-xs btn-default mgk-icon-button" :aria-label="__('Add split')" :title="__('Add split')"
+                            @click="emit('split', groupIndex, rowIndex)">+</button>
+                        <button type="button" class="btn btn-xs btn-default mgk-icon-button mgk-icon-danger" :aria-label="__('Remove row')" :title="__('Remove row')"
+                            @click="removeRow(groupIndex, rowIndex)">&times;</button>
                     </td>
                 </tr></tbody>
             </table>
@@ -195,4 +197,7 @@ function removeSelected() {
 .mgk-size-cell { min-width: 7rem; }
 select { min-width: 8rem; }
 label { margin-top: 0.35rem; margin-bottom: 0; }
+.mgk-icon-button { width: 28px; height: 28px; padding: 0; font-size: 16px; line-height: 1; }
+.mgk-icon-button + .mgk-icon-button { margin-left: 4px; }
+.mgk-icon-danger { color: var(--red-500, #e03636); opacity: .75; }
 </style>

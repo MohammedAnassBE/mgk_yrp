@@ -75,12 +75,11 @@ test("all quick filter types put their labels inside controls and retain accessi
 			handler({ target: { value } })
 			assert.deepEqual(updates.at(-1), { ...props.modelValue, [field.fieldname]: value })
 		}
-		assert.equal(nodes(page.root, (node) => node.tag === "input" && node.props.type === "date").length, 1)
-		assert.equal(nodes(page.root, (node) => node.props.class === "quick-date-placeholder").length, 1)
+		assert.equal(nodes(page.root, (node) => node.tag === "input" && node.props.type === "date").length, 0)
 		props.modelValue.po_date = "2026-10-30"
 		await settle()
-		assert.equal(nodes(page.root, (node) => node.props.class === "quick-date-placeholder").length, 0)
 		const date = nodes(page.root, (node) => node.props.id === "quick-po_date")[0]
+		assert.equal(date.props["data-date-format"], "dd-mm-yy")
 		assert.equal(date.props.value, "2026-10-30")
 		date.props.onInput({ target: { value: "" } })
 		assert.equal(updates.at(-1).po_date, "")
@@ -125,7 +124,10 @@ test("every book and master list uses the breadcrumb title with New and no large
 			assert.deepEqual(Object.keys(section.props), ["class"], `${book.label} must not leak configuration attributes`)
 			const headers = nodes(page.root, (node) => node.tag === "header" && node.props.class === "list-page-header")
 			assert.equal(headers.length, 1, book.label)
-			assert.equal(textContent(nodes(headers[0], (node) => node.tag === "nav")[0]), `All books›${book.label}`)
+			const isMaster = book.route?.startsWith("/manage/")
+			assert.equal(textContent(nodes(headers[0], (node) => node.tag === "nav")[0]), isMaster ? `All books›Manage›${book.label}` : `All books›${book.label}`)
+			const back = nodes(headers[0], (node) => node.tag === "a" && node.props.class === "head-back")
+			assert.deepEqual(back.map((node) => node.props.href), isMaster ? ["/manage"] : [], book.label)
 			assert.equal(nodes(headers[0], (node) => node.props["aria-current"] === "page").length, 1)
 			assert.equal(nodes(headers[0], (node) => node.tag === "button" && textContent(node) === "+ New").length, 1)
 			assert.equal(nodes(headers[0], (node) => node.tag === "p").length, 0)

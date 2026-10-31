@@ -20,6 +20,7 @@
   "handling_supplier",
   "is_karigan_order",
   "is_salavai_cone_order",
+  "comments",
   "item_html",
   "item_details",
   "items",
@@ -29,6 +30,13 @@
   "amended_from"
  ],
  "fields": [
+  {
+   "fieldname": "comments",
+   "fieldtype": "Small Text",
+   "label": "Comments",
+   "allow_on_submit": 1,
+   "placeholder": "Add a note…"
+  },
   {
    "fieldname": "item_html",
    "fieldtype": "HTML",
@@ -259,8 +267,14 @@
  ],
  "actions": [],
  "links": [
-  {"link_doctype": "MGK Goods Received Note", "link_fieldname": "purchase_order"},
-  {"link_doctype": "MGK Delivery Challan", "link_fieldname": "purchase_order"}
+  {
+   "link_doctype": "MGK Goods Received Note",
+   "link_fieldname": "purchase_order"
+  },
+  {
+   "link_doctype": "MGK Delivery Challan",
+   "link_fieldname": "purchase_order"
+  }
  ],
  "states": [],
  "sort_field": "modified",
@@ -268,5 +282,6 @@
  "autoname": "MGK-PO-.YY.-.#####",
  "naming_rule": "Expression",
  "is_submittable": 1,
- "track_changes": 1
+ "track_changes": 1,
+ "modified": "2026-10-31 12:45:00.000000"
 }

@@ -12,6 +12,7 @@ from mgk_yrp.stock.locking import lock_documents
 from mgk_yrp.tests.fixtures import (
 	make_item,
 	make_po_grn,
+	make_process,
 	make_purchase_order,
 	make_received_type,
 	make_supplier,
@@ -110,11 +111,31 @@ class TestPurchaseOrderGRN(IntegrationTestCase):
 		self.assertEqual(receipt.items[0].rate, 100)
 		self.assertEqual(receipt.total_amount, 10000)
 
+	def test_po_grn_inherits_process_on_insert(self):
+		order = self.make_order(process_name=make_process())
+		receipt = make_po_grn(order, submit=False)
+		self.assertEqual(receipt.process_name, order.process_name)
+		self.assertEqual(receipt.reload().process_name, order.process_name)
+
+	def test_po_grn_overwrites_manual_process(self):
+		order = self.make_order(process_name=make_process())
+		receipt = make_goods_received_note(order.name)
+		receipt.process_name = make_process()
+		receipt.insert(ignore_permissions=True)
+		self.assertEqual(receipt.process_name, order.process_name)
+
+	def test_po_without_process_clears_grn_process(self):
+		order = self.make_order()
+		receipt = make_goods_received_note(order.name)
+		receipt.process_name = make_process()
+		receipt.insert(ignore_permissions=True)
+		self.assertFalse(receipt.process_name)
+
 	def test_po_grn_rejects_foreign_po_row(self):
 		order, foreign = self.make_order(), self.make_order()
 		receipt = make_goods_received_note(order.name)
 		receipt.items[0].purchase_order_item = foreign.items[0].name
-		with self.assertRaisesRegex(frappe.ValidationError, "map to a row"):
+		with self.assertRaisesRegex(frappe.ValidationError, "Row 1: Item must map to a row of this Purchase Order."):
 			receipt.insert(ignore_permissions=True)
 
 	def test_po_grn_rejects_changed_item(self):

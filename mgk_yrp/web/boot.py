@@ -10,6 +10,7 @@ WEB_DOCTYPES = (
 	"MGK Delivery Challan",
 	"MGK Delivery Challan Close",
 	"MGK Purchase Invoice",
+	"MGK Supplier Credit Debit",
 	"MGK Agent",
 	"Item",
 	"Supplier",
