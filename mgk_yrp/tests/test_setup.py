@@ -4,6 +4,7 @@ import frappe
 from frappe.tests import IntegrationTestCase
 
 from mgk_yrp import hooks
+from mgk_yrp.install import ensure_item_groups
 from mgk_yrp.stock.locking import LOCK_ORDER, lock_documents
 from mgk_yrp.stock.uom import copy_uom_snapshot, validate_uom_snapshot
 from mgk_yrp.stock.warehouse import get_supplier_warehouse
@@ -21,13 +22,16 @@ from mgk_yrp.tests.fixtures import (
 
 class TestSetup(IntegrationTestCase):
 	def test_custom_fields_and_property_setter_exist(self):
-		self.assertEqual(hooks.required_apps, ["frappe", "erpnext", "yrp"])
+		self.assertEqual(hooks.required_apps, ["erpnext", "yrp"])
 		self.assertEqual(hooks.doc_events["Item"]["validate"], "mgk_yrp.overrides.item.validate")
 		self.assertEqual(hooks.app_include_js, ["mgk_yrp.bundle.js"])
 		self.assertEqual(
-			{fixture["dt"] for fixture in hooks.fixtures}, {"Custom Field", "Property Setter", "Item Group", "YRP UI Layout"}
+			{fixture["dt"] for fixture in hooks.fixtures}, {"Custom Field", "Property Setter", "YRP UI Layout"}
 		)
 		self.assertEqual(frappe.db.get_value("Custom Field", "Item-mgk_gst_tax_slab", "module"), "MGK YRP")
+		self.assertIn("mgk_yrp.install.ensure_item_groups", hooks.after_install)
+		self.assertIn("mgk_yrp.install.ensure_item_groups", hooks.after_migrate)
+		ensure_item_groups()
 		for group in ("Karigan Items", "Salavai Cone Items"):
 			self.assertEqual(
 				frappe.db.get_value("Item Group", group, ["parent_item_group", "is_group"]), ("All Item Groups", 0)
