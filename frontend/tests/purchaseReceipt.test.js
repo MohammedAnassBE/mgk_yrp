@@ -154,13 +154,13 @@ test("PO and DC pickers use supplier-scoped Desk filters; against-PO party field
 	}
 })
 
-test("GRN Process is always visible and follows the PO field in the web panel", async () => {
+test("GRN Process is always visible and follows the PO field in the main form section", async () => {
 	const meta = JSON.parse(await readFile(new URL("../../mgk_yrp/mgk_yrp/doctype/mgk_goods_received_note/mgk_goods_received_note.json", import.meta.url)))
 	const layout = documentLayout("MGK Goods Received Note", meta)
-	const process = layout.panel.find((field) => field.fieldname === "process_name")
+	const process = layout.paper.find((field) => field.fieldname === "process_name")
 	assert.equal(process.depends_on, undefined)
 	assert.equal(process.read_only_depends_on, "eval:doc.against_purchase_order")
-	assert.equal(layout.panel.indexOf(process), layout.panel.findIndex((field) => field.fieldname === "purchase_order") + 1)
+	assert.equal(layout.paper.indexOf(process), layout.paper.findIndex((field) => field.fieldname === "purchase_order") + 1)
 	for (const against_purchase_order of [0, 1]) {
 		const state = fieldState(process, { against_purchase_order }, meta, { name: "Administrator" })
 		assert.equal(state.visible, true)

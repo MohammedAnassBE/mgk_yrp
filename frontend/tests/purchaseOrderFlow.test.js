@@ -41,11 +41,11 @@ async function settle() {
 	for (let index = 0; index < 4; index++) { await nextTick(); await new Promise(setImmediate) }
 }
 
-test("W14 PO panel uses the real Process metadata: optional when off, mandatory when ticked", async () => {
+test("W14 PO form uses the real Process metadata: optional when off, mandatory when ticked", async () => {
 	const meta = JSON.parse(await readFile(new URL("../../mgk_yrp/mgk_yrp/doctype/mgk_purchase_order/mgk_purchase_order.json", import.meta.url)))
-	const panel = documentLayout(order.doctype, meta).panel
-	assert.ok(panel.some((field) => field.fieldname === "deliver_to_supplier"))
-	const process = panel.find((field) => field.fieldname === "process_name")
+	const paper = documentLayout(order.doctype, meta).paper
+	assert.ok(paper.some((field) => field.fieldname === "deliver_to_supplier"))
+	const process = paper.find((field) => field.fieldname === "process_name")
 	assert.equal(process.mandatory_depends_on, "eval:doc.deliver_to_supplier")
 	assert.equal(process.depends_on, undefined)
 	for (const deliver_to_supplier of [0, 1]) {
