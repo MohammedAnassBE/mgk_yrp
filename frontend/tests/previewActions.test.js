@@ -11,20 +11,20 @@ const close = { doctype: "MGK Delivery Challan Close", name: "Close-1", delivery
 const labels = (doc, allowed = can, meta = { is_submittable: 1 }) => previewActions(doc, meta, allowed).map((action) => action.label)
 
 test("preview menu orders lifecycle and module actions by state and excludes links", () => {
-	assert.deepEqual(labels({ ...receipt, docstatus: 0 }), ["Submit"])
-	assert.deepEqual(labels(receipt), ["Create DC", "Cancel"])
-	assert.deepEqual(labels(receipt, (_doctype, permission) => permission !== "cancel"), ["Create DC"])
-	assert.deepEqual(labels(receipt, (_doctype, permission) => permission !== "create"), ["Cancel"])
-	assert.deepEqual(labels(close), ["Reopen"])
-	assert.deepEqual(labels({ ...close, docstatus: 2, reopen_status: "Reversing" }), ["Finish Reopen"])
-	assert.deepEqual(labels({ ...receipt, docstatus: 2 }), [])
-	assert.deepEqual(labels({ ...receipt, docstatus: 0 }, can, { is_submittable: 0 }), [])
-	const challan = { doctype: "MGK Delivery Challan", docstatus: 1, close_status: "Open", delivery_challan_close: "Close-1" }
-	assert.deepEqual(labels(challan), ["Return", "Close", "Create GRN", "Update Plan", "Cancel"])
-	assert.deepEqual(labels({ ...challan, close_status: "Closed" }), ["Cancel"])
-	const order = { doctype: "MGK Purchase Order", docstatus: 1, items: [{ pending_qty: 1 }] }
-	assert.deepEqual(labels(order), ["Create GRN", "Mark as Received", "Cancel"])
-	assert.deepEqual(labels({ doctype: "MGK Purchase Invoice", docstatus: 1 }), ["Cancel"])
+	assert.deepEqual(labels({ ...receipt, docstatus: 0 }), ["Submit", "Print"])
+	assert.deepEqual(labels(receipt), ["Create DC", "Print", "Cancel"])
+	assert.deepEqual(labels(receipt, (_doctype, permission) => permission !== "cancel"), ["Create DC", "Print"])
+	assert.deepEqual(labels(receipt, (_doctype, permission) => permission !== "create"), ["Print", "Cancel"])
+	assert.deepEqual(labels(close), ["Print", "Reopen"])
+	assert.deepEqual(labels({ ...close, docstatus: 2, reopen_status: "Reversing" }), ["Finish Reopen", "Print"])
+	assert.deepEqual(labels({ ...receipt, docstatus: 2 }), ["Print"])
+	assert.deepEqual(labels({ ...receipt, docstatus: 0 }, can, { is_submittable: 0 }), ["Print"])
+	const challan = { doctype: "MGK Delivery Challan", name: "DC-1", docstatus: 1, close_status: "Open", delivery_challan_close: "Close-1" }
+	assert.deepEqual(labels(challan), ["Return", "Close", "Create GRN", "Update Plan", "Print", "Cancel"])
+	assert.deepEqual(labels({ ...challan, close_status: "Closed" }), ["Print", "Cancel"])
+	const order = { doctype: "MGK Purchase Order", name: "PO-1", docstatus: 1, items: [{ pending_qty: 1 }] }
+	assert.deepEqual(labels(order), ["Create GRN", "Mark as Received", "Print", "Cancel"])
+	assert.deepEqual(labels({ doctype: "MGK Purchase Invoice", name: "PI-1", docstatus: 1 }), ["Print", "Cancel"])
 	for (const doc of [receipt, close, challan, order, { ...receipt, docstatus: 0 }]) assert.deepEqual(labels(doc, () => false), [])
 })
 

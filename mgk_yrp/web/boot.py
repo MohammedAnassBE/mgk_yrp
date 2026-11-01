@@ -22,7 +22,7 @@ WEB_DOCTYPES = (
 	"User",
 	"YRP Stock Ledger Entry",
 )
-PERMISSION_TYPES = ("read", "create", "write", "submit", "cancel", "delete", "amend")
+PERMISSION_TYPES = ("read", "create", "write", "submit", "cancel", "delete", "amend", "print")
 logger = logging.getLogger(__name__)
 
 
