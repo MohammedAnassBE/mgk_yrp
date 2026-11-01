@@ -6,3 +6,4 @@
 .link-suggestions li { padding: 8px; cursor: pointer; border-radius: 6px; }
 .link-suggestions li[aria-selected="true"], .link-suggestions li:hover { background: var(--color-info-bg); }
 .link-suggestions small { display: block; color: var(--color-muted); }
+.link-suggestions li.link-create { border-top: 1px solid var(--color-line); color: var(--color-accent); }

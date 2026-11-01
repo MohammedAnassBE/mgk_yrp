@@ -1,11 +1,13 @@
 <script setup>
 import "../../shared/linkSuggestions.css"
-import { ref, watch, onBeforeUnmount, getCurrentInstance } from "vue"
+import { computed, ref, watch, onBeforeUnmount, getCurrentInstance } from "vue"
 import { callRead } from "../../api/client.js"
 import { trailingTask } from "../../list/listQuery.js"
 import { linkDescription } from "../../list/linkOptions.js"
 import { useLinkLabel } from "../../list/useLinkLabel.js"
 import { withTamilNames } from "../../shell/displayLanguage.js"
+import QuickCreateDialog from "./QuickCreateDialog.vue"
+import { canQuickCreate, hasExactMatch, quickCreateLabel } from "./quickCreate.js"
 
 const props = defineProps({ modelValue: { default: "" }, doctype: String, label: String, inputId: String,
 	disabled: Boolean, candidates: { type: Array, default: null }, filters: { type: Object, default: () => ({}) }, query: String,
@@ -21,6 +23,14 @@ const active = ref(0)
 const inputElement = ref(null)
 const suggestionsElement = ref(null)
 const text = ref(props.modelValue || "")
+const creatable = ref(false)
+const searchedText = ref(null)
+const createText = ref("")
+const createOption = computed(() => {
+	const typed = text.value.trim()
+	return Boolean(creatable.value && typed && !loading.value && !error.value && searchedText.value === text.value && !hasExactMatch(results.value, typed))
+})
+const rowCount = computed(() => results.value.length + (createOption.value ? 1 : 0))
 let sequence = 0
 
 async function searchOptions(needle) {
@@ -39,9 +49,14 @@ async function search() {
 	try {
 		// A displayed title or Tamil name is not searchable text; search by the stored value instead.
 		const needle = String((text.value === selectedLabel.value ? props.modelValue : text.value) || "")
-		const data = await withTamilNames(props.doctype, (await searchOptions(needle)) || [])
+		const searched = text.value
+		const standardSearch = props.candidates === null && !props.searchMethod
+		const [data, canCreate] = await Promise.all([withTamilNames(props.doctype, (await searchOptions(needle)) || []),
+			standardSearch && text.value !== selectedLabel.value ? canQuickCreate(props.doctype) : false])
 		if (current !== sequence) return
 		results.value = data || []
+		creatable.value = canCreate
+		searchedText.value = searched
 		active.value = 0
 	} catch (cause) {
 		if (current === sequence) error.value = cause.message
@@ -68,15 +83,27 @@ function select(option, advance = false) {
 		controls[controls.indexOf(inputElement.value) + 1]?.focus()
 	}
 }
+function startCreate() {
+	createText.value = text.value.trim()
+	close()
+}
+function created(name) {
+	createText.value = ""
+	select({ value: name })
+}
 function close() { open.value = false; sequence += 1; loading.value = false; delayedSearch.cancel(); text.value = selectedLabel.value }
 function keydown(event) {
 	if (event.key === "Escape") close()
 	if (["ArrowDown", "ArrowUp"].includes(event.key)) {
 		event.preventDefault()
 		open.value = true
-		active.value = Math.max(0, Math.min(results.value.length - 1, active.value + (event.key === "ArrowDown" ? 1 : -1)))
+		active.value = Math.max(0, Math.min(rowCount.value - 1, active.value + (event.key === "ArrowDown" ? 1 : -1)))
 	}
-	if (event.key === "Enter" && open.value && results.value[active.value]) {
+	if (event.key === "Enter" && open.value && createOption.value && active.value === results.value.length) {
+		event.preventDefault()
+		startCreate()
+	}
+	else if (event.key === "Enter" && open.value && results.value[active.value]) {
 		event.preventDefault()
 		select(results.value[active.value], true)
 	}
@@ -87,7 +114,7 @@ watch([open, loading, () => results.value.length], () => {
 }, { flush: "post" })
 watch(() => props.modelValue, (value) => { text.value = value || "" })
 watch(selectedLabel, (value) => { if (!open.value) text.value = value })
-watch(() => [props.doctype, props.filters, props.candidates, props.searchArgs], () => { close(); results.value = [] }, { deep: true })
+watch(() => [props.doctype, props.filters, props.candidates, props.searchArgs], () => { close(); results.value = []; creatable.value = false }, { deep: true })
 defineExpose({ focus: () => inputElement.value?.focus() })
 </script>
 
@@ -103,7 +130,7 @@ defineExpose({ focus: () => inputElement.value?.focus() })
 			autocomplete="off"
 			:aria-expanded="open"
 			:aria-controls="id"
-			:aria-activedescendant="open && results.length ? `${id}-${active}` : undefined"
+			:aria-activedescendant="open && rowCount ? `${id}-${active}` : undefined"
 			@input="input($event.target.value)"
 			@focus="open = true; search()"
 			@keydown="keydown"
@@ -115,7 +142,7 @@ defineExpose({ focus: () => inputElement.value?.focus() })
 				{{ error }}
 				<button type="button" @click="search">Retry</button>
 			</div>
-			<div v-else-if="!results.length">No matches</div>
+			<div v-else-if="!rowCount">No matches</div>
 			<ul :id="id" role="listbox" :aria-label="label">
 				<li
 					v-for="(option, index) in results"
@@ -129,7 +156,19 @@ defineExpose({ focus: () => inputElement.value?.focus() })
 					<small v-if="option.tamil">{{ option.value }}</small>
 					<small v-if="linkDescription(option)">{{ linkDescription(option) }}</small>
 				</li>
+				<li
+					v-if="createOption"
+					:id="`${id}-${results.length}`"
+					class="link-create"
+					role="option"
+					:aria-selected="active === results.length"
+					@mousedown.prevent="startCreate"
+				>
+					<strong>+ Create a new {{ quickCreateLabel(doctype) }}: “{{ text.trim() }}”</strong>
+				</li>
 			</ul>
 		</div>
+		<QuickCreateDialog v-if="createText" visible :doctype="doctype" :text="createText" :filters="filters"
+			@close="createText = ''" @created="created" />
 	</div>
 </template>
