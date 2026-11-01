@@ -7,7 +7,7 @@ import { tableFields } from "../src/document/fields/tableFields.js"
 
 test("all five layouts keep paper order and omit duplicate, computed and display-only panel rows", async () => {
 	const paper = {
-		"MGK Purchase Order": ["supplier", "item_group", "po_date"],
+		"MGK Purchase Order": ["supplier", "item_group", "po_date", "deliver_to_supplier", "delivery_location", "warehouse", "process_name", "mgk_agent"],
 		"MGK Goods Received Note": ["supplier", "posting_date"],
 		"MGK Delivery Challan": ["to_location", "posting_date"],
 		"MGK Purchase Invoice": ["supplier", "bill_no", "bill_date"],
