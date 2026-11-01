@@ -1,4 +1,5 @@
 <script setup>
+import { displayName } from "../../shell/displayLanguage.js"
 import { onBeforeUnmount, onMounted, reactive, ref, watch } from "vue"
 import ListPageHeader from "../../shell/ListPageHeader.vue"
 import NoAccess from "../../shared/NoAccess.vue"
@@ -83,7 +84,7 @@ onBeforeUnmount(() => { sequence++; refresh.cancel(); disposers.forEach((dispose
 						<tr v-if="shown.from_date" class="ledger-opening"><td>{{ formatDate(shown.from_date) }}</td><td colspan="6">Opening balance{{ shown.supplier ? '' : ' (all suppliers)' }}</td><td class="numeric"><strong>{{ money(result.opening_balance) }}</strong></td></tr>
 						<tr v-for="row in result.rows" :key="`${row.type}:${row.name}`">
 							<td>{{ formatDate(row.date) }}</td>
-							<td>{{ row.supplier_name || row.supplier }}</td>
+							<td>{{ displayName('Supplier', row.supplier, row.supplier_name || row.supplier) }}</td>
 							<td><span class="ledger-type" :class="entryTypeClass(row)">{{ entryTypeLabel(row) }}</span></td>
 							<td><RouterLink :to="documentLink(row)">{{ row.name }}</RouterLink></td>
 							<td>{{ row.reason }}</td>
@@ -106,7 +107,7 @@ onBeforeUnmount(() => { sequence++; refresh.cancel(); disposers.forEach((dispose
 					<thead><tr><th>Supplier</th><th class="numeric">Credit</th><th class="numeric">Debit</th><th class="numeric">Balance</th></tr></thead>
 					<tbody>
 						<tr v-for="row in result.suppliers" :key="row.supplier">
-							<td><button class="ledger-link" type="button" @click="applySupplier(row.supplier)">{{ row.supplier_name }}</button></td>
+							<td><button class="ledger-link" type="button" @click="applySupplier(row.supplier)">{{ displayName('Supplier', row.supplier, row.supplier_name) }}</button></td>
 							<td class="numeric">{{ money(row.credit) }}</td><td class="numeric">{{ money(row.debit) }}</td><td class="numeric"><strong>{{ money(row.balance) }}</strong></td>
 						</tr>
 						<tr v-if="!result.suppliers.length"><td colspan="4" class="ledger-empty">No suppliers in this period.</td></tr>

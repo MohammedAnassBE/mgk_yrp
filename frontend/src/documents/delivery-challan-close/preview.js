@@ -8,7 +8,7 @@ export function facts(doc, preview) {
 }
 
 export const itemColumns = [
-	{ key: "item", label: "Output Item" }, { key: "input_item", label: "Input Item" },
+	{ key: "item", label: "Output Item", doctype: "Item" }, { key: "input_item", label: "Input Item", doctype: "Item" },
 	{ key: "goods_received_note", label: "GRN", link: "/goods-received-note" }, { key: "stock_qty", label: "Qty", numeric: true },
 	{ key: "allocation_weight", label: "Allocation weight", numeric: true },
 	{ key: "allocated_value", label: "Allocated value", money: true }, { key: "allocated_rate", label: "Allocated rate", money: true },

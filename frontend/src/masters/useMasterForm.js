@@ -1,4 +1,5 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue"
+import { forgetTamilName } from "../shell/displayLanguage.js"
 import { useRoute, useRouter } from "vue-router"
 import { callMethod, callRead, getDocument, getMeta } from "../api/client.js"
 import { hasPermission } from "../permissions/usePermissions.js"
@@ -137,6 +138,7 @@ export function useMasterForm(master, options = {}) {
 			const saved = await callMethod(method, { doc: clone(doc.value) }, (values) => { if (operation.current()) messages.value = values })
 			if (!operation.current()) return
 			operation.apply(() => apply(saved))
+			forgetTamilName(master.doctype, saved.name)
 			notify.success(documentToast(saved.name, "saved"))
 			busy.value = false
 			const returnTo = safeReturnPath(route.query.returnTo)

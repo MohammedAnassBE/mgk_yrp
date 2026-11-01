@@ -1,4 +1,5 @@
 <script setup>
+import { displayName } from "../shell/displayLanguage.js"
 import { computed, ref } from "vue"
 import { useRoute } from "vue-router"
 import Button from "primevue/button"
@@ -27,7 +28,10 @@ const accessError = ref("")
 const { root, doc, metas, meta, sections, loading, busy, dirty, stale, error, messages, isNew, editing, canRead, canDelete,
 	variantTemplate, toggle, isDisabled, change, initialize, reload, save, remove } = useMasterForm(props.master, { blocked: () => accessBusy.value || Boolean(accessError.value) })
 const back = computed(() => safeReturnPath(route.query.returnTo) || props.master.route)
-const heading = computed(() => masterHeading(props.master, doc.value, meta.value, isNew.value))
+const heading = computed(() => {
+	const value = masterHeading(props.master, doc.value, meta.value, isNew.value)
+	return isNew.value ? value : { ...value, title: displayName(props.master.doctype, doc.value?.name, value.title) }
+})
 const toggleEditable = computed(() => toggle.value && editing.value && !fieldState(toggle.value, doc.value, meta.value).readOnly)
 function confirm() {
 	const action = pending.value
@@ -43,7 +47,7 @@ function confirm() {
 		<Breadcrumbs :items="[{ label: 'Manage', to: '/manage' }, { label: master.label, to: master.route }, { label: route.params.name || doc?.name || 'New entry' }]" />
 		<div v-if="loading" class="loading-state" role="status"><i class="pi pi-spin pi-spinner" />Loading {{ master.label }}…</div>
 		<div v-else-if="variantTemplate" class="form-banner">
-			Variants are managed from their template <RouterLink class="record-id" :to="`${master.route}/${encodeURIComponent(variantTemplate)}`">{{ variantTemplate }}</RouterLink>
+			Variants are managed from their template <RouterLink class="record-id" :to="`${master.route}/${encodeURIComponent(variantTemplate)}`">{{ displayName('Item', variantTemplate) }}</RouterLink>
 		</div>
 		<template v-else-if="doc && meta">
 			<header class="detail-head">

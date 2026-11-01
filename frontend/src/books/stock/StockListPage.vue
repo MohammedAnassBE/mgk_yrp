@@ -1,4 +1,5 @@
 <script setup>
+import { displayName } from "../../shell/displayLanguage.js"
 import { formatDate } from "../../shared/formatDate.js"
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue"
 import ListPageHeader from "../../shell/ListPageHeader.vue"
@@ -21,9 +22,9 @@ const visibleWarehouses = computed(() => supplierWarehouses(options.value, filte
 const summary = computed(() => result.value.summary)
 const quantitySummary = computed(() => Object.entries(summary.value.uom_totals || {}).map(([uom, value]) => `${qty(value)} ${uom}`).join(" · ") || "0")
 const pickers = computed(() => [
-	{ key: "supplier", label: "Supplier", options: options.value.suppliers, title: options.value.title_fields?.Supplier },
-	{ key: "warehouse", label: "Warehouse", options: visibleWarehouses.value, title: options.value.title_fields?.Warehouse },
-	{ key: "item", label: "Item", options: options.value.items, title: options.value.title_fields?.Item },
+	{ key: "supplier", label: "Supplier", doctype: "Supplier", options: options.value.suppliers, title: options.value.title_fields?.Supplier },
+	{ key: "warehouse", label: "Warehouse", doctype: "Warehouse", options: visibleWarehouses.value, title: options.value.title_fields?.Warehouse },
+	{ key: "item", label: "Item", doctype: "Item", options: options.value.items, title: options.value.title_fields?.Item },
 	{ key: "received_type", label: "Received type", options: options.value.received_types },
 ])
 let sequence = 0
@@ -65,7 +66,7 @@ onBeforeUnmount(() => { sequence++; refresh.cancel(); disposers.forEach((dispose
 			<label><span>To date</span><DateInput v-model="filters.to_date" input-id="stock-to-date" aria-label="To date" required /></label>
 			<label v-for="picker in pickers" :key="picker.key">
 				<select v-model="filters[picker.key]" :aria-label="picker.label" @change="picker.key === 'supplier' && supplierChanged()">
-					<option value="">{{ picker.label }}</option><option v-for="option in picker.options" :key="option.name" :value="option.name">{{ option[picker.title] || option.name }}</option>
+					<option value="">{{ picker.label }}</option><option v-for="option in picker.options" :key="option.name" :value="option.name">{{ picker.doctype ? displayName(picker.doctype, option.name, option[picker.title] || option.name) : option[picker.title] || option.name }}</option>
 				</select>
 			</label>
 			<button class="button primary" type="submit" :disabled="loading">{{ loading ? 'Loading…' : 'Show stock' }}</button>
@@ -85,9 +86,9 @@ onBeforeUnmount(() => { sequence++; refresh.cancel(); disposers.forEach((dispose
 				<div class="table-scroll"><table>
 					<thead><tr><th>Item</th><th>Supplier</th><th>Warehouse</th><th>Received type</th><th class="numeric">Available</th><th class="numeric">Value</th><th>Inward dates</th></tr></thead>
 					<tbody><tr v-for="(row, index) in result.rows" :key="index">
-						<td><RouterLink v-if="hasPermission('Item')" :to="`/manage/items/${encodeURIComponent(row.item)}`">{{ row.item_name || row.item }}</RouterLink><span v-else>{{ row.item_name || row.item }}</span><small>{{ row.item }}</small></td>
-						<td><RouterLink v-if="row.supplier && hasPermission('Supplier')" :to="`/manage/suppliers/${encodeURIComponent(row.supplier)}`">{{ row.supplier_name || row.supplier }}</RouterLink><span v-else>{{ row.supplier_name || row.supplier || 'Company stock' }}</span></td>
-						<td><RouterLink v-if="hasPermission('Warehouse')" :to="`/manage/warehouses/${encodeURIComponent(row.warehouse)}`">{{ row.warehouse_name }}</RouterLink><span v-else>{{ row.warehouse_name }}</span></td><td>{{ row.received_type || '—' }}</td>
+						<td><RouterLink v-if="hasPermission('Item')" :to="`/manage/items/${encodeURIComponent(row.item)}`">{{ displayName('Item', row.item, row.item_name || row.item) }}</RouterLink><span v-else>{{ displayName('Item', row.item, row.item_name || row.item) }}</span><small>{{ row.item }}</small></td>
+						<td><RouterLink v-if="row.supplier && hasPermission('Supplier')" :to="`/manage/suppliers/${encodeURIComponent(row.supplier)}`">{{ displayName('Supplier', row.supplier, row.supplier_name || row.supplier) }}</RouterLink><span v-else>{{ displayName('Supplier', row.supplier, row.supplier_name || row.supplier) || 'Company stock' }}</span></td>
+						<td><RouterLink v-if="hasPermission('Warehouse')" :to="`/manage/warehouses/${encodeURIComponent(row.warehouse)}`">{{ displayName('Warehouse', row.warehouse, row.warehouse_name) }}</RouterLink><span v-else>{{ displayName('Warehouse', row.warehouse, row.warehouse_name) }}</span></td><td>{{ row.received_type || '—' }}</td>
 						<td class="numeric"><strong>{{ qty(row.bal_qty) }}</strong><small>{{ row.stock_uom }}</small></td><td class="numeric">{{ money(row.bal_val) }}</td>
 						<td><div v-if="row.inward_date_breakdown?.length" class="inward-list"><span v-for="entry in row.inward_date_breakdown" :key="entry.date"><time>{{ formatDate(entry.date) }}</time><strong>{{ qty(entry.qty) }} {{ row.stock_uom }}</strong></span></div><span v-else>—</span></td>
 					</tr></tbody>

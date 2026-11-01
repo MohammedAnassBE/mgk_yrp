@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from "vue"
 import InputNumber from "primevue/inputnumber"
+import { displayName } from "../../shell/displayLanguage.js"
 
 const props = defineProps({ rows: { type: Array, required: true }, editable: Boolean, busy: Boolean })
 defineEmits(["quantity"])
@@ -17,7 +18,7 @@ const attributes = computed(() => [...new Set(props.rows.flatMap((row) => Object
 				<th v-if="editable">Quantity to transfer</th>
 			</tr></thead>
 			<tbody><tr v-for="row in rows" :key="row.source_row">
-				<td>{{ row.item }}</td>
+				<td>{{ displayName("Item", row.item) }}</td>
 				<td v-for="attribute in attributes" :key="attribute">{{ row.attributes[attribute] || '—' }}</td>
 				<td>{{ row.uom }}</td><td>{{ row.original_qty }}</td><td>{{ row.transferred_qty }}</td><td>{{ row.pending_qty }}</td>
 				<td v-if="editable">

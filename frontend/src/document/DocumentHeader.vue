@@ -1,4 +1,5 @@
 <script setup>
+import { displayName } from "../shell/displayLanguage.js"
 defineProps({ book: Object, doc: Object, isNew: Boolean, dirty: Boolean, back: [String, Object] })
 </script>
 <template>
@@ -16,7 +17,7 @@ defineProps({ book: Object, doc: Object, isNew: Boolean, dirty: Boolean, back: [
 					{{ isNew ? 'New entry' : ['Draft', 'Submitted', 'Cancelled'][doc.docstatus] }}
 					<span v-if="dirty"> · Unsaved</span>
 				</div>
-				<h1 class="doc-hero">{{ isNew ? `Write a new ${book.label.toLowerCase()}` : Number(doc.docstatus) === 0 ? `Update ${doc.name}` : [doc.name, doc.supplier || doc.to_location].filter(Boolean).join(' · ') }}</h1>
+				<h1 class="doc-hero">{{ isNew ? `Write a new ${book.label.toLowerCase()}` : Number(doc.docstatus) === 0 ? `Update ${doc.name}` : [doc.name, displayName('Supplier', doc.supplier || doc.to_location)].filter(Boolean).join(' · ') }}</h1>
 			</div>
 		</div>
 		<slot />

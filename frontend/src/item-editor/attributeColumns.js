@@ -1,3 +1,4 @@
+import { displayName } from "../shell/displayLanguage.js"
 import { callRead } from "../api/client.js"
 
 export function nonPrimaryAttributes(group) {
@@ -39,7 +40,7 @@ export function setCellValue(entry, size, field, value) {
 
 export function splitLines(groups) {
 	return groups.flatMap((group, groupIndex) => group.items.map((entry, entryIndex) => ({
-		label: `${groupIndex + 1}.${entryIndex + 1} ${entry.name} ${Object.values(entry.attributes || {}).join(" / ")}`.trim(),
+		label: `${groupIndex + 1}.${entryIndex + 1} ${displayName("Item", entry.name)} ${Object.values(entry.attributes || {}).join(" / ")}`.trim(),
 		groupIndex, entryIndex,
 	})))
 }

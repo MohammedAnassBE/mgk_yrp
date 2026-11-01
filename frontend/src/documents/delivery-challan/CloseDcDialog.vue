@@ -8,13 +8,14 @@ import { closeDeliveryChallan, jobWorkMethods } from "../shared/jobWork.js"
 import { intro, summary } from "../delivery-challan-close/presentation.js"
 import { itemColumns as outputColumns } from "../delivery-challan-close/preview.js"
 import { money } from "../previewValues.js"
+import { displayName } from "../../shell/displayLanguage.js"
 import { formatDate } from "../../shared/formatDate.js"
 import { isSaveShortcut } from "../../document/lifecycle.js"
 import { notify } from "../../shared/notify.js"
 
 const props = defineProps({ doc: { type: Object, required: true }, names: Array, rows: Array, action: Object })
 const emit = defineEmits(["done", "close"])
-const inputColumns = [{ key: "item", label: "Input Item" }, { key: "stock_uom", label: "UOM" },
+const inputColumns = [{ key: "item", label: "Input Item", doctype: "Item" }, { key: "stock_uom", label: "UOM" },
 	{ key: "remaining_stock_qty", label: "Qty to consume", numeric: true }, { key: "own_value", label: "Value", money: true }]
 const close_preview = ref(null)
 const is_loading = ref(false)
@@ -47,7 +48,8 @@ function keydown(event) { if (isSaveShortcut(event)) { event.preventDefault(); s
 function cell(row, column) {
 	const value = row[column.key]
 	if (column.money) return money(value)
-	return value == null || value === "" ? "—" : value
+	if (value == null || value === "") return "—"
+	return column.doctype ? displayName(column.doctype, value) : value
 }
 function close() { if (!is_saving.value) emit("close") }
 onMounted(() => globalThis.window?.addEventListener?.("keydown", keydown))
@@ -64,8 +66,8 @@ onScopeDispose(() => { is_disposed = true; globalThis.window?.removeEventListene
 				<Message :severity="notice.severity" :closable="false" class="form-banner">{{ notice.text }}</Message>
 				<dl class="close-facts">
 					<div><dt>Posting Date</dt><dd>{{ formatDate(close_preview.posting_date) }}</dd></div>
-					<div><dt>Supplier</dt><dd>{{ close_preview.supplier || '—' }}</dd></div>
-					<div><dt>Warehouse</dt><dd>{{ close_preview.warehouse || '—' }}</dd></div>
+					<div><dt>Supplier</dt><dd>{{ displayName('Supplier', close_preview.supplier) || '—' }}</dd></div>
+					<div><dt>Warehouse</dt><dd>{{ displayName('Warehouse', close_preview.warehouse) || '—' }}</dd></div>
 					<div v-for="line in lines" :key="line.label"><dt>{{ line.label }}</dt>
 						<dd>{{ line.money ? money(line.value) : (line.value ?? '—') }}</dd></div>
 				</dl>

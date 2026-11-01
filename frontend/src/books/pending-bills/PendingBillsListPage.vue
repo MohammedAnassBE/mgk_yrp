@@ -1,4 +1,5 @@
 <script setup>
+import { displayName } from "../../shell/displayLanguage.js"
 import { computed, onBeforeUnmount, onMounted, ref } from "vue"
 import Button from "primevue/button"
 import ListPageHeader from "../../shell/ListPageHeader.vue"
@@ -95,7 +96,7 @@ onBeforeUnmount(() => { sequence++; refresh.cancel(); disposers.forEach((dispose
 				<input type="checkbox" :checked="allChecked(selected, supplierNames(group))" :aria-label="`Select all GRNs of ${group.supplier_name}`"
 					@change="toggle(supplierNames(group), $event.target.checked)">
 				<button class="pending-toggle" type="button" :aria-expanded="!collapsed.has(group.supplier)" @click="toggleGroup(group.supplier)">
-					<i class="pi" :class="collapsed.has(group.supplier) ? 'pi-chevron-right' : 'pi-chevron-down'" aria-hidden="true" /><h2>{{ group.supplier_name }}</h2>
+					<i class="pi" :class="collapsed.has(group.supplier) ? 'pi-chevron-right' : 'pi-chevron-down'" aria-hidden="true" /><h2>{{ displayName('Supplier', group.supplier, group.supplier_name) }}</h2>
 				</button>
 				<span class="pending-meta">{{ group.grn_count }} GRNs · {{ money(group.total_amount) }} · {{ group.total_aging }} days</span>
 			</header>

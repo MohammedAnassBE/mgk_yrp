@@ -1,4 +1,5 @@
 <script setup>
+import { displayName } from "../../shell/displayLanguage.js"
 import { computed, ref, watch } from "vue"
 import Button from "primevue/button"
 import Dialog from "primevue/dialog"
@@ -75,7 +76,7 @@ async function submit() {
 		<p v-if="error" class="editor-error" role="alert">{{ error }}</p>
 		<p v-for="note in notes" :key="note" class="make-bill-note">{{ note }}</p>
 		<section v-for="block in blocks" :key="block.supplier" class="make-bill-block" :class="{ 'has-error': block.error }">
-			<header><h3>{{ block.supplier_name }}</h3><span>{{ block.grns.length }} GRNs</span></header>
+			<header><h3>{{ displayName('Supplier', block.supplier, block.supplier_name) }}</h3><span>{{ block.grns.length }} GRNs</span></header>
 			<ul class="make-bill-grns" aria-label="GRNs in this bill">
 				<li v-for="grn in block.grns" :key="grn">{{ grn }}<button type="button" :disabled="saving" :aria-label="`Remove ${grn}`" title="Remove from this bill" @click="remove(grn)"><i class="pi pi-times" aria-hidden="true" /></button></li>
 			</ul>
@@ -89,7 +90,7 @@ async function submit() {
 				<div class="table-scroll"><table class="make-bill-items">
 					<thead><tr><th>Item</th><th>UOM</th><th class="numeric">Qty</th><th class="numeric">GRN Rate</th><th class="numeric">Rate</th><th class="numeric">Amount</th><th class="numeric">GST %</th><th v-for="[field, label] in taxColumns(draft)" :key="field" class="numeric">{{ label }}</th></tr></thead>
 					<tbody><tr v-for="group in draftGroups(draft)" :key="group.key">
-						<td>{{ group.item_name || group.item }}</td><td>{{ group.uom }}</td>
+						<td>{{ displayName('Item', group.item, group.item_name || group.item) }}</td><td>{{ group.uom }}</td>
 						<td class="numeric">{{ group.qty }}</td><td class="numeric">{{ money(group.grn_rate) }}</td>
 						<td class="numeric rate-cell"><InputNumber :model-value="Number(group.rate) || 0" :min="0" :min-fraction-digits="2" :max-fraction-digits="2" :disabled="saving"
 							:aria-label="`${group.item_name || group.item} rate`" fluid @update:model-value="changeRate(block, draftIndex, group, $event)" /></td>

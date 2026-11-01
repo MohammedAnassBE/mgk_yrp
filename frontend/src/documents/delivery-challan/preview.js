@@ -14,7 +14,7 @@ export function facts(doc) {
 }
 
 export const itemColumns = [
-	{ key: "item", label: "Item" }, { key: "received_type", label: "Received type" },
+	{ key: "item", label: "Item", doctype: "Item" }, { key: "received_type", label: "Received type" },
 	{ key: "qty", label: "Sent", numeric: true }, { key: "rate", label: "Rate", money: true },
 	{ key: "amount", label: "Value", money: true },
 	{ key: "transferred_qty", label: "Transferred", numeric: true, internalOnly: true },
@@ -31,7 +31,7 @@ export function itemRows(preview) {
 }
 
 export const planColumns = [
-	{ key: "item", label: "Planned Item" }, { key: "received_type", label: "Received type" },
+	{ key: "item", label: "Planned Item", doctype: "Item" }, { key: "received_type", label: "Received type" },
 	{ key: "qty", label: "Qty", numeric: true }, { key: "uom", label: "UOM" },
 ]
 

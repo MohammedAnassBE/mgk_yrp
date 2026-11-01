@@ -1,4 +1,5 @@
 <script setup>
+import { displayName } from "../shell/displayLanguage.js"
 import { onBeforeUnmount, onMounted, ref, watch } from "vue"
 import { useRouter } from "vue-router"
 import { callRead } from "../api/client.js"
@@ -54,7 +55,7 @@ onBeforeUnmount(() => { sequence++; refresh.cancel(); disposers.forEach((dispose
 			<section v-else>
 				<div class="manage-foot"><h3>Supplier warehouses</h3><button v-if="hasPermission('Warehouse', 'create')" class="button secondary small" :disabled="blocked" @click="create">Create Warehouse</button></div>
 				<p v-if="!rows.length" class="field-help">No warehouses linked to this supplier yet.</p>
-				<div v-for="row in rows" :key="row.name" class="master-party-row"><a :href="`/web${warehouses.route}/${encodeURIComponent(row.name)}`" @click.prevent="open(row.name)">{{ row.warehouse_name || row.name }} ›</a><p>{{ [row.is_group ? 'Group' : '', row.disabled ? 'Disabled' : ''].filter(Boolean).join(' · ') }}</p></div>
+				<div v-for="row in rows" :key="row.name" class="master-party-row"><a :href="`/web${warehouses.route}/${encodeURIComponent(row.name)}`" @click.prevent="open(row.name)">{{ displayName('Warehouse', row.name, row.warehouse_name || row.name) }} ›</a><p>{{ [row.is_group ? 'Group' : '', row.disabled ? 'Disabled' : ''].filter(Boolean).join(' · ') }}</p></div>
 			</section>
 		</div>
 		<SupplierWarehouseDialog v-if="creating" visible :supplier="doc" @close="creating = false" @created="load" />

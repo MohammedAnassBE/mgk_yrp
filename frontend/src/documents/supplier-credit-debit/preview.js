@@ -1,8 +1,9 @@
 import { formatDate } from "../../shared/formatDate.js"
+import { displayName } from "../../shell/displayLanguage.js"
 import { fact, money } from "../previewValues.js"
 
 export function facts(doc) {
-	return [fact("Supplier", doc.supplier), fact("Date", formatDate(doc.posting_date)), fact("Type", doc.entry_type),
+	return [fact("Supplier", displayName("Supplier", doc.supplier)), fact("Date", formatDate(doc.posting_date)), fact("Type", doc.entry_type),
 		fact("Amount", money(doc.amount)), fact("Reason", doc.reason)]
 }
 

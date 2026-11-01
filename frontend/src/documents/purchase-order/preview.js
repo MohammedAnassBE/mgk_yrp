@@ -1,9 +1,10 @@
 import { formatDate } from "../../shared/formatDate.js"
+import { displayName } from "../../shell/displayLanguage.js"
 import { displayRows, fact, money, rows, total } from "../previewValues.js"
 
 export function facts(doc, preview) {
 	return [fact("PO Date", formatDate(doc.po_date)),
-		fact("Deliver To", [doc.delivery_location, doc.warehouse].filter(Boolean).join(" / ")),
+		fact("Deliver To", [displayName("Supplier", doc.delivery_location), displayName("Warehouse", doc.warehouse)].filter(Boolean).join(" / ")),
 		...(Number(doc.deliver_to_supplier) ? [fact("Deliver to Supplier", "Yes")] : []),
 		fact("Process", doc.process_name, null, null, { optional: true }),
 		fact("Routing", doc.goods_routing), fact("Order Type", orderType(doc)),
@@ -24,7 +25,7 @@ export const itemColumns = [
 
 export function itemRows(preview) {
 	return displayRows(rows(preview).map((row) => ({ ...row,
-		item: [row.item, row.received_type].filter(Boolean).join(" · "),
+		item: [displayName("Item", row.item), row.received_type].filter(Boolean).join(" · "),
 	})), itemColumns)
 }
 

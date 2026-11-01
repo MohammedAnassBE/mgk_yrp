@@ -11,6 +11,7 @@ import { recalculate, usesAttributeColumns } from "./editorModes.js"
 import { splitLines } from "./attributeColumns.js"
 import { clone } from "../document/mappedDraft.js"
 import { formatFieldValue } from "../document/fieldDisplay.js"
+import { displayName } from "../shell/displayLanguage.js"
 import { useLastRates } from "./useLastRates.js"
 
 const props = defineProps({ mode: String, editable: Boolean, permissions: Object, defaults: Object, dimensions: Array, poEntries: Array, hasTransferredQuantity: Boolean,
@@ -111,9 +112,9 @@ defineExpose({ loadData, getItems })
 					<tr v-for="(entry, entryIndex) in group.items" :key="`${entry.row_index || entryIndex}`">
 						<td>{{ entryIndex + 1 }}</td>
 						<td class="item-column">
-							<strong>{{ entry.name }}</strong>
+							<strong>{{ displayName("Item", entry.name) }}</strong>
 						</td>
-						<td v-for="dimension in visibleDimensions(group)" :key="dimension.fieldname">{{ entry.dimensions?.[dimension.fieldname] || '—' }}</td>
+						<td v-for="dimension in visibleDimensions(group)" :key="dimension.fieldname">{{ displayName(dimension.options, entry.dimensions?.[dimension.fieldname]) || '—' }}</td>
 						<td v-for="attribute in group.attributes" :key="attribute">{{ entry.attributes?.[attribute] || '—' }}</td>
 						<td v-for="key in keys(group)" :key="key" class="pivot-cell">
 							<template v-if="entry.values[key]">

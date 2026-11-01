@@ -6,6 +6,7 @@ import PreviewPane from "./PreviewPane.vue"
 import SelectionSummary from "./SelectionSummary.vue"
 import { ignoresNavigation, navigateSelection, reconcileSelection, recordParty, useSplitSelection } from "./useSplitSelection.js"
 import { statusPill } from "./statusPill.js"
+import { fieldDisplayName } from "../shell/displayLanguage.js"
 import "./split.css"
 
 const props = defineProps({
@@ -153,7 +154,7 @@ onBeforeUnmount(() => { disposed = true; media?.removeEventListener("change", re
 					<input type="checkbox" :aria-label="`Select ${row.name}`" :checked="names.includes(row.name)" @click.stop @change="selection.toggle(row.name)">
 					<div class="split-row-copy">
 						<div class="split-row-head"><strong class="record-id">{{ row.name }}</strong><span class="status" :class="[statusPill(doctype, row).className, { 'list-filter-value': filterFor(row, '__status') }]" @click="filterClick($event, row, '__status')">{{ statusPill(doctype, row).label }}</span></div>
-						<div class="split-party"><template v-if="partyFields(row).length"><template v-for="(fieldname, index) in partyFields(row)" :key="fieldname"><template v-if="index"> → </template><span :class="{ 'list-filter-value': filterFor(row, fieldname) }" @click="filterClick($event, row, fieldname)">{{ row[fieldname] || "—" }}</span></template></template><template v-else>{{ recordParty(doctype, row) }}</template></div>
+						<div class="split-party"><template v-if="partyFields(row).length"><template v-for="(fieldname, index) in partyFields(row)" :key="fieldname"><template v-if="index"> → </template><span :class="{ 'list-filter-value': filterFor(row, fieldname) }" @click="filterClick($event, row, fieldname)">{{ fieldDisplayName(fieldname, row[fieldname]) || "—" }}</span></template></template><template v-else>{{ recordParty(doctype, row) }}</template></div>
 						<div class="split-row-facts"><span v-if="dateField(row)" :class="{ 'list-filter-value': filterFor(row, dateField(row)) }" @click="filterClick($event, row, dateField(row))">{{ formatDate(row[dateField(row)]) }}</span><template v-if="dateField(row) && rowMetrics(row)"> · </template>{{ rowMetrics(row) }}</div>
 						<div class="split-row-facts"><span v-for="column in secondaryColumns" :key="column.fieldname" :title="column.label" :class="{ 'list-filter-value': filterFor(row, column.fieldname) }" @click="filterClick($event, row, column.fieldname)">{{ displayValue(row, column) }}</span></div>
 					</div>

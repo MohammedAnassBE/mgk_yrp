@@ -1,4 +1,5 @@
 import { computed, ref, watch } from "vue"
+import { displayName } from "../shell/displayLanguage.js"
 
 export function reconcileSelection(rows, selected, previous = []) {
 	if (rows.some((row) => row.name === selected)) return selected
@@ -17,7 +18,8 @@ export function ignoresNavigation(event, hasDialog = false) {
 }
 
 export function recordParty(doctype, row) {
-	return doctype === "MGK Delivery Challan" ? `${row.from_location || "—"} → ${row.to_location || "—"}` : row.supplier || "—"
+	const supplier = (name) => displayName("Supplier", name) || "—"
+	return doctype === "MGK Delivery Challan" ? `${supplier(row.from_location)} → ${supplier(row.to_location)}` : supplier(row.supplier)
 }
 
 export function selectionTotals(rows) {
