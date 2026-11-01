@@ -1,11 +1,12 @@
 import { formatDate } from "../../shared/formatDate.js"
+import { displayName } from "../../shell/displayLanguage.js"
 import { statusPill } from "../../list/statusPill.js"
 import { purchaseOrderFilters } from "./fieldEvents.js"
 export { transferIntro as intro } from "../shared/transit.js"
 
 export function summary(doc, itemCount = doc.items?.length || 0) {
 	return { title: "Receipt summary", lines: [{ label: "Source", value: doc.against_purchase_order ? doc.purchase_order || "Purchase Order" : "Job Work" },
-		{ label: "Supplier", value: doc.supplier }, { label: "Warehouse", value: doc.warehouse },
+		{ label: "Supplier", value: displayName("Supplier", doc.supplier) }, { label: "Warehouse", value: displayName("Warehouse", doc.warehouse) },
 		{ label: "Items", value: itemCount }, { label: "Received quantity", value: doc.total_qty || 0 },
 		{ label: "Amount", value: doc.total_amount || 0, money: true }],
 		checklist: [
@@ -18,9 +19,9 @@ export function summary(doc, itemCount = doc.items?.length || 0) {
 export function viewFacts(doc) {
 	const source = doc.against_purchase_order ? { label: "Source PO", value: doc.purchase_order,
 		doctype: "MGK Purchase Order", to: `/purchase-order/${encodeURIComponent(doc.purchase_order)}` } : { label: "Source", value: "Job Work" }
-	return [source, { label: "Supplier", value: doc.supplier }, { label: "Posting date", value: formatDate(doc.posting_date) },
-		{ label: "Posting time", value: doc.posting_time }, { label: "Delivery location", value: doc.delivery_location },
-		{ label: "Warehouse", value: doc.warehouse },
+	return [source, { label: "Supplier", value: displayName("Supplier", doc.supplier) }, { label: "Posting date", value: formatDate(doc.posting_date) },
+		{ label: "Posting time", value: doc.posting_time }, { label: "Delivery location", value: displayName("Supplier", doc.delivery_location) },
+		{ label: "Warehouse", value: displayName("Warehouse", doc.warehouse) },
 		...(doc.delivery_challans || []).map((row) => ({ label: "Delivery Challan", value: row.delivery_challan,
 			doctype: "MGK Delivery Challan", to: `/delivery-challan/${encodeURIComponent(row.delivery_challan)}` })),
 		{ label: "Billing state", value: statusPill(doc.doctype, doc).label },

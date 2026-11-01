@@ -1,5 +1,6 @@
 import { formatDate, formatDatetime } from "../shared/formatDate.js"
 import { detailCompanionFields } from "./documentLayout.js"
+import { displayName } from "../shell/displayLanguage.js"
 
 export function plainText(value) {
 	return String(value || "").replace(/<br\s*\/?\s*>/gi, "\n").replace(/<[^>]*>/g, "").trim()
@@ -11,6 +12,7 @@ export function companionText(field, doc) {
 
 export function formatFieldValue(field, value) {
 	if (value == null || value === "") return "—"
+	if (field.fieldtype === "Link") return displayName(field.options, value)
 	if (field.fieldtype === "Check") return Number(value) ? "Yes" : "No"
 	if (field.fieldtype === "Date") return formatDate(value)
 	if (field.fieldtype === "Datetime") return formatDatetime(value)

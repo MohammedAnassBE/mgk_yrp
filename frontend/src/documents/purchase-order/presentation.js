@@ -1,6 +1,7 @@
 import { formatDate } from "../../shared/formatDate.js"
+import { displayName } from "../../shell/displayLanguage.js"
 export function summary(doc, itemCount = doc.items?.length || 0) {
-	const lines = [{ label: "Supplier", value: doc.supplier }, { label: "Delivery to", value: doc.delivery_location },
+	const lines = [{ label: "Supplier", value: displayName("Supplier", doc.supplier) }, { label: "Delivery to", value: displayName("Supplier", doc.delivery_location) },
 		{ label: "Routing", value: doc.goods_routing }, { label: "Items", value: itemCount },
 		{ label: "Ordered quantity", value: doc.total_qty || 0 }]
 	if (doc.name && !doc.__islocal) {
@@ -16,9 +17,10 @@ export function summary(doc, itemCount = doc.items?.length || 0) {
 }
 
 export function viewFacts(doc) {
-	return [["Supplier", doc.supplier], ["PO date", formatDate(doc.po_date)], ["Delivery location", doc.delivery_location],
-		["Warehouse", doc.warehouse], ["Goods routing", doc.goods_routing], ["MGK Agent", doc.mgk_agent],
-		["Handling supplier", doc.handling_supplier], ["Item group", doc.item_group || "Other"]].map(([label, value]) => ({ label, value }))
+	return [["Supplier", displayName("Supplier", doc.supplier)], ["PO date", formatDate(doc.po_date)],
+		["Delivery location", displayName("Supplier", doc.delivery_location)], ["Warehouse", displayName("Warehouse", doc.warehouse)],
+		["Goods routing", doc.goods_routing], ["MGK Agent", displayName("MGK Agent", doc.mgk_agent)],
+		["Handling supplier", displayName("Supplier", doc.handling_supplier)], ["Item group", doc.item_group || "Other"]].map(([label, value]) => ({ label, value }))
 }
 
 export function connections(doc) {

@@ -9,7 +9,7 @@ export function facts(doc) {
 }
 
 export const itemColumns = [
-	{ key: "item", label: "Item" }, { key: "goods_received_note", label: "GRN", link: "/goods-received-note" },
+	{ key: "item", label: "Item", doctype: "Item" }, { key: "goods_received_note", label: "GRN", link: "/goods-received-note" },
 	{ key: "qty", label: "Qty", numeric: true }, { key: "rate", label: "Rate", money: true },
 	{ key: "amount", label: "Amount", money: true },
 ]

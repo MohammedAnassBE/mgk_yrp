@@ -1,9 +1,10 @@
 import { formatDate } from "../../shared/formatDate.js"
+import { displayName } from "../../shell/displayLanguage.js"
 export { transferIntro as intro } from "../shared/transit.js"
 
 export function summary(doc, itemCount = doc.items?.length || 0) {
 	return { title: "Dispatch summary", lines: [
-		{ label: "To", value: doc.to_location }, { label: "From", value: doc.from_location },
+		{ label: "To", value: displayName("Supplier", doc.to_location) }, { label: "From", value: displayName("Supplier", doc.from_location) },
 		{ label: "Process", value: doc.process_name }, { label: "Items", value: itemCount },
 		{ label: "Dispatched quantity", value: doc.total_qty || 0 },
 		{ label: "Declared value", value: doc.total_declared_value || 0, money: true },
@@ -15,8 +16,8 @@ export function summary(doc, itemCount = doc.items?.length || 0) {
 }
 
 export function viewFacts(doc) {
-	return [["From Location", doc.from_location], ["From Warehouse", doc.from_warehouse],
-		["To Location", doc.to_location], ["To Warehouse", doc.to_warehouse], ["Process", doc.process_name],
+	return [["From Location", displayName("Supplier", doc.from_location)], ["From Warehouse", displayName("Warehouse", doc.from_warehouse)],
+		["To Location", displayName("Supplier", doc.to_location)], ["To Warehouse", displayName("Warehouse", doc.to_warehouse)], ["Process", doc.process_name],
 		["Posting Date", formatDate(doc.posting_date)], ["DC Number", doc.dc_number], ["Vehicle Number", doc.vehicle_number],
 		...(doc.is_return ? [["Return Against", doc.return_against]] : [])].map(([label, value]) => ({ label, value }))
 }

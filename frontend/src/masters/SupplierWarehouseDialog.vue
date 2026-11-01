@@ -1,4 +1,5 @@
 <script setup>
+import { displayName } from "../shell/displayLanguage.js"
 import { computed, ref, watch } from "vue"
 import Button from "primevue/button"
 import InputText from "primevue/inputtext"
@@ -47,7 +48,7 @@ watch(() => props.visible, (open) => { if (open) prepare() }, { immediate: true 
 	<ActionDialog :visible="visible" header="Create Warehouse" @close="close">
 		<form id="supplier-warehouse-form" class="form-stack" @submit.prevent="save">
 			<Message v-if="error" severity="error" :closable="false" class="form-banner">{{ error }}</Message>
-			<p class="field-help">The warehouse is linked to {{ supplier.supplier_name || supplier.name }}. Create as many as you need.</p>
+			<p class="field-help">The warehouse is linked to {{ displayName('Supplier', supplier.name, supplier.supplier_name || supplier.name) }}. Create as many as you need.</p>
 			<div class="form-field">
 				<label for="supplier-warehouse-name" class="field-label">Warehouse name <span class="required">*</span></label>
 				<InputText id="supplier-warehouse-name" v-model="draft.warehouse_name" :disabled="isSaving" fluid />

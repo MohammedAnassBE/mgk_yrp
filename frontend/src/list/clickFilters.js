@@ -1,3 +1,4 @@
+import { displayName } from "../shell/displayLanguage.js"
 import { formatDate } from "../shared/formatDate.js"
 
 const CLICK_FILTER_FIELDTYPES = new Set(["Link", "Select", "Data", "Check", "Date"])
@@ -42,6 +43,7 @@ export function filterLabel([fieldname, operator, value], fields) {
 		if (fieldname === "docstatus") return DOCSTATUS_LABELS[Number(part)] ?? String(part)
 		if (field.fieldtype === "Check") return Number(part) ? "Yes" : "No"
 		if (["Date", "Datetime"].includes(field.fieldtype)) return formatDate(part, { withTime: field.fieldtype === "Datetime" })
+		if (field.fieldtype === "Link") return displayName(field.options, String(part))
 		return String(part)
 	}
 	if (operator === "between" && Array.isArray(value)) return `${field.label} between ${show(value[0])} and ${show(value[1])}`

@@ -5,6 +5,7 @@ import InputNumber from "primevue/inputnumber"
 import Select from "primevue/select"
 import LinkField from "../document/fields/LinkField.vue"
 import { formatFieldValue } from "../document/fieldDisplay.js"
+import { displayName } from "../shell/displayLanguage.js"
 import { columnOptions, loadDimensionOptions, nonPrimaryAttributes, refreshEntryUom, setCellValue, sizes } from "./attributeColumns.js"
 import { attributeLinkProps } from "./attributeValues.js"
 
@@ -107,12 +108,12 @@ function removeSelected() {
 					<td v-if="editable"><input type="checkbox" :aria-label="`Select row ${entryIndex + 1}`"
 						:checked="selected.includes(rowKey(groupIndex, entryIndex))"
 						@change="selectRow(groupIndex, entryIndex, $event.target.checked)"></td>
-					<td><strong>{{ entry.name }}</strong></td>
+					<td><strong>{{ displayName("Item", entry.name) }}</strong></td>
 					<td v-for="dimension in dimensions" :key="dimension.fieldname">
 						<Select v-if="editable" :aria-label="dimension.label" :model-value="entry.dimensions?.[dimension.fieldname] || ''"
 							:options="columnOptions(entry.dimensions?.[dimension.fieldname], dimensionOptions[dimension.fieldname])"
 							@update:model-value="setDimension(entry, dimension.fieldname, $event)" />
-						<span v-else>{{ entry.dimensions?.[dimension.fieldname] || '—' }}</span>
+						<span v-else>{{ displayName(dimension.options, entry.dimensions?.[dimension.fieldname]) || '—' }}</span>
 					</td>
 					<td v-for="attribute in nonPrimaryAttributes(group)" :key="attribute">
 						<LinkField v-if="editable" :label="attribute" :model-value="entry.attributes?.[attribute] || ''"

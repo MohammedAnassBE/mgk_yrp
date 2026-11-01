@@ -1,3 +1,5 @@
+import { displayName } from "../shell/displayLanguage.js"
+
 export function fact(label, value, route, name = value, { optional = false } = {}) {
 	return { label, value: value == null || value === "" ? "—" : value,
 		optional, ...(route && name ? { to: `${route}/${encodeURIComponent(name)}`, name } : {}) }
@@ -34,7 +36,7 @@ export function displayRows(items, columns) {
 }
 
 function cellValue(value, column) {
-	if (value != null && value !== "" && value !== "—") return value
+	if (value != null && value !== "" && value !== "—") return column.doctype ? displayName(column.doctype, value) : value
 	return column.numeric || column.money ? null : "—"
 }
 

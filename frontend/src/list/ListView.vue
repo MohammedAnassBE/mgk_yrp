@@ -16,6 +16,7 @@ import { statusPill } from "./statusPill.js"
 import { useListView } from "./useListView.js"
 import "./list.css"
 import { formatFieldValue } from "../document/fieldDisplay.js"
+import { displayName, TITLE_FIELDS } from "../shell/displayLanguage.js"
 
 const props = defineProps({
 	doctype: { type: String, required: true }, baseFilters: { type: Array, default: () => [] },
@@ -53,7 +54,8 @@ function displayValue(row, column) {
 	const value = row[column.fieldname]
 	if (value === null || value === undefined || value === "") return "—"
 	if (column.fieldtype === "Check") return Number(value) ? "Yes" : "No"
-	if (["Currency", "Date", "Datetime"].includes(column.fieldtype)) return formatFieldValue(column, value)
+	if (column.fieldname === TITLE_FIELDS[props.doctype]) return displayName(props.doctype, row.name, String(value))
+	if (["Currency", "Date", "Datetime", "Link"].includes(column.fieldtype)) return formatFieldValue(column, value)
 	if (["Float", "Int", "Percent"].includes(column.fieldtype)) return Number(value).toLocaleString("en-IN", { maximumFractionDigits: column.fieldtype === "Int" ? 0 : 2 })
 	return String(value)
 }
