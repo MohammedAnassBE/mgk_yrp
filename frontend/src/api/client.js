@@ -153,3 +153,29 @@ export async function callDocMethod(doc, method, args = {}) {
 		return { message: result.message, doc: result.docs?.[0], messages: serverMessages(result) }
 	} finally { clearReadCaches() }
 }
+
+export function getPrintOptions(doctype, name) {
+	return callRead("mgk_yrp.web.print.get_print_options", { doctype, name })
+}
+
+/** Downloads Frappe's server-rendered PDF, named after the document. */
+export async function downloadPrintPdf(args) {
+	const response = await fetch("/api/method/frappe.utils.print_format.download_pdf", {
+		method: "POST",
+		credentials: "include",
+		headers: { "Content-Type": "application/json", "X-Frappe-CSRF-Token": globalThis.window?.csrf_token || "" },
+		body: JSON.stringify(args),
+	})
+	if (!response.ok) {
+		const payload = await response.json().catch(() => ({}))
+		throw new Error(extractServerMessage(payload, "The PDF could not be generated. Please try again."))
+	}
+	const disposition = response.headers.get("Content-Disposition") || ""
+	const filename = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition)?.[1]
+	const url = URL.createObjectURL(await response.blob())
+	const link = document.createElement("a")
+	link.href = url
+	link.download = filename ? decodeURIComponent(filename) : `${String(args.name).replace(/[ /]/g, "-")}.pdf`
+	link.click()
+	globalThis.window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+}

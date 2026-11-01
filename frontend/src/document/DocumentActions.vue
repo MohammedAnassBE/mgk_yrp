@@ -5,14 +5,18 @@ import Dialog from "primevue/dialog"
 import { hasPermission } from "../permissions/usePermissions.js"
 import { canAmendDocument, hasOpenDialog, isSaveShortcut } from "./lifecycle.js"
 import { reopenConfirmation } from "../documents/delivery-challan-close/actions.js"
+import PrintDialog from "./print/PrintDialog.vue"
+import { canPrint } from "./print/print.js"
 const props = defineProps({ doc: Object, meta: Object, dirty: Boolean, isNew: Boolean, busy: Boolean, blocked: Boolean, editing: Boolean, extraActions: { type: Array, default: () => [] } })
 const emit = defineEmits(["action", "discard"])
 const pending = ref(null)
+const is_printing = ref(false)
 const allowed = (permission) => hasPermission(props.doc.doctype, permission)
 const isDraft = computed(() => Number(props.doc.docstatus) === 0)
 const canSave = computed(() => isDraft.value && (props.isNew || props.dirty) && allowed(props.isNew ? "create" : "write"))
 const canAmend = computed(() => !props.busy && canAmendDocument(props.doc, allowed))
 const canSubmit = computed(() => isDraft.value && !props.isNew && !props.dirty && Number(props.meta?.is_submittable) && allowed("submit"))
+const isPrintable = computed(() => canPrint(props.doc, props.isNew, hasPermission))
 const isClose = computed(() => props.doc.doctype === "MGK Delivery Challan Close")
 function confirm() { const action = pending.value; pending.value = null; emit("action", action) }
 function keydown(event) {
@@ -27,6 +31,17 @@ onBeforeUnmount(() => globalThis.window?.removeEventListener?.("keydown", keydow
 </script>
 <template>
 	<div class="head-actions">
+		<Button
+			v-if="isPrintable"
+			label="Print"
+			icon="pi pi-print"
+			severity="secondary"
+			outlined
+			size="small"
+			:disabled="busy"
+			@click="is_printing = true"
+		/>
+		<PrintDialog v-if="is_printing" :doc="doc" @close="is_printing = false" />
 		<Button
 			v-for="action in extraActions"
 			:key="action.key"
