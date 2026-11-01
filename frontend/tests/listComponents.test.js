@@ -86,9 +86,9 @@ test("all quick filter types put their labels inside controls and retain accessi
 	} finally { page.close() }
 })
 
-async function mountListPage(book, path, stockOptions = { suppliers: [], warehouses: [], items: [], received_types: [] }) {
+async function mountListPage(book, path, stockOptions = { suppliers: [], warehouses: [], items: [], received_types: [] }, { user = {}, rows = [], fields = [] } = {}) {
 	const original = { window: globalThis.window, fetch: globalThis.fetch, realtime: { ...realtime } }
-	globalThis.window = { frappe: { boot: { user: { name: "Administrator", can_read: [book.doctype, "Warehouse"], can_create: [book.doctype] } } },
+	globalThis.window = { frappe: { boot: { user: { name: "Administrator", can_read: [book.doctype, "Warehouse"], can_create: [book.doctype], ...user } } },
 		sessionStorage: { getItem: () => null, setItem() {} }, scrollY: 0, scrollTo() {} }
 	Object.assign(realtime, { socket: null, pending: null, connectedBefore: false, rooms: new Map(),
 		reconnectHandlers: new Set(), stateHandlers: new Set(), factory: () => new FakeSocket() })
@@ -96,9 +96,9 @@ async function mountListPage(book, path, stockOptions = { suppliers: [], warehou
 	globalThis.fetch = async (url) => {
 		requests.push(url)
 		return { ok: true, status: 200, json: async () => url.includes("getdoctype")
-		? { docs: [{ name: book.doctype, fields: [] }] } : url.includes("get_user_listview") ? { message: null }
+		? { docs: [{ name: book.doctype, fields }] } : url.includes("get_user_listview") ? { message: null }
 			: url.includes("get_counts") ? { message: [0, 0, 0, 0] } : url.includes("get_stock_note")
-				? { message: { rows: [], summary: {}, options: stockOptions } } : { data: [] } }
+				? { message: { rows: [], summary: {}, options: stockOptions } } : { data: rows } }
 	}
 	const router = createRouter({ history: createMemoryHistory(), routes: [{ path: "/manage/:master", component: { render: () => null } }, { path: "/:pathMatch(.*)*", component: { render: () => null } }] })
 	await router.push(book.routePath)
@@ -134,6 +134,31 @@ test("every book and master list uses the breadcrumb title with New and no large
 			assert.equal(nodes(page.root, (node) => node.tag === "h1").length, 0)
 			assert.ok(!textContent(page.root).includes(book.description))
 			assert.doesNotMatch(textContent(page.root), /MGK digital books|Unable to load this list/)
+		} finally { page.close() }
+	}
+})
+
+test("master table lists offer bulk Delete only with delete permission and click-to-filter shows a removable chip", async () => {
+	const supplier = masters.find((master) => master.doctype === "Supplier")
+	const fields = [{ fieldname: "tax_id", label: "GSTIN", fieldtype: "Data" }]
+	const rows = [{ name: "S-1", tax_id: "33ABC", disabled: 0, docstatus: 0 }]
+	for (const canDelete of [false, true]) {
+		const page = await mountListPage(supplier, "masters/MasterListPage.vue", undefined, { user: canDelete ? { can_delete: ["Supplier"] } : {}, rows, fields })
+		try {
+			const checkboxes = () => nodes(page.root, (node) => node.tag === "input" && node.props.type === "checkbox")
+			assert.equal(checkboxes().length, canDelete ? 2 : 0)
+			if (canDelete) {
+				checkboxes()[1].props.onChange(); await settle()
+				assert.ok(nodes(page.root, (node) => node.tag === "button" && textContent(node) === "Delete (1)")[0])
+			}
+			const value = nodes(page.root, (node) => node.tag === "span" && textContent(node) === "33ABC")[0]
+			assert.match(value.props.class.join?.(" ") ?? JSON.stringify(value.props.class), /list-filter-value/)
+			value.props.onClick({ stopPropagation() {} }); await settle()
+			const chip = nodes(page.root, (node) => node.props.class === "filter-chip")[0]
+			assert.equal(textContent(chip), "GSTIN = 33ABC×")
+			assert.match(decodeURIComponent(page.requests.at(-1)), /"tax_id","=","33ABC"/)
+			nodes(chip, (node) => node.tag === "button")[0].props.onClick(); await settle()
+			assert.equal(nodes(page.root, (node) => node.props.class === "filter-chip").length, 0)
 		} finally { page.close() }
 	}
 })

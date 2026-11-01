@@ -5,6 +5,7 @@ import { callRead } from "../../api/client.js"
 import { trailingTask } from "../../list/listQuery.js"
 import { linkDescription } from "../../list/linkOptions.js"
 import { useLinkLabel } from "../../list/useLinkLabel.js"
+import { withTamilNames } from "../../shell/displayLanguage.js"
 
 const props = defineProps({ modelValue: { default: "" }, doctype: String, label: String, inputId: String,
 	disabled: Boolean, candidates: { type: Array, default: null }, filters: { type: Object, default: () => ({}) }, query: String,
@@ -36,8 +37,9 @@ async function search() {
 	loading.value = true
 	error.value = ""
 	try {
-		const needle = String(text.value || "")
-		const data = await searchOptions(needle)
+		// A displayed title or Tamil name is not searchable text; search by the stored value instead.
+		const needle = String((text.value === selectedLabel.value ? props.modelValue : text.value) || "")
+		const data = await withTamilNames(props.doctype, (await searchOptions(needle)) || [])
 		if (current !== sequence) return
 		results.value = data || []
 		active.value = 0
@@ -123,7 +125,8 @@ defineExpose({ focus: () => inputElement.value?.focus() })
 					:aria-selected="index === active"
 					@mousedown.prevent="select(option)"
 				>
-					<strong>{{ option.value }}</strong>
+					<strong>{{ option.tamil || option.value }}</strong>
+					<small v-if="option.tamil">{{ option.value }}</small>
 					<small v-if="linkDescription(option)">{{ linkDescription(option) }}</small>
 				</li>
 			</ul>

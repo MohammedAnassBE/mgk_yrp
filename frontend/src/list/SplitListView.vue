@@ -16,9 +16,9 @@ const props = defineProps({
 	queryKey: { type: String, default: "" }, bulkActions: { type: Array, default: () => [] },
 	relatedDoctypes: { type: Array, default: () => [] },
 	dialogOpen: Boolean, loading: Boolean, savePosition: { type: Function, required: true },
-	refresh: { type: Function, required: true },
+	refresh: { type: Function, required: true }, filterFor: { type: Function, default: () => null },
 })
-const emit = defineEmits(["update:selected"])
+const emit = defineEmits(["update:selected", "filter"])
 const route = useRoute()
 const router = useRouter()
 const list = ref(null)
@@ -124,7 +124,15 @@ function resize() { isPhone.value = Boolean(media?.matches) }
 function rowMetrics(row) {
 	const quantity = row.amount != null ? null : `${Number(row.total_qty ?? row.total_output_qty ?? 0).toLocaleString("en-IN")} qty`
 	const amount = [row.grand_total, row.total_amount, row.total_declared_value, row.total_dc_value, row.amount].find((value) => value != null)
-	return [formatDate(row.po_date || row.posting_date), quantity, amount == null ? null : Number(amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })].filter(Boolean).join(" · ")
+	return [quantity, amount == null ? null : Number(amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })].filter(Boolean).join(" · ")
+}
+const dateField = (row) => row.po_date ? "po_date" : row.posting_date ? "posting_date" : ""
+const partyFields = (row) => props.doctype === "MGK Delivery Challan" ? ["from_location", "to_location"] : row.supplier ? ["supplier"] : []
+function filterClick(event, row, fieldname) {
+	const filter = props.filterFor(row, fieldname)
+	if (!filter) return
+	event.stopPropagation()
+	emit("filter", filter)
 }
 onMounted(() => {
 	media = window.matchMedia?.("(max-width: 760px)")
@@ -144,10 +152,10 @@ onBeforeUnmount(() => { disposed = true; media?.removeEventListener("change", re
 				<div v-for="row in rows" :key="row.name" class="split-row" role="option" :aria-selected="row.name === selectedName" :tabindex="row.name === selectedName ? 0 : -1" @click="choose(row)">
 					<input type="checkbox" :aria-label="`Select ${row.name}`" :checked="names.includes(row.name)" @click.stop @change="selection.toggle(row.name)">
 					<div class="split-row-copy">
-						<div class="split-row-head"><strong class="record-id">{{ row.name }}</strong><span class="status" :class="statusPill(doctype, row).className">{{ statusPill(doctype, row).label }}</span></div>
-						<div class="split-party">{{ recordParty(doctype, row) }}</div>
-						<div class="split-row-facts">{{ rowMetrics(row) }}</div>
-						<div class="split-row-facts"><span v-for="column in secondaryColumns" :key="column.fieldname" :title="column.label">{{ displayValue(row, column) }}</span></div>
+						<div class="split-row-head"><strong class="record-id">{{ row.name }}</strong><span class="status" :class="[statusPill(doctype, row).className, { 'list-filter-value': filterFor(row, '__status') }]" @click="filterClick($event, row, '__status')">{{ statusPill(doctype, row).label }}</span></div>
+						<div class="split-party"><template v-if="partyFields(row).length"><template v-for="(fieldname, index) in partyFields(row)" :key="fieldname"><template v-if="index"> → </template><span :class="{ 'list-filter-value': filterFor(row, fieldname) }" @click="filterClick($event, row, fieldname)">{{ row[fieldname] || "—" }}</span></template></template><template v-else>{{ recordParty(doctype, row) }}</template></div>
+						<div class="split-row-facts"><span v-if="dateField(row)" :class="{ 'list-filter-value': filterFor(row, dateField(row)) }" @click="filterClick($event, row, dateField(row))">{{ formatDate(row[dateField(row)]) }}</span><template v-if="dateField(row) && rowMetrics(row)"> · </template>{{ rowMetrics(row) }}</div>
+						<div class="split-row-facts"><span v-for="column in secondaryColumns" :key="column.fieldname" :title="column.label" :class="{ 'list-filter-value': filterFor(row, column.fieldname) }" @click="filterClick($event, row, column.fieldname)">{{ displayValue(row, column) }}</span></div>
 					</div>
 				</div>
 			</div>

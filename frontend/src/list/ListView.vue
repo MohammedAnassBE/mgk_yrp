@@ -7,6 +7,11 @@ import FilterDialog from "./FilterDialog.vue"
 import ColumnsDialog from "./ColumnsDialog.vue"
 import QuickFilters from "./QuickFilters.vue"
 import SplitListView from "./SplitListView.vue"
+import SelectionSummary from "./SelectionSummary.vue"
+import { useSplitSelection } from "./useSplitSelection.js"
+import { lifecycleBulkActions } from "./bulkLifecycle.js"
+import { clickFilter, filterLabel, statusFilter } from "./clickFilters.js"
+import { hasPermission } from "../permissions/usePermissions.js"
 import { statusPill } from "./statusPill.js"
 import { useListView } from "./useListView.js"
 import "./list.css"
@@ -27,10 +32,23 @@ const props = defineProps({
 })
 const showFilters = ref(false)
 const showColumns = ref(false)
-const { query, data, search, quickValues, ready, initializing, notice, tabs, fields, quickFields, columns, draft, filterCount, canCreate, sentinel, initialize, refresh, searchChanged, applySearch, quickChanged, applyFilters, clearFilters, sort, direction, tabChanged, columnsSaved, openRow, documentRoute, savePosition, create, loadMore } = useListView(props)
+const { meta, filterBy, removeFilter, query, data, search, quickValues, ready, initializing, notice, tabs, fields, quickFields, columns, draft, filterCount, canCreate, sentinel, initialize, refresh, searchChanged, applySearch, quickChanged, applyFilters, clearFilters, sort, direction, tabChanged, columnsSaved, openRow, documentRoute, savePosition, create, loadMore } = useListView(props)
 const sortFields = computed(() => columns.value.filter((column) => !column.indicator && !column.clientOnly && column.fieldname !== "name"))
 const mobileColumns = computed(() => columns.value.filter((column) => column.fieldname !== "name" && !column.indicator))
 const splitQueryKey = computed(() => JSON.stringify([query.tab, query.filters, query.quickFilters, query.search, query.sortField, query.sortDirection]))
+const allBulkActions = computed(() => ready.value ? [...props.bulkActions, ...lifecycleBulkActions(props.doctype, meta.value, hasPermission)] : props.bulkActions)
+const canSelectTable = computed(() => props.layout !== "split" && allBulkActions.value.length > 0)
+const { names: tableNames, selectedRows: tableRows, allSelected: tableAllSelected, ...tableSelection } = useSplitSelection(() => data.rows, () => splitQueryKey.value)
+function filterFor(row, fieldname) {
+	if (fieldname === "__status") return statusFilter(props.doctype, row)
+	return clickFilter(fields.value.find((field) => field.fieldname === fieldname), row[fieldname])
+}
+function filterClick(event, row, fieldname) {
+	const filter = filterFor(row, fieldname)
+	if (!filter) return
+	event.stopPropagation()
+	filterBy(filter)
+}
 function displayValue(row, column) {
 	const value = row[column.fieldname]
 	if (value === null || value === undefined || value === "") return "—"
@@ -52,21 +70,23 @@ function ariaSort(column) { return query.sortField === column.fieldname ? (query
 		<div v-if="notice" class="list-notice" role="alert">{{ notice }}</div>
 		<ListToolbar :search="search" :sort-field="query.sortField" :sort-direction="query.sortDirection" :filter-count="filterCount" :sort-fields="sortFields" :disabled="!ready" @search="searchChanged" @search-now="applySearch" @sort="sort" @direction="direction" @filters="showFilters = true" @clear="clearFilters" @columns="showColumns = true" />
 		<QuickFilters v-if="ready" :model-value="quickValues" :fields="quickFields" @update:model-value="quickChanged" />
+		<div v-if="ready && query.filters.length" class="active-filters" aria-label="Active filters"><span v-for="(filter, index) in query.filters" :key="`${index}-${filter[0]}`" class="filter-chip">{{ filterLabel(filter, fields) }}<button type="button" :aria-label="`Remove filter ${filterLabel(filter, fields)}`" @click="removeFilter(index)">×</button></span></div>
 		<ListTabs :tabs="tabs" :active="query.tab" :counts="data.counts" :total="data.allTotal" :ready="data.countsReady" @change="tabChanged" />
 		<div v-if="data.error" class="error-state" role="alert"><h2>Unable to load this list</h2><p>{{ data.error }}</p><button class="button secondary" type="button" @click="ready ? refresh() : initialize()">Retry</button></div>
 		<div v-if="initializing || (data.loading && !data.rows.length)" class="loading-state" role="status"><i class="pi pi-spin pi-spinner" aria-hidden="true" />Loading {{ title }}…</div>
 		<template v-else-if="ready && !data.error">
+			<SelectionSummary v-if="canSelectTable && tableNames.length" :rows="tableRows" :actions="allBulkActions" :refresh="refresh" @clear="tableSelection.clear" />
 			<div v-if="!data.rows.length && layout !== 'split'" class="empty-state compact"><i class="pi pi-book" aria-hidden="true" /><h2>No records found</h2><p>Try a different search or clear your filters.</p></div>
 			<SplitListView v-else-if="layout === 'split'" :doctype="doctype" :rows="data.rows" :columns="columns" :selected="query.selected || ''"
 				:total="data.total" :load-more="loadMore" :document-route="documentRoute" :display-value="displayValue" :query-key="splitQueryKey"
-				:bulk-actions="bulkActions" :related-doctypes="relatedDoctypes" :dialog-open="showFilters || showColumns" :loading="data.loading" :save-position="savePosition" :refresh="refresh"
-				@update:selected="query.selected = $event" />
+				:bulk-actions="allBulkActions" :filter-for="filterFor" :related-doctypes="relatedDoctypes" :dialog-open="showFilters || showColumns" :loading="data.loading" :save-position="savePosition" :refresh="refresh"
+				@update:selected="query.selected = $event" @filter="filterBy" />
 			<div v-else class="list-card" :aria-busy="data.loading">
 				<div v-if="data.loading" class="list-refreshing" role="status">Refreshing…</div>
 				<div class="table-scroll desktop-list"><table>
-					<thead><tr><th v-for="column in columns" :key="column.fieldname" :aria-sort="column.indicator || column.clientOnly ? undefined : ariaSort(column)"><span v-if="column.indicator || column.clientOnly">{{ column.label }}</span><button v-else type="button" @click="sort(column.fieldname, true)">{{ column.label }}<span v-if="query.sortField === column.fieldname">{{ query.sortDirection === 'asc' ? ' ↑' : ' ↓' }}</span></button></th><th aria-label="Open record" /></tr></thead>
+					<thead><tr><th v-if="canSelectTable" class="select-cell"><input type="checkbox" aria-label="Select all loaded" :checked="tableAllSelected" :indeterminate="tableNames.length > 0 && !tableAllSelected" @change="tableSelection.toggleAll"></th><th v-for="column in columns" :key="column.fieldname" :aria-sort="column.indicator || column.clientOnly ? undefined : ariaSort(column)"><span v-if="column.indicator || column.clientOnly">{{ column.label }}</span><button v-else type="button" @click="sort(column.fieldname, true)">{{ column.label }}<span v-if="query.sortField === column.fieldname">{{ query.sortDirection === 'asc' ? ' ↑' : ' ↓' }}</span></button></th><th aria-label="Open record" /></tr></thead>
 					<tbody><tr v-for="row in data.rows" :key="row.name" tabindex="0" :aria-label="`Open ${row.name}`" @click="rowClick($event, row)" @keydown.enter.self="openRow(row)">
-						<td v-for="column in columns" :key="column.fieldname"><RouterLink v-if="column.fieldname === 'name'" class="record-id" :to="documentRoute(row.name)" @click="savePosition">{{ row.name }}</RouterLink><span v-else-if="column.indicator" class="status" :class="indicator(row).className">{{ indicator(row).label }}</span><span v-else>{{ displayValue(row, column) }}</span></td><td class="row-arrow" aria-hidden="true">›</td>
+						<td v-if="canSelectTable" class="select-cell"><input type="checkbox" :aria-label="`Select ${row.name}`" :checked="tableNames.includes(row.name)" @click.stop @change="tableSelection.toggle(row.name)"></td><td v-for="column in columns" :key="column.fieldname"><RouterLink v-if="column.fieldname === 'name'" class="record-id" :to="documentRoute(row.name)" @click="savePosition">{{ row.name }}</RouterLink><span v-else-if="column.indicator" class="status" :class="[indicator(row).className, { 'list-filter-value': filterFor(row, '__status') }]" @click="filterClick($event, row, '__status')">{{ indicator(row).label }}</span><span v-else :class="{ 'list-filter-value': filterFor(row, column.fieldname) }" @click="filterClick($event, row, column.fieldname)">{{ displayValue(row, column) }}</span></td><td class="row-arrow" aria-hidden="true">›</td>
 					</tr></tbody>
 				</table></div>
 				<div class="mobile-list"><RouterLink v-for="row in data.rows" :key="row.name" class="mobile-row" :to="documentRoute(row.name)" @click="savePosition">

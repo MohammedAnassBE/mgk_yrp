@@ -58,5 +58,35 @@
   "insert_after": "against_id",
   "read_only": 1,
   "no_copy": 1
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Item-mgk_tamil_name",
+  "dt": "Item",
+  "module": "MGK YRP",
+  "fieldname": "mgk_tamil_name",
+  "fieldtype": "Data",
+  "label": "Item Name (Tamil)",
+  "insert_after": "item_name"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Supplier-mgk_tamil_name",
+  "dt": "Supplier",
+  "module": "MGK YRP",
+  "fieldname": "mgk_tamil_name",
+  "fieldtype": "Data",
+  "label": "Supplier Name (Tamil)",
+  "insert_after": "supplier_name"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Warehouse-mgk_tamil_name",
+  "dt": "Warehouse",
+  "module": "MGK YRP",
+  "fieldname": "mgk_tamil_name",
+  "fieldtype": "Data",
+  "label": "Warehouse Name (Tamil)",
+  "insert_after": "warehouse_name"
  }
 ]
