@@ -2,6 +2,10 @@
 .manage-card { display: flex; flex-direction: column; min-height: 132px; padding: 17px 18px; border: 1px solid var(--color-line); border-radius: 16px; background: var(--color-card); color: var(--color-text); text-decoration: none; box-shadow: var(--shadow-card); }
 .manage-card:hover { border-color: var(--color-hover-line); transform: translateY(-2px); }
 .manage-card > strong { font-size: var(--type-card-title); }
+.manage-card-wrap { position: relative; display: grid; min-width: 0; }
+.manage-card.has-create > strong { padding-right: 72px; }
+.manage-create { position: absolute; top: 14px; right: 16px; color: var(--color-card); box-shadow: var(--shadow-card); }
+.manage-create:hover, .manage-create:focus-visible { filter: brightness(.86); box-shadow: var(--shadow-card-hover); }
 .manage-card p { margin: 7px 0 18px; color: var(--color-muted); }
 .manage-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: auto; font-size: var(--type-body); color: var(--color-muted); }
 .manage-foot b { color: var(--color-accent); }

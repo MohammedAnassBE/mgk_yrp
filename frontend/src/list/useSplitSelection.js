@@ -23,6 +23,7 @@ export function recordParty(doctype, row) {
 export function selectionTotals(rows) {
 	const amountFields = ["grand_total", "total_amount", "total_declared_value", "total_dc_value", "amount"]
 	return {
+		hasQuantity: rows.some((row) => (row.total_qty ?? row.total_output_qty) != null),
 		quantity: rows.reduce((total, row) => total + Number(row.total_qty ?? row.total_output_qty ?? 0), 0),
 		hasAmount: rows.some((row) => amountFields.some((field) => row[field] != null)),
 		amount: rows.reduce((total, row) => total + Number(amountFields.map((field) => row[field]).find((value) => value != null) ?? 0), 0),

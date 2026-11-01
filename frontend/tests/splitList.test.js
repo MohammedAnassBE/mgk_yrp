@@ -116,9 +116,10 @@ test("phone starts with list, row pushes preview query and browser Back restores
 })
 
 test("selection totals use each book's quantity and amount fields", () => {
-	assert.deepEqual(selectionTotals(records()), { quantity: 30, amount: 150, hasAmount: true })
-	assert.deepEqual(selectionTotals([{ total_output_qty: 7, total_dc_value: 125 }]), { quantity: 7, amount: 125, hasAmount: true })
+	assert.deepEqual(selectionTotals(records()), { hasQuantity: true, quantity: 30, amount: 150, hasAmount: true })
+	assert.deepEqual(selectionTotals([{ total_output_qty: 7, total_dc_value: 125 }]), { hasQuantity: true, quantity: 7, amount: 125, hasAmount: true })
 	assert.equal(selectionTotals([{ total_qty: 1 }]).hasAmount, false)
+	assert.equal(selectionTotals([{ name: "Supplier A" }]).hasQuantity, false)
 })
 
 test("selection summary formats Currency with two decimals and Float with list precision", async () => {

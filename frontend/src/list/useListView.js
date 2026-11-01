@@ -11,6 +11,7 @@ import { activeFilters, equalityDefaults, orderedTabs, quickFilterTuples, restor
 import { listStateKey, readListState, saveListState, stageNewDefaults } from "./listState.js"
 import { indicatorFields } from "./statusPill.js"
 import { routeFilters } from "./routeFilters.js"
+import { replaceEqualityFilter } from "./clickFilters.js"
 
 export function useListView(props) {
 	const route = useRoute()
@@ -127,6 +128,16 @@ export function useListView(props) {
 	const applyQuick = trailingTask(() => { query.quickFilters = { ...quickValues.value }; reloadQuery() }, 1000)
 	function quickChanged(values) { quickValues.value = values; applyQuick() }
 	function applyFilters(filters) { query.filters = filters; reloadQuery() }
+	function filterBy(filter) {
+		const [fieldname, , value] = filter
+		if (!quickFields.value.some((field) => field.fieldname === fieldname)) return applyFilters(replaceEqualityFilter(query.filters, filter))
+		applyQuick.cancel()
+		quickValues.value = { ...quickValues.value, [fieldname]: value }
+		query.quickFilters = { ...quickValues.value }
+		query.filters = query.filters.filter(([field, operator]) => !(field === fieldname && operator === "="))
+		reloadQuery()
+	}
+	function removeFilter(index) { applyFilters(query.filters.filter((_filter, position) => position !== index)) }
 	function clearFilters() {
 		applyQuick.cancel()
 		query.filters = []
@@ -206,5 +217,5 @@ export function useListView(props) {
 		liveRefresh.cancel()
 		disposers.forEach((dispose) => dispose())
 	})
-	return { query, data, search, quickValues, ready, initializing, notice, tabs, fields, quickFields, columns, draft, filterCount, canCreate, sentinel, initialize, refresh, searchChanged, applySearch, quickChanged, applyFilters, clearFilters, sort, direction, tabChanged, columnsSaved, openRow, documentRoute, savePosition, create, loadMore }
+	return { meta, filterBy, removeFilter, query, data, search, quickValues, ready, initializing, notice, tabs, fields, quickFields, columns, draft, filterCount, canCreate, sentinel, initialize, refresh, searchChanged, applySearch, quickChanged, applyFilters, clearFilters, sort, direction, tabChanged, columnsSaved, openRow, documentRoute, savePosition, create, loadMore }
 }

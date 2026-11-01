@@ -2,6 +2,7 @@
 import { computed, ref } from "vue"
 import { callMethod } from "../api/client.js"
 import { useConnectionState } from "../realtime/useRealtime.js"
+import { isTamil, setLanguage } from "./displayLanguage.js"
 
 defineProps({ title: { type: String, required: true } })
 const user = window.frappe?.boot?.user || {}
@@ -33,6 +34,10 @@ async function signOut() {
 		<span class="topbar-divider" aria-hidden="true" />
 		<div class="topbar-context"><strong>{{ title }}</strong></div>
 		<div class="topbar-actions">
+			<div class="language-toggle" role="group" aria-label="Master name language">
+				<button type="button" :class="{ active: !isTamil }" :aria-pressed="!isTamil" @click="setLanguage('en')">English</button>
+				<button type="button" lang="ta" :class="{ active: isTamil }" :aria-pressed="isTamil" @click="setLanguage('ta')">தமிழ்</button>
+			</div>
 			<span class="live-chip" :class="{ offline: connectionState === 'OFFLINE' }" role="status">{{ connectionState }}</span>
 			<span class="avatar" :title="userName" :aria-label="userName">{{ initials }}</span>
 			<button class="icon-button" type="button" title="Log out" aria-label="Log out" :disabled="signingOut" @click="signOut">

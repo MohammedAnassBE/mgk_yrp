@@ -142,6 +142,22 @@ test("quick filters apply after 1000ms, use Date equals for rows/counts, and Cle
 	} finally { list.close() }
 })
 
+test("click filters set quick filters at once, replace advanced equality filters and can be removed", async () => {
+	const list = await mountList()
+	try {
+		const lastFilters = () => JSON.parse(new URL(list.rows().at(-1)[0], "http://site").searchParams.get("filters"))
+		list.model.filterBy(["supplier", "=", "Acme"]); await settle()
+		assert.deepEqual(list.model.quickValues.value, { supplier: "Acme" })
+		assert.deepEqual(lastFilters(), [["supplier", "=", "Acme"]])
+		list.model.filterBy(["item_group", "=", "Yarn"]); await settle()
+		list.model.filterBy(["item_group", "=", "Cloth"]); await settle()
+		assert.deepEqual(list.model.query.filters, [["item_group", "=", "Cloth"]])
+		assert.equal(list.model.filterCount.value, 2)
+		list.model.removeFilter(0); await settle()
+		assert.deepEqual(lastFilters(), [["supplier", "=", "Acme"]])
+	} finally { list.close() }
+})
+
 test("restoring old quick date ranges preserves the query as an editable advanced filter", async () => {
 	const list = await mountList({ saved: { quickFilters: { po_date: ["2026-10-01", "2026-10-29"] } } })
 	try {

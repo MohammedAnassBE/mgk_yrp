@@ -20,6 +20,11 @@ export function useActionRunner({ reload = async () => {}, settled = async () =>
 		if (current !== sequence) return
 		if (value) result.value = value
 		notify.success(actionToastText(value))
+		const failures = value?.failures || []
+		if (failures.length) {
+			error.value = [`${failures.length} failed:`, ...failures].join("\n")
+			notify.error(`${failures.length} failed: ${failures[0]}${failures.length > 1 ? "…" : ""}`)
+		}
 		await reload()
 	}
 	async function openDialog(action, target, current) {
