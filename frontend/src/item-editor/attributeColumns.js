@@ -14,15 +14,6 @@ export function columnOptions(current, options = []) {
 	return [...new Set([current, ...options].filter(Boolean))]
 }
 
-export async function loadAttributeOptions(attribute) {
-	const document = await callRead("frappe.client.get", { doctype: "Item Attribute", name: attribute })
-	return Promise.all(document.item_attribute_values.map(async ({ attribute_value: value }) => {
-		if (typeof value !== "string" || !value.startsWith("IAV-")) return value
-		const linked = await callRead("frappe.client.get", { doctype: "YRP Item Attribute Value", name: value })
-		return linked.attribute_value
-	}))
-}
-
 export async function loadDimensionOptions(dimension) {
 	const rows = await callRead("frappe.client.get_list", {
 		doctype: dimension.options, fields: ["name"], limit_page_length: 0,

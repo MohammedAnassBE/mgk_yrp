@@ -11,7 +11,8 @@ import { canQuickCreate, hasExactMatch, quickCreateLabel } from "./quickCreate.j
 
 const props = defineProps({ modelValue: { default: "" }, doctype: String, label: String, inputId: String,
 	disabled: Boolean, candidates: { type: Array, default: null }, filters: { type: Object, default: () => ({}) }, query: String,
-	searchMethod: String, searchArgs: { type: Object, default: () => ({}) } })
+	searchMethod: String, searchArgs: { type: Object, default: () => ({}) },
+	createDoctype: String, createDefaults: { type: Object, default: () => ({}) }, createWith: Function, allowCreate: { type: Boolean, default: true } })
 const emit = defineEmits(["update:modelValue", "select"])
 const { label: selectedLabel, error: labelError } = useLinkLabel(props)
 const id = `document-link-${getCurrentInstance().uid}`
@@ -26,6 +27,7 @@ const text = ref(props.modelValue || "")
 const creatable = ref(false)
 const searchedText = ref(null)
 const createText = ref("")
+const targetDoctype = computed(() => props.createDoctype || props.doctype)
 const createOption = computed(() => {
 	const typed = text.value.trim()
 	return Boolean(creatable.value && typed && !loading.value && !error.value && searchedText.value === text.value && !hasExactMatch(results.value, typed))
@@ -50,9 +52,8 @@ async function search() {
 		// A displayed title or Tamil name is not searchable text; search by the stored value instead.
 		const needle = String((text.value === selectedLabel.value ? props.modelValue : text.value) || "")
 		const searched = text.value
-		const standardSearch = props.candidates === null && !props.searchMethod
 		const [data, canCreate] = await Promise.all([withTamilNames(props.doctype, (await searchOptions(needle)) || []),
-			standardSearch && text.value !== selectedLabel.value ? canQuickCreate(props.doctype) : false])
+			props.allowCreate && text.value !== selectedLabel.value ? canQuickCreate(targetDoctype.value) : false])
 		if (current !== sequence) return
 		results.value = data || []
 		creatable.value = canCreate
@@ -164,11 +165,11 @@ defineExpose({ focus: () => inputElement.value?.focus() })
 					:aria-selected="active === results.length"
 					@mousedown.prevent="startCreate"
 				>
-					<strong>+ Create a new {{ quickCreateLabel(doctype) }}: “{{ text.trim() }}”</strong>
+					<strong>+ Create a new {{ quickCreateLabel(targetDoctype) }}: “{{ text.trim() }}”</strong>
 				</li>
 			</ul>
 		</div>
-		<QuickCreateDialog v-if="createText" visible :doctype="doctype" :text="createText" :filters="filters"
-			@close="createText = ''" @created="created" />
+		<QuickCreateDialog v-if="createText" visible :doctype="targetDoctype" :text="createText" :filters="filters"
+			:defaults="createDefaults" :create-with="createWith" @close="createText = ''" @created="created" />
 	</div>
 </template>

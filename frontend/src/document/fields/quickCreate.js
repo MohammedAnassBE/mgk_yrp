@@ -4,10 +4,15 @@ import { masters } from "../../masters/mastersConfig.js"
 import { metaDefaults } from "../newDocDefaults.js"
 import { fieldState, isEmpty } from "../fieldConditions.js"
 import { linkDescription } from "../../list/linkOptions.js"
+import { stageNewDefaults } from "../../list/listState.js"
 
 const masterFor = (doctype) => masters.find((master) => master.doctype === doctype)
+// Desk title fields that the server recomputes from another field.
+const titleOverrides = { Contact: "first_name" }
+const entityLabels = { "YRP Item Attribute Value": "Attribute Value" }
+const isScalar = (value) => ["string", "number"].includes(typeof value) && value !== ""
 
-export function quickCreateLabel(doctype) { return masterFor(doctype)?.entityLabel || doctype }
+export function quickCreateLabel(doctype) { return masterFor(doctype)?.entityLabel || entityLabels[doctype] || doctype }
 
 export async function canQuickCreate(doctype, can = hasPermission) {
 	if (!doctype || !can(doctype, "create")) return false
@@ -24,7 +29,7 @@ export function hasExactMatch(options, text) {
 function titleFieldname(meta, master) {
 	const names = new Set(meta.fields.map((field) => field.fieldname))
 	const autonameField = meta.autoname?.startsWith("field:") ? meta.autoname.slice(6) : null
-	const title = [...(master?.titleFields || []), meta.title_field, autonameField].find((name) => name && names.has(name))
+	const title = [titleOverrides[meta.name], ...(master?.titleFields || []), meta.title_field, autonameField].find((name) => name && names.has(name))
 	return title || (String(meta.autoname || "").toLowerCase() === "prompt" ? "name" : null)
 }
 
@@ -36,21 +41,22 @@ function equalityFilters(filters, names) {
 }
 
 function isShown(field, draft, meta, master, user, title) {
-	if (field.fieldname === title) return true
+	if (field.fieldname === title || field.contextField) return true
 	if (master && (!master.fields.includes(field.fieldname) || master.hideFormFields?.includes(field.fieldname))) return false
 	const state = fieldState(field, draft, meta, user)
 	return state.visible && state.required && !field.read_only && isEmpty(draft[field.fieldname], field)
 }
 
-export function quickCreateForm(doctype, docs, text, filters = {}, boot = globalThis.window?.frappe?.boot || {}) {
+export function quickCreateForm(doctype, docs, text, { filters = {}, defaults = {} } = {}, boot = globalThis.window?.frappe?.boot || {}) {
 	const master = masterFor(doctype)
 	const base = docs.find((entry) => entry.name === doctype)
 	if (!base) throw new Error(`Metadata is missing for ${doctype}.`)
+	const context = (field) => isScalar(defaults[field.fieldname]) ? { read_only: 1, contextField: true } : {}
 	const meta = { ...base, fields: base.fields.map((field) => ({ ...field, ...master?.fieldOverrides?.[field.fieldname],
-		label: master?.labels?.[field.fieldname] ?? field.label })) }
+		label: master?.labels?.[field.fieldname] ?? field.label, ...context(field) })) }
 	const title = titleFieldname(meta, master)
 	const names = new Set(meta.fields.map((field) => field.fieldname))
-	const draft = { ...metaDefaults(meta, new Date(), boot), ...master?.defaults, ...equalityFilters(filters, names), ...(title ? { [title]: text } : {}) }
+	const draft = { ...metaDefaults(meta, new Date(), boot), ...master?.defaults, ...equalityFilters(filters, names), ...defaults, ...(title ? { [title]: text } : {}) }
 	const fields = meta.fields.filter((field) => isShown(field, draft, meta, master, boot.user, title))
 	if (title === "name") fields.unshift({ fieldname: "name", fieldtype: "Data", label: "Name", reqd: 1 })
 	return { meta, metas: docs.map((entry) => entry.name === doctype ? meta : entry), fields, draft, title }
@@ -60,4 +66,12 @@ export function quickCreateDoc({ meta, title }, draft) {
 	const autonameField = meta.autoname?.startsWith("field:") ? meta.autoname.slice(6) : null
 	if (!autonameField || !title || !isEmpty(draft[autonameField], {})) return draft
 	return { ...draft, [autonameField]: draft[title] }
+}
+
+export function fullFormUrl(doctype, draft, stage = stageNewDefaults) {
+	const master = masterFor(doctype)
+	if (master) return `/web${master.route}/new?defaults=${encodeURIComponent(stage(doctype, draft, globalThis.location?.pathname || ""))}`
+	const values = Object.entries(draft).filter(([field, value]) => !field.startsWith("__") && !["doctype", "docstatus"].includes(field) && isScalar(value))
+	const query = new URLSearchParams(values).toString()
+	return `/app/${doctype.toLowerCase().replace(/[ _]+/g, "-")}/new${query ? `?${query}` : ""}`
 }

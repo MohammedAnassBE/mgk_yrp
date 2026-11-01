@@ -3,13 +3,13 @@ import { ref, watch } from "vue"
 import Button from "primevue/button"
 import InputNumber from "primevue/inputnumber"
 import Select from "primevue/select"
+import LinkField from "../document/fields/LinkField.vue"
 import { formatFieldValue } from "../document/fieldDisplay.js"
-import { columnOptions, loadAttributeOptions, loadDimensionOptions, nonPrimaryAttributes,
-	refreshEntryUom, setCellValue, sizes } from "./attributeColumns.js"
+import { columnOptions, loadDimensionOptions, nonPrimaryAttributes, refreshEntryUom, setCellValue, sizes } from "./attributeColumns.js"
+import { attributeLinkProps } from "./attributeValues.js"
 
 const props = defineProps({ items: Array, editable: Boolean, mode: String, dimensions: Array, hasTransferredQuantity: Boolean })
 const emit = defineEmits(["changed", "split", "remove"])
-const options = ref({})
 const dimensionOptions = ref({})
 const selected = ref([])
 const loading = ref(false)
@@ -22,20 +22,14 @@ async function loadOptions() {
 	loading.value = true
 	error.value = ""
 	try {
-		const attributes = [...new Set(props.items.flatMap(nonPrimaryAttributes))]
-		await Promise.all([
-			...attributes.filter((attribute) => !options.value[attribute]).map(async (attribute) => {
-				options.value[attribute] = await loadAttributeOptions(attribute)
-			}),
-			...props.dimensions.filter((dimension) => !dimensionOptions.value[dimension.fieldname]).map(async (dimension) => {
-				dimensionOptions.value[dimension.fieldname] = await loadDimensionOptions(dimension)
-			}),
-		])
+		await Promise.all(props.dimensions.filter((dimension) => !dimensionOptions.value[dimension.fieldname]).map(async (dimension) => {
+			dimensionOptions.value[dimension.fieldname] = await loadDimensionOptions(dimension)
+		}))
 	} catch (cause) { error.value = cause.message }
 	finally { loading.value = false }
 }
 
-watch(() => [props.editable, props.items.map(nonPrimaryAttributes), props.dimensions], loadOptions, { immediate: true, deep: true })
+watch(() => [props.editable, props.dimensions], loadOptions, { immediate: true, deep: true })
 watch(() => props.items.map((group) => group.items.slice()), () => { selected.value = [] })
 
 function setAttribute(group, entry, attribute, value) {
@@ -121,9 +115,8 @@ function removeSelected() {
 						<span v-else>{{ entry.dimensions?.[dimension.fieldname] || '—' }}</span>
 					</td>
 					<td v-for="attribute in nonPrimaryAttributes(group)" :key="attribute">
-						<Select v-if="editable" :aria-label="attribute" :model-value="entry.attributes?.[attribute] || ''"
-							:options="columnOptions(entry.attributes?.[attribute], options[attribute])"
-							@update:model-value="setAttribute(group, entry, attribute, $event)" />
+						<LinkField v-if="editable" :label="attribute" :model-value="entry.attributes?.[attribute] || ''"
+							v-bind="attributeLinkProps(entry.name, attribute)" @update:model-value="setAttribute(group, entry, attribute, $event)" />
 						<span v-else>{{ entry.attributes?.[attribute] || '—' }}</span>
 					</td>
 					<td v-for="size in sizes(group)" :key="size" class="pivot-cell">

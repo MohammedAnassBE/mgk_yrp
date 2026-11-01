@@ -6,6 +6,7 @@ import LinkField from "../document/fields/LinkField.vue"
 import { callRead } from "../api/client.js"
 import { clone } from "../document/mappedDraft.js"
 import { itemFilters as getItemFilters, validateItem } from "./editorModes.js"
+import { attributeLinkProps } from "./attributeValues.js"
 
 const props = defineProps({ mode: String, defaults: Object, dimensions: Array, permissions: Object, poEntries: Array, itemGroup: String, editing: Object, disabled: Boolean })
 const emit = defineEmits(["commit", "cancel"])
@@ -96,6 +97,7 @@ function updateCell(key, field, value) {
 					label="Item"
 					:disabled="disabled || Boolean(editing)"
 					:filters="itemFilters"
+					:allow-create="mode !== 'grn_po'"
 					@select="resolve"
 				/>
 			</div>
@@ -123,8 +125,8 @@ function updateCell(key, field, value) {
 					<LinkField
 						v-model="entry.attributes[attribute]"
 						:label="attribute"
-						search-method="yrp.yrp.doctype.yrp_item.yrp_item.search_item_attribute_values"
-						:search-args="{ item, attribute }"
+						v-bind="attributeLinkProps(item, attribute)"
+						:allow-create="mode !== 'grn_po'"
 						:disabled="disabled"
 					/>
 				</div>

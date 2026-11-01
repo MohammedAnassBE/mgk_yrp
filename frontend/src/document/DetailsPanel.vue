@@ -3,7 +3,7 @@ import { computed, ref, nextTick, onBeforeUnmount } from "vue"
 import FieldControl from "./fields/FieldControl.vue"
 import { fieldState, isEmpty, missingFields, visibleFields } from "./fieldConditions.js"
 import { companionText, formatFieldValue } from "./fieldDisplay.js"
-const props = defineProps({ fields: Array, doc: Object, meta: Object, metas: Array, candidates: Object, autoFields: Array, hints: Object, disabled: Boolean, user: Object })
+const props = defineProps({ fields: Array, doc: Object, meta: Object, metas: Array, candidates: Object, createDefaults: Object, autoFields: Array, hints: Object, disabled: Boolean, user: Object })
 const emit = defineEmits(["change"])
 const editing = ref(null)
 let original
@@ -73,6 +73,7 @@ function display(field) {
 					:metas="metas"
 					:user="user"
 					:candidates="candidates?.[field.fieldname] ?? null"
+					:create-defaults="createDefaults?.[field.fieldname]"
 					@change="(name, value) => emit('change', name, value)"
 				/>
 			</template>
