@@ -3,6 +3,7 @@ import { callRead } from "../api/client.js"
 
 export function usePartyDefaults(doc, change, canEdit, editing = ref(true), initialAutoFields = () => []) {
 	const candidates = ref({})
+	const createDefaults = ref({})
 	const autoFields = ref([])
 	const error = ref("")
 	const loading = ref(false)
@@ -23,6 +24,7 @@ export function usePartyDefaults(doc, change, canEdit, editing = ref(true), init
 		loading.value = false
 		error.value = ""
 		candidates.value = { ...candidates.value, supplier_address: [], contact_person: [], warehouse: [], from_warehouse: [], to_warehouse: [] }
+		createDefaults.value = {}
 		if (!record || Number(record.docstatus || 0) !== 0 || !editing.value) return
 		if (["MGK Delivery Challan Close", "MGK Purchase Invoice"].includes(record.doctype)) return
 		loading.value = true
@@ -35,6 +37,7 @@ export function usePartyDefaults(doc, change, canEdit, editing = ref(true), init
 			if (ownField && own?.location && !(record.doctype === "MGK Purchase Order" && record.deliver_to_supplier)) fill(ownField, own.location)
 			if (ownReceipt && own) {
 				candidates.value.warehouse = own.warehouses
+				createDefaults.value.warehouse = { supplier: own.location }
 				fill("warehouse", own.warehouse)
 			}
 			await loadParties(record, current)
@@ -50,11 +53,15 @@ export function usePartyDefaults(doc, change, canEdit, editing = ref(true), init
 			if (current !== sequence || record !== doc.value || record[source] !== supplier) return
 			if (warehouseField) {
 				candidates.value[warehouseField] = defaults.warehouses
+				createDefaults.value[warehouseField] = { supplier }
 				fill(warehouseField, defaults.warehouse)
 			}
 			if (source === "supplier") {
 				candidates.value.supplier_address = defaults.addresses
 				candidates.value.contact_person = defaults.contacts
+				const links = [{ link_doctype: "Supplier", link_name: supplier }]
+				createDefaults.value.supplier_address = { links }
+				createDefaults.value.contact_person = { links }
 				fill("supplier_address", defaults.address)
 				fill("contact_person", defaults.contact)
 			}
@@ -66,5 +73,5 @@ export function usePartyDefaults(doc, change, canEdit, editing = ref(true), init
 		load()
 	})
 	onScopeDispose(() => { sequence += 1 })
-	return { candidates, autoFields, error, loading, retry: load }
+	return { candidates, createDefaults, autoFields, error, loading, retry: load }
 }

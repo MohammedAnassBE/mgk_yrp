@@ -34,9 +34,7 @@ function mockFetch(overrides = () => undefined) {
 		if (message === undefined) {
 			if (method === "mgk_yrp.stock.item_editor.get_editor_context") message = { defaults: { received_type: "Accepted" }, po_entries: [] }
 			else if (method === "yrp.stock.api.get_stock_dimensions_for_ui") message = [dimension]
-			else if (method === "frappe.client.get") message = args.doctype === "Item Attribute"
-				? { item_attribute_values: [{ attribute_value: "Blue" }, { attribute_value: "IAV-red" }] }
-				: { attribute_value: "Red" }
+			else if (method.endsWith(".search_item_attribute_values")) message = ["Blue", "Red"]
 			else if (method === "frappe.client.get_list") message = [{ name: "Accepted" }, { name: "Rejected" }]
 			else throw new Error(`Unexpected request: ${method}`)
 		}
@@ -61,15 +59,21 @@ test("attribute columns exclude the primary and keep current, legacy and server 
 	assert.deepEqual(columnOptions("Raw", ["Blue", "Red", "Blue", ""]), ["Raw", "Blue", "Red"])
 })
 
-test("job-work dropdowns load Desk attribute and dimension options and refresh dependent UOM", async () => {
+test("job-work attribute cells search the item's values and dimensions load Desk options", async () => {
 	const network = mockFetch()
 	const page = await mountEditor()
 	try {
-		const colour = select(page.root, "Colour")
-		assert.deepEqual(colour.options.map((option) => option.props.value), ["Raw", "Blue", "Red"])
+		const colour = input(page.root, "Colour")
+		assert.equal(colour.props.value, "Raw")
 		assert.equal(select(page.root, "Size"), undefined)
 		assert.deepEqual(select(page.root, "Received type").options.map((option) => option.props.value), ["Accepted", "Rejected"])
-		colour.props.onChange({ target: { value: "Blue" } })
+		await colour.props.onFocus()
+		colour.props.onInput({ target: { value: "Bl" } })
+		await new Promise((resolve) => setTimeout(resolve, 250))
+		await settle()
+		const search = network.requests.findLast((request) => request.method.endsWith(".search_item_attribute_values"))
+		assert.deepEqual([search.args.item, search.args.attribute, search.args.txt], ["Yarn", "Colour", "Bl"])
+		nodes(page.root, (node) => node.tag === "li" && textContent(node) === "Blue")[0].props.onMousedown({ preventDefault() {} })
 		select(page.root, "Received type").props.onChange({ target: { value: "Rejected" } })
 		await settle()
 		const entry = page.editor.value.getItems()[0].items[0]
@@ -84,7 +88,7 @@ test("job-work dropdowns load Desk attribute and dimension options and refresh d
 test("column option failures show the original error and Retry loads the dropdown", async () => {
 	let isFailing = true
 	const network = mockFetch((method) => {
-		if (isFailing && method === "frappe.client.get") throw new Error("Attribute information changed. Reload this page.")
+		if (isFailing && method === "frappe.client.get_list") throw new Error("Attribute information changed. Reload this page.")
 	})
 	const page = await mountEditor()
 	try {
@@ -94,7 +98,7 @@ test("column option failures show the original error and Retry loads the dropdow
 		await settle(); await settle()
 		assert.equal(textContent(page.root).includes("Attribute information changed. Reload this page."), false, textContent(page.root))
 		assert.equal(nodes(page.root, (node) => node.props.role === "alert").length, 0)
-		assert.deepEqual(select(page.root, "Colour").options.map((option) => option.props.value), ["Raw", "Blue", "Red"])
+		assert.deepEqual(select(page.root, "Received type").options.map((option) => option.props.value), ["Accepted", "Rejected"])
 	} finally { page.close(); network.restore() }
 })
 

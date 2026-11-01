@@ -13,7 +13,7 @@ import { fieldState } from "../fieldConditions.js"
 import { fieldQuery } from "../fieldQueries.js"
 import { dynamicTarget } from "../../masters/masterFields.js"
 
-const props = defineProps({ field: Object, doc: Object, parentDoc: Object, meta: Object, metas: Array, candidates: { type: Array, default: null }, disabled: Boolean, user: Object })
+const props = defineProps({ field: Object, doc: Object, parentDoc: Object, meta: Object, metas: Array, candidates: { type: Array, default: null }, createDefaults: Object, disabled: Boolean, user: Object })
 const emit = defineEmits(["change"])
 const instanceId = getCurrentInstance().uid
 const state = computed(() => fieldState(props.field, props.doc, props.meta, props.user, props.parentDoc || props.doc))
@@ -55,6 +55,7 @@ function dateChanged(value) {
 			:label="field.label"
 			:disabled="readOnly"
 			:candidates="candidates"
+			:create-defaults="createDefaults"
 			v-bind="query"
 			@update:model-value="change"
 		/>

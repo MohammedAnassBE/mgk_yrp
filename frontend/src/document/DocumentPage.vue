@@ -32,7 +32,7 @@ const route = useRoute()
 const { doc, meta, metas, layout, loading, busy, runner, dirty, editing, error, required, stale, itemEditor, editorReady,
 	isNew, canWrite, party, fieldsLoading, fieldError, retryFields, itemsLoading, messages, extraActions, editorItemCount, change, update, itemsChanged, initialize, reload, action } = useDocument(props.book)
 const { summary: documentSummary, facts: viewFacts, connections, fieldHints, statusRecord, loading: factsLoading, error: factsError, retry: retryFacts } = usePresentation(doc, editorItemCount)
-const { candidates, autoFields, error: partyError, loading: partyLoading, retry: retryParty } = party
+const { candidates, createDefaults, autoFields, error: partyError, loading: partyLoading, retry: retryParty } = party
 const disabled = computed(() => busy.value || runner.busy.value || itemsLoading.value || !editing.value || !canWrite.value)
 const summary = computed(() => visibleFields(summaryFields.map((name) => meta.value?.fields.find((field) => field.fieldname === name)).filter(Boolean), doc.value, meta.value))
 const valuationStatus = computed(() => doc.value?.__onload?.valuation_status)
@@ -152,6 +152,7 @@ function fieldValue(field) {
 								:metas="metas"
 								:disabled="disabled"
 								:candidates="candidates[field.fieldname] ?? null"
+								:create-defaults="createDefaults[field.fieldname]"
 								@change="change"
 							/>
 						</div>
@@ -224,6 +225,7 @@ function fieldValue(field) {
 						:meta="meta"
 						:metas="metas"
 						:candidates="candidates"
+						:create-defaults="createDefaults"
 						:auto-fields="autoFields"
 						:hints="fieldHints"
 						:disabled="disabled"
