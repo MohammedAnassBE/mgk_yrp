@@ -20,6 +20,7 @@ export class RealtimeConnection {
 		this.warn = warn
 		this.rooms = new Map()
 		this.reconnectHandlers = new Set()
+		this.eventHandlers = new Map()
 		this.stateHandlers = new Set()
 		this.state = "OFFLINE"
 		this.connectedBefore = false
@@ -46,6 +47,7 @@ export class RealtimeConnection {
 			socket.on("connect_error", (error) => this.failed(error))
 			socket.on("list_update", (event) => this.dispatch("doctype", event))
 			socket.on("doc_update", (event) => this.dispatch("doc", event))
+			for (const name of this.eventHandlers.keys()) this.listen(name)
 			if (socket.connected) this.connected()
 			else socket.connect()
 			return socket
@@ -118,6 +120,21 @@ export class RealtimeConnection {
 	subscribeDoctype(doctype, handler) { return this.subscribe("doctype", [doctype], handler) }
 	subscribeDoc(doctype, name, handler) { return this.subscribe("doc", [doctype, name], handler) }
 
+	listen(name) {
+		this.socket.on(name, (message) => { for (const handler of this.eventHandlers.get(name) || []) handler(message) })
+	}
+
+	/** Site-wide server events published with `frappe.publish_realtime(name, ...)`. */
+	onEvent(name, handler) {
+		if (!this.eventHandlers.has(name)) {
+			this.eventHandlers.set(name, new Set())
+			if (this.socket) this.listen(name)
+		}
+		this.eventHandlers.get(name).add(handler)
+		this.start()
+		return () => this.eventHandlers.get(name)?.delete(handler)
+	}
+
 	onReconnect(handler) {
 		this.reconnectHandlers.add(handler)
 		this.start()
@@ -136,3 +153,4 @@ export const realtime = new RealtimeConnection()
 export const subscribeDoctype = (doctype, handler) => realtime.subscribeDoctype(doctype, handler)
 export const subscribeDoc = (doctype, name, handler) => realtime.subscribeDoc(doctype, name, handler)
 export const onReconnect = (handler) => realtime.onReconnect(handler)
+export const onEvent = (name, handler) => realtime.onEvent(name, handler)

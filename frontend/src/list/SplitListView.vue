@@ -1,4 +1,5 @@
 <script setup>
+import { t } from "../shell/terminology.js"
 import { formatDate } from "../shared/formatDate.js"
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
@@ -146,23 +147,23 @@ onBeforeUnmount(() => { disposed = true; media?.removeEventListener("change", re
 <template>
 	<div class="split-list" :class="{ 'preview-open': isPreviewOpen, 'bulk-open': names.length > 0 }" @keydown="keydown">
 		<div class="split-records list-card" :aria-busy="loading">
-			<div class="split-list-head"><label><input type="checkbox" :checked="allSelected" :indeterminate="names.length > 0 && !allSelected" @change="selection.toggleAll"> Select all loaded</label><span>{{ rows.length }}</span></div>
-			<div v-if="loading" class="list-refreshing" role="status">Refreshing…</div>
-			<div ref="list" role="listbox" aria-label="Documents" tabindex="0">
-				<div v-if="!rows.length" class="empty-state compact"><h2>No records found</h2><p>Try a different search or clear your filters.</p></div>
+			<div class="split-list-head"><label><input type="checkbox" :checked="allSelected" :indeterminate="names.length > 0 && !allSelected" @change="selection.toggleAll"> {{ t("Select all loaded") }}</label><span>{{ rows.length }}</span></div>
+			<div v-if="loading" class="list-refreshing" role="status">{{ t("Refreshing…") }}</div>
+			<div ref="list" role="listbox" :aria-label="t('Documents')" tabindex="0">
+				<div v-if="!rows.length" class="empty-state compact"><h2>{{ t("No records found") }}</h2><p>{{ t("Try a different search or clear your filters.") }}</p></div>
 				<div v-for="row in rows" :key="row.name" class="split-row" role="option" :aria-selected="row.name === selectedName" :tabindex="row.name === selectedName ? 0 : -1" @click="choose(row)">
 					<input type="checkbox" :aria-label="`Select ${row.name}`" :checked="names.includes(row.name)" @click.stop @change="selection.toggle(row.name)">
 					<div class="split-row-copy">
-						<div class="split-row-head"><strong class="record-id">{{ row.name }}</strong><span class="status" :class="[statusPill(doctype, row).className, { 'list-filter-value': filterFor(row, '__status') }]" @click="filterClick($event, row, '__status')">{{ statusPill(doctype, row).label }}</span></div>
+						<div class="split-row-head"><strong class="record-id">{{ row.name }}</strong><span class="status" :class="[statusPill(doctype, row).className, { 'list-filter-value': filterFor(row, '__status') }]" @click="filterClick($event, row, '__status')">{{ t(statusPill(doctype, row).label) }}</span></div>
 						<div class="split-party"><template v-if="partyFields(row).length"><template v-for="(fieldname, index) in partyFields(row)" :key="fieldname"><template v-if="index"> → </template><span :class="{ 'list-filter-value': filterFor(row, fieldname) }" @click="filterClick($event, row, fieldname)">{{ fieldDisplayName(fieldname, row[fieldname]) || "—" }}</span></template></template><template v-else>{{ recordParty(doctype, row) }}</template></div>
 						<div class="split-row-facts"><span v-if="dateField(row)" :class="{ 'list-filter-value': filterFor(row, dateField(row)) }" @click="filterClick($event, row, dateField(row))">{{ formatDate(row[dateField(row)]) }}</span><template v-if="dateField(row) && rowMetrics(row)"> · </template>{{ rowMetrics(row) }}</div>
-						<div class="split-row-facts"><span v-for="column in secondaryColumns" :key="column.fieldname" :title="column.label" :class="{ 'list-filter-value': filterFor(row, column.fieldname) }" @click="filterClick($event, row, column.fieldname)">{{ displayValue(row, column) }}</span></div>
+						<div class="split-row-facts"><span v-for="column in secondaryColumns" :key="column.fieldname" :title="t(column.label)" :class="{ 'list-filter-value': filterFor(row, column.fieldname) }" @click="filterClick($event, row, column.fieldname)">{{ displayValue(row, column) }}</span></div>
 					</div>
 				</div>
 			</div>
 		</div>
 		<div ref="previewPanel" class="split-preview">
-			<button class="button secondary preview-back" type="button" @click="back">‹ Back to list</button>
+			<button class="button secondary preview-back" type="button" @click="back">‹ {{ t("Back to list") }}</button>
 			<SelectionSummary v-if="names.length" :rows="selectedRows" :actions="bulkActions" :refresh="refresh" @clear="selection.clear" />
 			<PreviewPane v-else :doctype="doctype" :row="selectedRow" :related-doctypes="relatedDoctypes" :document-route="documentRoute" :save-position="savePosition" :refresh="refresh" />
 		</div>

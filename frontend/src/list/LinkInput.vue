@@ -1,4 +1,5 @@
 <script setup>
+import { t } from "../shell/terminology.js"
 import "../shared/linkSuggestions.css"
 import { ref, watch, onBeforeUnmount, getCurrentInstance } from "vue"
 import { searchLinks } from "./listApi.js"
@@ -68,9 +69,9 @@ watch(() => props.doctype, () => { close(); results.value = [] })
 		<input :id="inputId" :value="open ? modelValue : selectedLabel" :aria-label="label" :placeholder="placeholder" role="combobox" autocomplete="off" :aria-expanded="open" :aria-controls="generatedId" :aria-activedescendant="open && results.length ? `${generatedId}-${active}` : undefined" @input="input($event.target.value)" @focus="open = true; search()" @keydown="keydown" />
 		<small v-if="labelError" role="alert">{{ labelError }}</small>
 		<div v-if="open" class="link-suggestions">
-			<div v-if="loading" role="status">Searching…</div>
-			<div v-else-if="error" role="alert">{{ error }} <button type="button" @click="search">Retry</button></div>
-			<div v-else-if="!results.length">No matches</div>
+			<div v-if="loading" role="status">{{ t("Searching…") }}</div>
+			<div v-else-if="error" role="alert">{{ error }} <button type="button" @click="search">{{ t("Retry") }}</button></div>
+			<div v-else-if="!results.length">{{ t("No matches") }}</div>
 			<ul :id="generatedId" role="listbox" :aria-label="label">
 				<li v-for="(option, index) in results" :id="`${generatedId}-${index}`" :key="option.value" role="option" :aria-selected="index === active" @mousedown.prevent="select(option)">
 					<span class="link-option"><strong>{{ linkRow(option, isTamil).primary }}</strong><small v-for="line in linkRow(option, isTamil).secondary" :key="line">{{ line }}</small></span>

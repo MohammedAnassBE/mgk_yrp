@@ -4,6 +4,8 @@ import logging
 import frappe
 import frappe.defaults
 
+from mgk_yrp.terminology.terms import get_terms
+
 WEB_DOCTYPES = (
 	"MGK Purchase Order",
 	"MGK Goods Received Note",
@@ -58,6 +60,7 @@ def get_boot():
 		"dev_server": bool(frappe._dev_server),
 		"user": apply_accurate_web_perms(user),
 		"ui_config": get_ui_config(),
+		"terms": get_terms(),
 		"defaults": defaults,
 		"sysdefaults": {**defaults, "rounding_method": frappe.get_system_settings("rounding_method")},
 	}

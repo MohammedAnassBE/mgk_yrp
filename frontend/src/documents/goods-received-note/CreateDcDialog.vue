@@ -7,6 +7,7 @@ import LinkField from "../../document/fields/LinkField.vue"
 import { callMethod } from "../../api/client.js"
 import { canMoveToHeadOffice, createDcFromSelection, dispatchSelection } from "../shared/jobWork.js"
 import { notify } from "../../shared/notify.js"
+import { t } from "../../shell/terminology.js"
 
 const props = defineProps({ doc: Object, names: Array, rows: Array, action: Object })
 const emit = defineEmits(["done", "close"])
@@ -35,28 +36,28 @@ function close() { if (!is_saving.value) emit("close") }
 </script>
 
 <template>
-	<ActionDialog visible header="Create DC" @close="close">
+	<ActionDialog visible :header="t('Create DC')" @close="close">
 		<form id="create-dc-form" class="form-stack" @submit.prevent="save">
 			<Message v-if="error" severity="error" :closable="false" class="form-banner">{{ error }}</Message>
 			<div class="form-field">
-				<label for="dispatch-process" class="field-label">Process *</label>
-				<LinkField v-model="process" doctype="YRP Process" label="Process" input-id="dispatch-process" :disabled="is_saving" />
+				<label for="dispatch-process" class="field-label">{{ t('Process') }} *</label>
+				<LinkField v-model="process" doctype="YRP Process" :label="t('Process')" input-id="dispatch-process" :disabled="is_saving" />
 			</div>
 			<div class="form-field">
-				<label for="dispatch-supplier" class="field-label">Supplier *</label>
-				<LinkField v-model="supplier" doctype="Supplier" label="Supplier" input-id="dispatch-supplier"
+				<label for="dispatch-supplier" class="field-label">{{ t('Supplier') }} *</label>
+				<LinkField v-model="supplier" doctype="Supplier" :label="t('Supplier')" input-id="dispatch-supplier"
 					:filters="supplierFilters" :disabled="is_saving" />
 			</div>
-			<Message v-if="is_move_blocked" severity="error" :closable="false" class="form-banner">These GRNs are in different warehouses, so stock must move to Head Office. That needs create and submit permission on YRP Stock Entry.</Message>
+			<Message v-if="is_move_blocked" severity="error" :closable="false" class="form-banner">{{ t('These GRNs are in different warehouses, so stock must move to Head Office. That needs create and submit permission on YRP Stock Entry.') }}</Message>
 			<label v-if="can_move || selection.is_forced" class="check-field">
-				<input v-model="move_to_head_office" type="checkbox" aria-label="Move stock to Head Office"
+				<input v-model="move_to_head_office" type="checkbox" :aria-label="t('Move stock to Head Office')"
 					:disabled="selection.is_forced || is_saving" :aria-readonly="selection.is_forced" />
-				<span>Move stock to Head Office</span>
+				<span>{{ t('Move stock to Head Office') }}</span>
 			</label>
 		</form>
 		<template #footer>
-			<Button label="Cancel" severity="secondary" outlined :disabled="is_saving" @click="close" />
-			<Button label="Create DC" type="submit" form="create-dc-form" :loading="is_saving" :disabled="is_saving || !has_required_values || is_move_blocked" />
+			<Button :label="t('Cancel')" severity="secondary" outlined :disabled="is_saving" @click="close" />
+			<Button :label="t('Create DC')" type="submit" form="create-dc-form" :loading="is_saving" :disabled="is_saving || !has_required_values || is_move_blocked" />
 		</template>
 	</ActionDialog>
 </template>

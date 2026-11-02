@@ -1,4 +1,5 @@
 <script setup>
+import { t } from "../../shell/terminology.js"
 import { displayName } from "../../shell/displayLanguage.js"
 import { formatDate } from "../../shared/formatDate.js"
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue"
@@ -60,34 +61,34 @@ onBeforeUnmount(() => { sequence++; refresh.cancel(); disposers.forEach((dispose
 <template>
 	<NoAccess v-if="!canRead" />
 	<section v-else class="page list-page stock-note">
-		<ListPageHeader title="Stock" />
+		<ListPageHeader :title="t('Stock')" />
 		<form class="stock-filters" @submit.prevent="load">
-			<label><span>From date</span><DateInput v-model="filters.from_date" input-id="stock-from-date" aria-label="From date" required /></label>
-			<label><span>To date</span><DateInput v-model="filters.to_date" input-id="stock-to-date" aria-label="To date" required /></label>
+			<label><span>{{ t("From date") }}</span><DateInput v-model="filters.from_date" input-id="stock-from-date" :aria-label="t('From date')" required /></label>
+			<label><span>{{ t("To date") }}</span><DateInput v-model="filters.to_date" input-id="stock-to-date" :aria-label="t('To date')" required /></label>
 			<label v-for="picker in pickers" :key="picker.key">
-				<select v-model="filters[picker.key]" :aria-label="picker.label" @change="picker.key === 'supplier' && supplierChanged()">
-					<option value="">{{ picker.label }}</option><option v-for="option in picker.options" :key="option.name" :value="option.name">{{ picker.doctype ? displayName(picker.doctype, option.name, option[picker.title] || option.name) : option[picker.title] || option.name }}</option>
+				<select v-model="filters[picker.key]" :aria-label="t(picker.label)" @change="picker.key === 'supplier' && supplierChanged()">
+					<option value="">{{ t(picker.label) }}</option><option v-for="option in picker.options" :key="option.name" :value="option.name">{{ picker.doctype ? displayName(picker.doctype, option.name, option[picker.title] || option.name) : option[picker.title] || option.name }}</option>
 				</select>
 			</label>
-			<button class="button primary" type="submit" :disabled="loading">{{ loading ? 'Loading…' : 'Show stock' }}</button>
+			<button class="button primary" type="submit" :disabled="loading">{{ t(loading ? 'Loading…' : 'Show stock') }}</button>
 		</form>
-		<div v-if="error" class="error-state" role="alert"><p>{{ error }}</p><button class="button secondary" @click="load">Retry</button></div>
-		<div v-else-if="loading" class="loading-state" role="status"><i class="pi pi-spin pi-spinner" />Loading stock…</div>
+		<div v-if="error" class="error-state" role="alert"><p>{{ error }}</p><button class="button secondary" @click="load">{{ t("Retry") }}</button></div>
+		<div v-else-if="loading" class="loading-state" role="status"><i class="pi pi-spin pi-spinner" />{{ t("Loading stock…") }}</div>
 		<template v-else>
 			<div class="stock-summary">
-				<article><span>Stock lines</span><strong>{{ summary.line_count }}</strong></article>
-				<article><span>Warehouses</span><strong>{{ summary.warehouse_count }}</strong></article>
-				<article><span>Available quantity</span><strong>{{ quantitySummary }}</strong></article>
-				<article><span>Stock value</span><strong>{{ money(summary.total_value) }}</strong></article>
+				<article><span>{{ t("Stock lines") }}</span><strong>{{ summary.line_count }}</strong></article>
+				<article><span>{{ t("Warehouses") }}</span><strong>{{ summary.warehouse_count }}</strong></article>
+				<article><span>{{ t("Available quantity") }}</span><strong>{{ quantitySummary }}</strong></article>
+				<article><span>{{ t("Stock value") }}</span><strong>{{ money(summary.total_value) }}</strong></article>
 			</div>
-			<div v-if="!result.rows.length" class="empty-state compact"><i class="pi pi-box" /><h2>No stock found</h2><p>Change the filters or date range and try again.</p></div>
+			<div v-if="!result.rows.length" class="empty-state compact"><i class="pi pi-box" /><h2>{{ t("No stock found") }}</h2><p>{{ t("Change the filters or date range and try again.") }}</p></div>
 			<div v-else class="stock-table-card">
-				<header><h2>Available stock</h2><span>{{ result.rows.length }} lines</span></header>
+				<header><h2>{{ t("Available stock") }}</h2><span>{{ result.rows.length }} {{ t("lines") }}</span></header>
 				<div class="table-scroll"><table>
-					<thead><tr><th>Item</th><th>Supplier</th><th>Warehouse</th><th>Received type</th><th class="numeric">Available</th><th class="numeric">Value</th><th>Inward dates</th></tr></thead>
+					<thead><tr><th>{{ t("Item") }}</th><th>{{ t("Supplier") }}</th><th>{{ t("Warehouse") }}</th><th>{{ t("Received type") }}</th><th class="numeric">{{ t("Available") }}</th><th class="numeric">{{ t("Value") }}</th><th>{{ t("Inward dates") }}</th></tr></thead>
 					<tbody><tr v-for="(row, index) in result.rows" :key="index">
 						<td><RouterLink v-if="hasPermission('Item')" :to="`/manage/items/${encodeURIComponent(row.item)}`">{{ displayName('Item', row.item, row.item_name || row.item) }}</RouterLink><span v-else>{{ displayName('Item', row.item, row.item_name || row.item) }}</span><small>{{ row.item }}</small></td>
-						<td><RouterLink v-if="row.supplier && hasPermission('Supplier')" :to="`/manage/suppliers/${encodeURIComponent(row.supplier)}`">{{ displayName('Supplier', row.supplier, row.supplier_name || row.supplier) }}</RouterLink><span v-else>{{ displayName('Supplier', row.supplier, row.supplier_name || row.supplier) || 'Company stock' }}</span></td>
+						<td><RouterLink v-if="row.supplier && hasPermission('Supplier')" :to="`/manage/suppliers/${encodeURIComponent(row.supplier)}`">{{ displayName('Supplier', row.supplier, row.supplier_name || row.supplier) }}</RouterLink><span v-else>{{ displayName('Supplier', row.supplier, row.supplier_name || row.supplier) || t('Company stock') }}</span></td>
 						<td><RouterLink v-if="hasPermission('Warehouse')" :to="`/manage/warehouses/${encodeURIComponent(row.warehouse)}`">{{ displayName('Warehouse', row.warehouse, row.warehouse_name) }}</RouterLink><span v-else>{{ displayName('Warehouse', row.warehouse, row.warehouse_name) }}</span></td><td>{{ row.received_type || '—' }}</td>
 						<td class="numeric"><strong>{{ qty(row.bal_qty) }}</strong><small>{{ row.stock_uom }}</small></td><td class="numeric">{{ money(row.bal_val) }}</td>
 						<td><div v-if="row.inward_date_breakdown?.length" class="inward-list"><span v-for="entry in row.inward_date_breakdown" :key="entry.date"><time>{{ formatDate(entry.date) }}</time><strong>{{ qty(entry.qty) }} {{ row.stock_uom }}</strong></span></div><span v-else>—</span></td>

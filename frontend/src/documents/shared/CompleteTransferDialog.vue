@@ -8,6 +8,7 @@ import TransferItems from "./TransferItems.vue"
 import { callMethod } from "../../api/client.js"
 import { completeTransfer, transferDestination, transferItems } from "./transit.js"
 import { notify } from "../../shared/notify.js"
+import { t } from "../../shell/terminology.js"
 
 const props = defineProps({ doc: { type: Object, required: true }, names: Array, rows: Array, action: Object })
 const emit = defineEmits(["done", "close"])
@@ -29,19 +30,19 @@ function close() { if (!is_saving.value) emit("close") }
 </script>
 
 <template>
-	<ActionDialog visible header="Complete Transfer" width="min(960px, 94vw)" @close="close">
+	<ActionDialog visible :header="t('Complete Transfer')" width="min(960px, 94vw)" @close="close">
 		<form id="complete-transfer-form" class="form-stack" @submit.prevent="save">
 			<Message v-if="error" severity="error" :closable="false" class="form-banner">{{ error }}</Message>
 			<div class="form-field">
-				<label for="transfer-warehouse" class="field-label">Receiving Warehouse *</label>
-				<LinkField v-model="warehouse" doctype="Warehouse" label="Receiving Warehouse" input-id="transfer-warehouse"
+				<label for="transfer-warehouse" class="field-label">{{ t('Receiving Warehouse') }} *</label>
+				<LinkField v-model="warehouse" doctype="Warehouse" :label="t('Receiving Warehouse')" input-id="transfer-warehouse"
 					:filters="destination.filters" :disabled="is_saving" />
 			</div>
 			<TransferItems :rows="items" editable :busy="is_saving" @quantity="(row, value) => row.qty = value" />
 		</form>
 		<template #footer>
-			<Button label="Cancel" severity="secondary" outlined :disabled="is_saving" @click="close" />
-			<Button label="Complete Transfer" type="submit" form="complete-transfer-form" :loading="is_saving" :disabled="is_saving" />
+			<Button :label="t('Cancel')" severity="secondary" outlined :disabled="is_saving" @click="close" />
+			<Button :label="t('Complete Transfer')" type="submit" form="complete-transfer-form" :loading="is_saving" :disabled="is_saving" />
 		</template>
 	</ActionDialog>
 </template>

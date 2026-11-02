@@ -1,4 +1,5 @@
 <script setup>
+import { t } from "../../shell/terminology.js"
 import { displayName } from "../../shell/displayLanguage.js"
 import { computed, onBeforeUnmount, onMounted, ref } from "vue"
 import Button from "primevue/button"
@@ -76,21 +77,21 @@ onBeforeUnmount(() => { sequence++; refresh.cancel(); disposers.forEach((dispose
 	<NoAccess v-if="!canRead" />
 	<section v-else class="page list-page pending-bills">
 		<ListPageHeader :title="book.label">
-			<Button v-if="canBill" :label="`Make Bill${selected.size ? ` (${selected.size})` : ''}`" :disabled="!selected.size || dialogOpen" @click="openDialog" />
+			<Button v-if="canBill" :label="`${t('Make Bill')}${selected.size ? ` (${selected.size})` : ''}`" :disabled="!selected.size || dialogOpen" @click="openDialog" />
 		</ListPageHeader>
 		<div v-if="created.length" class="pending-created" role="status">
-			<strong>Bills created:</strong>
+			<strong>{{ t("Bills created") }}:</strong>
 			<RouterLink v-for="row in created" :key="row.name" :to="`/billing/${encodeURIComponent(row.name)}`">{{ row.name }}</RouterLink>
 		</div>
 		<div class="pending-toolbar">
-			<label class="pending-check"><input type="checkbox" :checked="allChecked(selected, allNames)" :disabled="!allNames.length" aria-label="Select all GRNs"
-				@change="toggle(allNames, $event.target.checked)"><span>Select all</span></label>
-			<span>{{ result.count }} unbilled GRNs · {{ result.suppliers.length }} suppliers</span>
-			<span v-if="selected.size" class="pending-selected">{{ selected.size }} selected · {{ money(selectedAmount) }}</span>
+			<label class="pending-check"><input type="checkbox" :checked="allChecked(selected, allNames)" :disabled="!allNames.length" :aria-label="t('Select all GRNs')"
+				@change="toggle(allNames, $event.target.checked)"><span>{{ t("Select all") }}</span></label>
+			<span>{{ result.count }} {{ t("unbilled GRNs") }} · {{ result.suppliers.length }} {{ t("suppliers") }}</span>
+			<span v-if="selected.size" class="pending-selected">{{ selected.size }} {{ t("selected") }} · {{ money(selectedAmount) }}</span>
 		</div>
-		<div v-if="error" class="error-state" role="alert"><p>{{ error }}</p><button class="button secondary" @click="load">Retry</button></div>
-		<div v-else-if="loading && !result.suppliers.length" class="loading-state" role="status"><i class="pi pi-spin pi-spinner" />Loading pending bills…</div>
-		<p v-else-if="!result.suppliers.length" class="empty-state compact">Every submitted GRN is billed.</p>
+		<div v-if="error" class="error-state" role="alert"><p>{{ error }}</p><button class="button secondary" @click="load">{{ t("Retry") }}</button></div>
+		<div v-else-if="loading && !result.suppliers.length" class="loading-state" role="status"><i class="pi pi-spin pi-spinner" />{{ t("Loading pending bills…") }}</div>
+		<p v-else-if="!result.suppliers.length" class="empty-state compact">{{ t("Every submitted GRN is billed.") }}</p>
 		<article v-for="group in result.suppliers" :key="group.supplier" class="pending-group">
 			<header>
 				<input type="checkbox" :checked="allChecked(selected, supplierNames(group))" :aria-label="`Select all GRNs of ${group.supplier_name}`"
@@ -98,17 +99,17 @@ onBeforeUnmount(() => { sequence++; refresh.cancel(); disposers.forEach((dispose
 				<button class="pending-toggle" type="button" :aria-expanded="!collapsed.has(group.supplier)" @click="toggleGroup(group.supplier)">
 					<i class="pi" :class="collapsed.has(group.supplier) ? 'pi-chevron-right' : 'pi-chevron-down'" aria-hidden="true" /><h2>{{ displayName('Supplier', group.supplier, group.supplier_name) }}</h2>
 				</button>
-				<span class="pending-meta">{{ group.grn_count }} GRNs · {{ money(group.total_amount) }} · {{ group.total_aging }} days</span>
+				<span class="pending-meta">{{ group.grn_count }} {{ t("GRNs") }} · {{ money(group.total_amount) }} · {{ group.total_aging }} {{ t("days") }}</span>
 			</header>
 			<div v-if="!collapsed.has(group.supplier)" class="table-scroll"><table>
-				<thead><tr><th class="check-column"></th><th>GRN</th><th>Date</th><th>Aging</th><th>Type</th><th class="numeric">Qty</th><th class="numeric">Amount</th></tr></thead>
+				<thead><tr><th class="check-column"></th><th>{{ t("GRN") }}</th><th>{{ t("Date") }}</th><th>{{ t("Aging") }}</th><th>{{ t("Type") }}</th><th class="numeric">{{ t("Qty") }}</th><th class="numeric">{{ t("Amount") }}</th></tr></thead>
 				<tbody>
 					<tr v-for="grn in group.grns" :key="grn.name" :title="itemTooltip(grn)">
 						<td class="check-column"><input type="checkbox" :checked="selected.has(grn.name)" :aria-label="`Select ${grn.name}`" @change="toggle([grn.name], $event.target.checked)"></td>
 						<td><RouterLink :to="`/goods-received-note/${encodeURIComponent(grn.name)}`">{{ grn.name }}</RouterLink></td>
 						<td>{{ formatDate(grn.posting_date) }}</td>
-						<td><span class="aging-tag" :class="bucketClass[grn.bucket]">{{ bucketLabel(grn.bucket) }}</span> {{ grn.aging }}d</td>
-						<td>{{ typeLabel(grn.against) }}</td>
+						<td><span class="aging-tag" :class="bucketClass[grn.bucket]">{{ t(bucketLabel(grn.bucket)) }}</span> {{ grn.aging }}d</td>
+						<td>{{ t(typeLabel(grn.against)) }}</td>
 						<td class="numeric">{{ grn.total_qty }}</td>
 						<td class="numeric">{{ money(grn.total_amount) }}</td>
 					</tr>

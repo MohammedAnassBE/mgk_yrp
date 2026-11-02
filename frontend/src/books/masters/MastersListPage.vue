@@ -1,4 +1,5 @@
 <script setup>
+import { t } from "../../shell/terminology.js"
 import { onBeforeUnmount, onMounted, ref } from "vue"
 import ListPageHeader from "../../shell/ListPageHeader.vue"
 import NoAccess from "../../shared/NoAccess.vue"
@@ -34,15 +35,15 @@ onBeforeUnmount(() => { sequence++; refresh.cancel(); disposers.forEach((dispose
 <template>
 	<NoAccess v-if="!masters.length" />
 	<section v-else class="page list-page">
-		<ListPageHeader title="Manage" />
-		<div v-if="error" class="error-state" role="alert"><p>{{ error }}</p><button class="button secondary" @click="load">Retry</button></div>
-		<div v-if="loading" class="loading-state" role="status"><i class="pi pi-spin pi-spinner" />Loading masters…</div>
+		<ListPageHeader :title="t('Manage')" />
+		<div v-if="error" class="error-state" role="alert"><p>{{ error }}</p><button class="button secondary" @click="load">{{ t("Retry") }}</button></div>
+		<div v-if="loading" class="loading-state" role="status"><i class="pi pi-spin pi-spinner" />{{ t("Loading masters…") }}</div>
 		<div v-else class="manage-grid">
 			<div v-for="(master, index) in masters" :key="master.key" class="manage-card-wrap">
 				<RouterLink class="manage-card" :class="{ 'has-create': canCreate(master) }" :to="master.route">
-					<strong>{{ master.label }}</strong><div class="manage-foot"><span>{{ error ? 'Count unavailable' : `${counts[index] || 0} records` }}</span><b>Manage ›</b></div>
+					<strong>{{ t(master.label) }}</strong><div class="manage-foot"><span>{{ error ? t('Count unavailable') : `${counts[index] || 0} ${t('records')}` }}</span><b>{{ t("Manage") }} ›</b></div>
 				</RouterLink>
-				<RouterLink v-if="canCreate(master)" class="button small manage-create" :class="master.cover" :to="`${master.route}/new`" :aria-label="`New ${master.entityLabel}`">+ New</RouterLink>
+				<RouterLink v-if="canCreate(master)" class="button small manage-create" :class="master.cover" :to="`${master.route}/new`" :aria-label="`${t('New')} ${t(master.entityLabel)}`">+ {{ t("New") }}</RouterLink>
 			</div>
 		</div>
 	</section>

@@ -7,6 +7,7 @@ import { linkRow } from "../../list/linkOptions.js"
 import { useLinkLabel } from "../../list/useLinkLabel.js"
 import { isTamil, withTamilNames } from "../../shell/displayLanguage.js"
 import QuickCreateDialog from "./QuickCreateDialog.vue"
+import { t } from "../../shell/terminology.js"
 import { canQuickCreate, hasExactMatch, quickCreateLabel } from "./quickCreate.js"
 
 const props = defineProps({ modelValue: { default: "" }, doctype: String, label: String, inputId: String,
@@ -146,12 +147,12 @@ defineExpose({ focus: () => inputElement.value?.focus() })
 		/>
 		<small v-if="labelError" role="alert">{{ labelError }}</small>
 		<div v-if="open" ref="suggestionsElement" class="link-suggestions">
-			<div v-if="loading" role="status">Searching…</div>
+			<div v-if="loading" role="status">{{ t('Searching…') }}</div>
 			<div v-else-if="error" role="alert">
 				{{ error }}
-				<button type="button" @click="search">Retry</button>
+				<button type="button" @click="search">{{ t('Retry') }}</button>
 			</div>
-			<div v-else-if="!rowCount">No matches</div>
+			<div v-else-if="!rowCount">{{ t('No matches') }}</div>
 			<ul :id="id" role="listbox" :aria-label="label">
 				<li
 					v-for="(option, index) in results"
@@ -174,7 +175,7 @@ defineExpose({ focus: () => inputElement.value?.focus() })
 					:aria-selected="active === results.length"
 					@mousedown.prevent="startCreate"
 				>
-					<span aria-hidden="true">+</span> Create a new {{ quickCreateLabel(targetDoctype) }}
+					<span aria-hidden="true">+</span> {{ t('Create a new') }} {{ t(quickCreateLabel(targetDoctype)) }}
 				</li>
 			</ul>
 		</div>

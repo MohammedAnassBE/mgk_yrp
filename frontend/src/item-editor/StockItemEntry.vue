@@ -1,4 +1,5 @@
 <script setup>
+import { t } from "../shell/terminology.js"
 import { ref, computed, nextTick, watch } from "vue"
 import Button from "primevue/button"
 import InputNumber from "primevue/inputnumber"
@@ -51,10 +52,10 @@ function reset() {
 
 async function commit() {
 	try {
-		if (!entry.value || entry.value.name !== item.value) throw new Error("Choose an item first.")
+		if (!entry.value || entry.value.name !== item.value) throw new Error(t("Choose an item first."))
 		for (const dim of props.dimensions) if (dim.mandatory && !dimensions.value[dim.fieldname]) throw new Error(`${dim.label} is required.`)
 		for (const attr of details.value.attributes || []) if (attr !== details.value.primary_attribute && !entry.value.attributes[attr]) throw new Error(`Choose ${attr}.`)
-		if (!Object.values(entry.value.values).some((cell) => Number(cell?.qty) > 0)) throw new Error("Enter Qty to continue")
+		if (!Object.values(entry.value.values).some((cell) => Number(cell?.qty) > 0)) throw new Error(t("Enter Qty to continue"))
 		entry.value.dimensions = clone(dimensions.value)
 		validateItem(entry.value, props.mode, props.poEntries)
 		emit("commit", clone(details.value), clone(entry.value))
@@ -82,19 +83,19 @@ function updateCell(key, field, value) {
 
 <template>
 	<section class="stock-add-form">
-		<h4>{{ editing ? 'Edit item' : 'Add item' }}</h4>
+		<h4>{{ t(editing ? 'Edit item' : 'Add item') }}</h4>
 		<div v-if="error" class="editor-error" role="alert">{{ error }}</div>
 		<div :key="resetVersion" class="form-grid">
 			<div class="form-field">
 				<label class="field-label">
-					Item
+					{{ t('Item') }}
 					<span class="required">*</span>
 				</label>
 				<LinkField
 					ref="itemInput"
 					v-model="item"
 					doctype="Item"
-					label="Item"
+					:label="t('Item')"
 					:disabled="disabled || Boolean(editing)"
 					:filters="itemFilters"
 					:allow-create="mode !== 'grn_po'"
@@ -103,18 +104,18 @@ function updateCell(key, field, value) {
 			</div>
 			<div v-for="dimension in props.dimensions" :key="dimension.fieldname" class="form-field">
 				<label class="field-label">
-					{{ dimension.label }}
+					{{ t(dimension.label) }}
 					<span v-if="dimension.mandatory" class="required">*</span>
 				</label>
 				<LinkField
 					v-model="dimensions[dimension.fieldname]"
 					:doctype="dimension.options"
-					:label="dimension.label"
+					:label="t(dimension.label)"
 					:disabled="disabled || Boolean(editing) && permissions.lockDimensionsOnEdit"
 				/>
 			</div>
 		</div>
-		<p v-if="loading" role="status">Resolving item attributes…</p>
+		<p v-if="loading" role="status">{{ t('Resolving item attributes…') }}</p>
 		<template v-if="entry">
 			<div class="form-grid attribute-fields">
 				<div v-for="attribute in (details.attributes || []).filter((value) => value !== details.primary_attribute)" :key="attribute" class="form-field">
@@ -135,13 +136,13 @@ function updateCell(key, field, value) {
 				<table class="pivot-entry">
 					<thead>
 						<tr>
-							<th>{{ details.primary_attribute || 'Quantity' }}</th>
-							<th v-for="key in keys" :key="key">{{ key === 'default' ? 'Qty' : key }}</th>
+							<th>{{ details.primary_attribute || t('Quantity') }}</th>
+							<th v-for="key in keys" :key="key">{{ key === 'default' ? t('Qty') : key }}</th>
 						</tr>
 					</thead>
 					<tbody>
 						<tr>
-							<th>Qty ({{ entry.default_uom }})</th>
+							<th>{{ t('Qty') }} ({{ entry.default_uom }})</th>
 							<td v-for="key in keys" :key="key">
 								<InputNumber
 									:model-value="Number(entry.values[key]?.qty) || 0"
@@ -156,7 +157,7 @@ function updateCell(key, field, value) {
 							</td>
 						</tr>
 						<tr v-if="mode !== 'plan'">
-							<th>Rate</th>
+							<th>{{ t('Rate') }}</th>
 							<td v-for="key in keys" :key="key">
 								<InputNumber
 									:model-value="Number(entry.values[key]?.rate) || 0"
@@ -176,14 +177,14 @@ function updateCell(key, field, value) {
 		<div class="editor-actions">
 			<Button
 				v-if="editing"
-				label="Cancel edit"
+				:label="t('Cancel edit')"
 				severity="secondary"
 				outlined
 				@click="cancel"
 			/>
 			<Button
 				class="editor-commit"
-				:label="editing ? 'Update item' : 'Add item'"
+				:label="t(editing ? 'Update item' : 'Add item')"
 				:icon="editing ? 'pi pi-check' : 'pi pi-plus'"
 				:disabled="disabled || loading || !entry"
 				@click="commit"

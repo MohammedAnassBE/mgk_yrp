@@ -1,5 +1,6 @@
 import { computed, reactive, ref } from "vue"
 import { callRead } from "../api/client.js"
+import { t } from "./terminology.js"
 
 export const ENGLISH = "en"
 export const TAMIL = "ta"
@@ -159,11 +160,11 @@ async function fetchTamilNames(doctype, names) {
 	}
 }
 
-/** List tab label: Tamil mode prefers the tab's Item Group Tamil name, then the tab's own `tamil` text. */
+/** List tab label: Tamil mode prefers the tab's Item Group Tamil name, then the tab label's term. */
 export function tabLabel(tab) {
 	if (!isTamil.value) return tab.label
 	const group = (tab.filters || []).find(([fieldname, operator]) => fieldname === "item_group" && operator === "=")
-	return (group && tamilName("Item Group", group[2])) || tab.tamil || tab.label
+	return (group && tamilName("Item Group", group[2])) || t(tab.label)
 }
 
 /** Adds `tamil` to Link suggestions in both languages; the stored value stays the record name. */

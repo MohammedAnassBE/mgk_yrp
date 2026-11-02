@@ -7,6 +7,7 @@ import { canAmendDocument, hasOpenDialog, isSaveShortcut } from "./lifecycle.js"
 import { reopenConfirmation } from "../documents/delivery-challan-close/actions.js"
 import PrintDialog from "./print/PrintDialog.vue"
 import { canPrint } from "./print/print.js"
+import { t } from "../shell/terminology.js"
 const props = defineProps({ doc: Object, meta: Object, dirty: Boolean, isNew: Boolean, busy: Boolean, blocked: Boolean, editing: Boolean, extraActions: { type: Array, default: () => [] } })
 const emit = defineEmits(["action", "discard"])
 const pending = ref(null)
@@ -33,7 +34,7 @@ onBeforeUnmount(() => globalThis.window?.removeEventListener?.("keydown", keydow
 	<div class="head-actions">
 		<Button
 			v-if="isPrintable"
-			label="Print"
+			:label="t('Print')"
 			icon="pi pi-print"
 			severity="secondary"
 			outlined
@@ -45,7 +46,7 @@ onBeforeUnmount(() => globalThis.window?.removeEventListener?.("keydown", keydow
 		<Button
 			v-for="action in extraActions"
 			:key="action.key"
-			:label="action.label"
+			:label="t(action.label)"
 			severity="secondary"
 			outlined
 			size="small"
@@ -54,7 +55,7 @@ onBeforeUnmount(() => globalThis.window?.removeEventListener?.("keydown", keydow
 		/>
 		<Button
 			v-if="editing && dirty && !isNew"
-			label="Discard changes"
+			:label="t('Discard changes')"
 			severity="secondary"
 			outlined
 			size="small"
@@ -63,7 +64,7 @@ onBeforeUnmount(() => globalThis.window?.removeEventListener?.("keydown", keydow
 		/>
 		<Button
 			v-if="!isNew && [0, 2].includes(Number(doc.docstatus)) && allowed('delete')"
-			label="Delete"
+			:label="t('Delete')"
 			severity="secondary"
 			outlined
 			size="small"
@@ -72,7 +73,7 @@ onBeforeUnmount(() => globalThis.window?.removeEventListener?.("keydown", keydow
 		/>
 		<Button
 			v-if="Number(doc.docstatus) === 1 && allowed('cancel')"
-			:label="isClose ? 'Reopen' : 'Cancel'"
+			:label="t(isClose ? 'Reopen' : 'Cancel')"
 			:severity="isClose ? undefined : 'secondary'"
 			:outlined="!isClose"
 			size="small"
@@ -81,14 +82,14 @@ onBeforeUnmount(() => globalThis.window?.removeEventListener?.("keydown", keydow
 		/>
 		<Button
 			v-if="canAmend"
-			label="Amend"
+			:label="t('Amend')"
 			size="small"
 			:disabled="busy"
 			@click="$emit('action', 'amend')"
 		/>
 		<Button
 			v-if="canSave"
-			label="Save"
+			:label="t('Save')"
 			class="forward-cta"
 			size="small"
 			:loading="busy"
@@ -97,7 +98,7 @@ onBeforeUnmount(() => globalThis.window?.removeEventListener?.("keydown", keydow
 		/>
 		<Button
 			v-else-if="canSubmit"
-			label="Submit"
+			:label="t('Submit')"
 			class="forward-cta"
 			size="small"
 			:loading="busy"
@@ -107,20 +108,20 @@ onBeforeUnmount(() => globalThis.window?.removeEventListener?.("keydown", keydow
 		<Dialog
 			:visible="Boolean(pending)"
 			modal
-			:header="isClose && pending === 'cancel' ? 'Reopen Delivery Challan' : `${pending?.[0]?.toUpperCase()}${pending?.slice(1) || ''} document`"
+			:header="t(isClose && pending === 'cancel' ? 'Reopen Delivery Challan' : `${pending?.[0]?.toUpperCase()}${pending?.slice(1) || ''} document`)"
 			:style="{ width: 'min(440px, 94vw)' }"
 			@update:visible="pending = null"
 		>
-			<p>{{ isClose && pending === 'cancel' ? reopenConfirmation(doc) : pending === 'discard' ? 'Discard your changes and reload the saved document?' : `Confirm ${pending} for ${doc.name}?` }}</p>
+			<p>{{ isClose && pending === 'cancel' ? reopenConfirmation(doc) : pending === 'discard' ? t('Discard your changes and reload the saved document?') : `${t(`Confirm ${pending} for`)} ${doc.name}?` }}</p>
 			<template #footer>
 				<Button
-					label="Keep working"
+					:label="t('Keep working')"
 					severity="secondary"
 					outlined
 					@click="pending = null"
 				/>
 				<Button
-					label="Confirm"
+					:label="t('Confirm')"
 					:autofocus="!['cancel', 'delete', 'discard'].includes(pending)"
 					:severity="['cancel', 'delete'].includes(pending) ? 'danger' : undefined"
 					@click="pending === 'discard' ? ($emit('discard'), pending = null) : confirm()"

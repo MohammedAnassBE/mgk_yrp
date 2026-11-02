@@ -5,70 +5,23 @@ from frappe.contacts.doctype.address.address import get_address_display
 from frappe.utils import flt, formatdate
 from yrp.party_addresses import get_party_address
 
+from mgk_yrp.terminology.terms import get_tamil_labels, normalize
 from mgk_yrp.web.preview import add_item_attributes
 
 TITLE_FIELDS = {"Supplier": "supplier_name", "Warehouse": "warehouse_name", "MGK Agent": "agent_name"}
 TAMIL_FONT = "MGK Noto Sans Tamil"
-TAMIL_LABELS = {
-	"PURCHASE ORDER": "கொள்முதல் ஆணை",
-	"DELIVERY CHALLAN": "டெலிவரி சலான்",
-	"RETURN DELIVERY CHALLAN": "திருப்பு டெலிவரி சலான்",
-	"GOODS RECEIVED NOTE": "பொருள் வரவு குறிப்பு",
-	"DRAFT": "வரைவு",
-	"CANCELLED": "ரத்து",
-	"To": "பெறுநர்",
-	"From": "அனுப்புநர்",
-	"Supplier": "சப்ளையர்",
-	"Deliver To": "டெலிவரி இடம்",
-	"Received At": "பெறப்பட்ட இடம்",
-	"Warehouse": "கிடங்கு",
-	"Contact": "தொடர்பு",
-	"No.": "எண்",
-	"Date": "தேதி",
-	"Process": "செயல்முறை",
-	"Item Group": "பொருள் குழு",
-	"Routing": "வழித்தடம்",
-	"Agent": "முகவர்",
-	"Internal Transfer": "உள் பரிமாற்றம்",
-	"DC No.": "டிசி எண்",
-	"Vehicle No.": "வாகன எண்",
-	"PO": "கொள்முதல் ஆணை",
-	"GRN": "பொருள் வரவு",
-	"DC": "டிசி",
-	"Invoice": "பில்",
-	"Return Against": "திருப்பு அடிப்படை",
-	"Particulars": "விவரங்கள்",
-	"S.No.": "வ.எண்",
-	"Item": "பொருள்",
-	"Received Type": "வரவு வகை",
-	"Qty": "அளவு",
-	"UOM": "அலகு",
-	"Rate": "விலை",
-	"Amount": "தொகை",
-	"Value": "மதிப்பு",
-	"Total": "மொத்தம்",
-	"In Words": "எழுத்தில்",
-	"Comments": "குறிப்புகள்",
-	"Receiver's Signature": "பெறுநர் கையொப்பம்",
-	"Supplier's Acceptance": "சப்ளையர் ஒப்புதல்",
-	"Received By": "பெற்றவர்",
-	"Prepared By": "தயாரித்தவர்",
-	"For": "சார்பாக",
-	"Authorised Signatory": "அங்கீகரிக்கப்பட்ட கையொப்பம்",
-	"Printed on": "அச்சிட்ட நேரம்",
-	"by": "அச்சிட்டவர்",
-}
 
 
 class PrintLabels(dict):
-	"""Label lookup that falls back to the English text."""
+	"""Label lookup by English text (any case) that falls back to the English text."""
 
-	def __missing__(self, key):
-		return key
+	def __getitem__(self, key):
+		return super().get(normalize(key)) or key
 
 
 def get_print_labels(tamil=0):
-	return PrintLabels(TAMIL_LABELS if tamil else {})
+	"""Print labels from the editable MGK terminology when printing in Tamil."""
+	return PrintLabels(get_tamil_labels() if tamil else {})
 
 
 def get_print_name(doctype, name, tamil=0):

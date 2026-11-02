@@ -1,4 +1,5 @@
 <script setup>
+import { t } from "../shell/terminology.js"
 import { displayName } from "../shell/displayLanguage.js"
 import { computed, ref, watch } from "vue"
 import Button from "primevue/button"
@@ -29,7 +30,7 @@ async function prepare() {
 async function save() {
 	if (isSaving.value) return
 	const missing = [["warehouse_name", "Warehouse name"], ["company", "Company"]].filter(([field]) => !String(draft.value[field] || "").trim())
-	if (missing.length) { error.value = `Missing required fields: ${missing.map(([, label]) => label).join(", ")}.`; return }
+	if (missing.length) { error.value = `${t("Missing required fields")}: ${missing.map(([, label]) => t(label)).join(", ")}.`; return }
 	isSaving.value = true
 	error.value = ""
 	try {
@@ -45,27 +46,27 @@ watch(() => props.visible, (open) => { if (open) prepare() }, { immediate: true 
 </script>
 
 <template>
-	<ActionDialog :visible="visible" header="Create Warehouse" @close="close">
+	<ActionDialog :visible="visible" :header="t('Create Warehouse')" @close="close">
 		<form id="supplier-warehouse-form" class="form-stack" @submit.prevent="save">
 			<Message v-if="error" severity="error" :closable="false" class="form-banner">{{ error }}</Message>
-			<p class="field-help">The warehouse is linked to {{ displayName('Supplier', supplier.name, supplier.supplier_name || supplier.name) }}. Create as many as you need.</p>
+			<p class="field-help">{{ t('The warehouse is linked to') }} {{ displayName('Supplier', supplier.name, supplier.supplier_name || supplier.name) }}. {{ t('Create as many as you need.') }}</p>
 			<div class="form-field">
-				<label for="supplier-warehouse-name" class="field-label">Warehouse name <span class="required">*</span></label>
+				<label for="supplier-warehouse-name" class="field-label">{{ t('Warehouse name') }} <span class="required">*</span></label>
 				<InputText id="supplier-warehouse-name" v-model="draft.warehouse_name" :disabled="isSaving" fluid />
 			</div>
 			<div class="form-field">
-				<label for="supplier-warehouse-company" class="field-label">Company <span class="required">*</span></label>
-				<LinkField v-model="draft.company" doctype="Company" label="Company" input-id="supplier-warehouse-company" :disabled="isSaving || companyFixed" />
+				<label for="supplier-warehouse-company" class="field-label">{{ t('Company') }} <span class="required">*</span></label>
+				<LinkField v-model="draft.company" doctype="Company" :label="t('Company')" input-id="supplier-warehouse-company" :disabled="isSaving || companyFixed" />
 			</div>
 			<div class="form-field">
-				<label for="supplier-warehouse-parent" class="field-label">Parent warehouse</label>
-				<LinkField v-model="draft.parent_warehouse" doctype="Warehouse" label="Parent warehouse" input-id="supplier-warehouse-parent"
+				<label for="supplier-warehouse-parent" class="field-label">{{ t('Parent warehouse') }}</label>
+				<LinkField v-model="draft.parent_warehouse" doctype="Warehouse" :label="t('Parent warehouse')" input-id="supplier-warehouse-parent"
 					:filters="parentFilters" :disabled="isSaving" />
 			</div>
 		</form>
 		<template #footer>
-			<Button label="Close" severity="secondary" outlined :disabled="isSaving" @click="close" />
-			<Button label="Create Warehouse" type="submit" form="supplier-warehouse-form" :loading="isSaving" :disabled="isSaving" />
+			<Button :label="t('Close')" severity="secondary" outlined :disabled="isSaving" @click="close" />
+			<Button :label="t('Create Warehouse')" type="submit" form="supplier-warehouse-form" :loading="isSaving" :disabled="isSaving" />
 		</template>
 	</ActionDialog>
 </template>

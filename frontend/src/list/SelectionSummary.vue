@@ -1,4 +1,5 @@
 <script setup>
+import { t } from "../shell/terminology.js"
 import { computed } from "vue"
 import { selectionTotals } from "./useSplitSelection.js"
 import { useActionRunner } from "../document/useActionRunner.js"
@@ -11,14 +12,14 @@ defineEmits(["clear"])
 const totals = computed(() => selectionTotals(props.rows))
 const allowedActions = computed(() => props.actions.filter((action) => !action.permission || hasPermissions(action.permission[0], action.permission.slice(1))))
 const runner = useActionRunner({ reload: () => props.refresh() })
-const actionLabel = (action) => action.eligible ? `${action.label} (${action.eligible(props.rows).length})` : action.label
+const actionLabel = (action) => action.eligible ? `${t(action.label)} (${action.eligible(props.rows).length})` : t(action.label)
 const isActionEmpty = (action) => Boolean(action.eligible) && !action.eligible(props.rows).length
 </script>
 
 <template>
 	<article class="selection-summary list-card">
-		<header class="preview-head"><h2>{{ rows.length }} selected</h2><button class="button secondary" type="button" @click="$emit('clear')">Clear</button></header>
-		<dl v-if="totals.hasQuantity || totals.hasAmount" class="preview-facts"><div v-if="totals.hasQuantity"><dt>Total quantity</dt><dd>{{ formatFieldValue({ fieldtype: 'Float' }, totals.quantity) }}</dd></div><div v-if="totals.hasAmount"><dt>Total amount</dt><dd>{{ formatFieldValue({ fieldtype: 'Currency' }, totals.amount) }}</dd></div></dl>
+		<header class="preview-head"><h2>{{ rows.length }} {{ t("selected") }}</h2><button class="button secondary" type="button" @click="$emit('clear')">{{ t("Clear") }}</button></header>
+		<dl v-if="totals.hasQuantity || totals.hasAmount" class="preview-facts"><div v-if="totals.hasQuantity"><dt>{{ t("Total quantity") }}</dt><dd>{{ formatFieldValue({ fieldtype: 'Float' }, totals.quantity) }}</dd></div><div v-if="totals.hasAmount"><dt>{{ t("Total amount") }}</dt><dd>{{ formatFieldValue({ fieldtype: 'Currency' }, totals.amount) }}</dd></div></dl>
 		<div class="preview-actions"><button v-for="action in allowedActions" :key="action.key" class="button secondary" :class="{ danger: action.danger }" type="button" :disabled="runner.busy.value || isActionEmpty(action)" @click="runner.run(action, { names: rows.map(row => row.name), rows })">{{ actionLabel(action) }}</button></div>
 		<ActionHost :runner="runner" />
 	</article>

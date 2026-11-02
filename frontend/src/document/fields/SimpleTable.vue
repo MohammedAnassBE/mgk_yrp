@@ -5,6 +5,7 @@ import { metaDefaults } from "../newDocDefaults.js"
 import { fieldState } from "../fieldConditions.js"
 import { formatFieldValue } from "../fieldDisplay.js"
 import { tableFields } from "./tableFields.js"
+import { t } from "../../shell/terminology.js"
 import { childChange } from "../../masters/masterFields.js"
 import { conversionDefaults, conversionOutputUom, isProcessConversion } from "../../masters/itemConversions.js"
 
@@ -66,13 +67,13 @@ function remove(index) {
 <template>
 	<div v-if="meta" class="simple-table">
 		<p v-if="error" class="form-banner" role="alert">{{ error }}</p>
-		<p v-if="!modelValue.length" class="empty-state compact">No rows yet.</p>
+		<p v-if="!modelValue.length" class="empty-state compact">{{ t('No rows yet.') }}</p>
 		<div v-else class="table-scroll" :class="{ natural: field.columns }">
 			<table>
 				<thead>
 					<tr>
 						<th>#</th>
-						<th v-for="field in fields" :key="field.fieldname">{{ field.label }}</th>
+						<th v-for="field in fields" :key="field.fieldname">{{ t(field.label) }}</th>
 						<th v-if="!disabled" class="row-actions" />
 					</tr>
 				</thead>
@@ -94,7 +95,7 @@ function remove(index) {
 							/>
 						</td>
 						<td v-if="!disabled">
-							<button type="button" class="button secondary small" @click="remove(index)">Remove</button>
+							<button type="button" class="button secondary small" @click="remove(index)">{{ t('Remove') }}</button>
 						</td>
 					</tr>
 				</tbody>
@@ -105,7 +106,7 @@ function remove(index) {
 			type="button"
 			class="button secondary small"
 			@click="add"
-		>Add row</button>
+		>{{ t('Add row') }}</button>
 	</div>
-	<p v-else class="error-state">Child table metadata is unavailable.</p>
+	<p v-else class="error-state">{{ t('Child table metadata is unavailable.') }}</p>
 </template>

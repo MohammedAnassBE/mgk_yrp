@@ -1,4 +1,5 @@
 <script setup>
+import { t } from "../shell/terminology.js"
 import { ref, watch } from "vue"
 import Dialog from "primevue/dialog"
 import FilterValue from "./FilterValue.vue"
@@ -31,17 +32,17 @@ function clear() { rows.value = []; apply() }
 </script>
 
 <template>
-	<Dialog :visible="visible" modal header="Filters" class="list-dialog filter-dialog" @update:visible="$emit('update:visible', $event)">
-		<p>Show records matching every condition.</p>
+	<Dialog :visible="visible" modal :header="t('Filters')" class="list-dialog filter-dialog" @update:visible="$emit('update:visible', $event)">
+		<p>{{ t("Show records matching every condition.") }}</p>
 		<div v-if="error" class="dialog-error" role="alert">{{ error }}</div>
-		<div v-if="!rows.length" class="empty-state compact"><h2>No filters</h2><p>Add a condition to narrow this list.</p></div>
+		<div v-if="!rows.length" class="empty-state compact"><h2>{{ t("No filters") }}</h2><p>{{ t("Add a condition to narrow this list.") }}</p></div>
 		<div v-for="(row, index) in rows" :key="row.id" class="filter-row">
-			<select v-model="row.field" :aria-label="`Filter ${index + 1} field`" @change="changeField(row)"><option v-for="field in fields" :key="field.fieldname" :value="field.fieldname">{{ field.label }}</option></select>
-			<select v-model="row.operator" :aria-label="`Filter ${index + 1} condition`" @change="row.value = ''; row.end = ''"><option v-for="[value, label] in fieldConditions(fieldFor(row))" :key="value" :value="value">{{ label }}</option></select>
+			<select v-model="row.field" :aria-label="`Filter ${index + 1} field`" @change="changeField(row)"><option v-for="field in fields" :key="field.fieldname" :value="field.fieldname">{{ t(field.label) }}</option></select>
+			<select v-model="row.operator" :aria-label="`Filter ${index + 1} condition`" @change="row.value = ''; row.end = ''"><option v-for="[value, label] in fieldConditions(fieldFor(row))" :key="value" :value="value">{{ t(label) }}</option></select>
 			<div class="filter-values"><FilterValue v-model="row.value" :field="fieldFor(row)" :operator="row.operator" :label="`Filter ${index + 1} value`" /><FilterValue v-if="row.operator === 'between'" v-model="row.end" :field="fieldFor(row)" :label="`Filter ${index + 1} end`" /></div>
 			<button class="button secondary small" type="button" :aria-label="`Remove filter ${index + 1}`" @click="rows.splice(index, 1)">×</button>
 		</div>
-		<button class="button secondary small" type="button" @click="add">+ Add condition</button>
-		<template #footer><button class="button secondary" type="button" @click="clear">Clear Filters</button><button class="button primary" type="button" @click="apply">Apply filters</button></template>
+		<button class="button secondary small" type="button" @click="add">+ {{ t("Add condition") }}</button>
+		<template #footer><button class="button secondary" type="button" @click="clear">{{ t("Clear Filters") }}</button><button class="button primary" type="button" @click="apply">{{ t("Apply filters") }}</button></template>
 	</Dialog>
 </template>

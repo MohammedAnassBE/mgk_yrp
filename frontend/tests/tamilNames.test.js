@@ -1,4 +1,5 @@
 import test from "node:test"
+import { defaultTerms } from "./helpers/terms.js"
 import assert from "node:assert/strict"
 import { mountComponent, nodes, textContent, settle } from "./helpers/component.js"
 import { clearReadCaches } from "../src/api/client.js"
@@ -143,6 +144,8 @@ test("Process and Item Group names switch to Tamil in facts, list fields and PO 
 	}
 	const tabs = () => orderedTabs(purchaseOrderBook.tabs).map(tabLabel)
 	const doc = { process_name: "Dyeing", item_group: "Karigan Items", items: [] }
+	const originalWindow = globalThis.window
+	globalThis.window = { ...originalWindow, frappe: { ...originalWindow?.frappe, boot: { ...originalWindow?.frappe?.boot, terms: defaultTerms() } } }
 	try {
 		setLanguage("ta")
 		tabs(); displayName("YRP Process", "Dyeing")
@@ -152,9 +155,9 @@ test("Process and Item Group names switch to Tamil in facts, list fields and PO 
 		assert.equal(fieldDisplayName("item_group", "Karigan Items"), "காரிகான் பொருட்கள்")
 		assert.equal(deliveryChallan.summary(doc).lines.find((line) => line.label === "Process").value, "சாயம்")
 		assert.equal(purchaseOrder.viewFacts(doc).find((fact) => fact.label === "Item group").value, "காரிகான் பொருட்கள்")
-		assert.deepEqual(tabs(), ["அனைத்தும்", "காரிகான் பொருட்கள்", "சலவைக்கோன்"], "Item Group Tamil name, else the tab's Tamil text")
+		assert.deepEqual(tabs(), ["அனைத்தும்", "காரிகான் பொருட்கள்", "சலவைக்கோன்"], "Item Group Tamil name, else the tab's term")
 		setLanguage("en")
 		assert.deepEqual(tabs(), ["All", "Karigan", "Salavai Cone"])
 		assert.equal(displayName("YRP Process", "Dyeing"), "Dyeing")
-	} finally { globalThis.fetch = original; clearReadCaches(); setLanguage("en") }
+	} finally { globalThis.fetch = original; globalThis.window = originalWindow; clearReadCaches(); setLanguage("en") }
 })

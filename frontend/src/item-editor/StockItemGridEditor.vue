@@ -1,4 +1,5 @@
 <script setup>
+import { t } from "../shell/terminology.js"
 import { ref, computed } from "vue"
 import Button from "primevue/button"
 import InputNumber from "primevue/inputnumber"
@@ -51,7 +52,7 @@ function split(groupIndex, entryIndex) {
 	changed()
 }
 function showSplitDialog() {
-	splitMessage.value = lines.value.length ? "" : "Add an item before splitting."
+	splitMessage.value = lines.value.length ? "" : t("Add an item before splitting.")
 	if (!lines.value.length) return
 	splitLine.value = ""
 	isSplitDialogVisible.value = true
@@ -84,11 +85,11 @@ defineExpose({ loadData, getItems })
 <template>
 	<div class="stock-grid-editor">
 		<div v-if="attributeGrid && editable" class="editor-actions">
-			<Button label="Add Split" size="small" severity="secondary" outlined @click="showSplitDialog" />
-			<Button label="Remove All" size="small" severity="secondary" outlined @click="removeAll" />
+			<Button :label="t('Add Split')" size="small" severity="secondary" outlined @click="showSplitDialog" />
+			<Button :label="t('Remove All')" size="small" severity="secondary" outlined @click="removeAll" />
 		</div>
 		<p v-if="splitMessage" class="form-banner" role="status">{{ splitMessage }}</p>
-		<p v-if="!groups.some((group) => group.items.length)" class="empty-state compact">No items yet. Add an item and enter the quantity.</p>
+		<p v-if="!groups.some((group) => group.items.length)" class="empty-state compact">{{ t('No items yet. Add an item and enter the quantity.') }}</p>
 		<AttributeColumns v-if="attributeGrid" :items="groups" :editable="editable" :mode="mode" :dimensions="dimensions"
 			:has-transferred-quantity="hasTransferredQuantity" @changed="changed" @split="split" @remove="remove" />
 		<template v-else>
@@ -97,15 +98,15 @@ defineExpose({ loadData, getItems })
 				<thead>
 					<tr>
 						<th>#</th>
-						<th class="item-column">Item</th>
-						<th v-for="dimension in visibleDimensions(group)" :key="dimension.fieldname">{{ dimension.label }}</th>
+						<th class="item-column">{{ t('Item') }}</th>
+						<th v-for="dimension in visibleDimensions(group)" :key="dimension.fieldname">{{ t(dimension.label) }}</th>
 						<th v-for="attribute in group.attributes" :key="attribute">{{ attribute }}</th>
-						<th v-for="key in keys(group)" :key="key">{{ key === 'default' ? 'Qty' : key }}</th>
-						<th>UOM</th>
-						<th v-if="isFlat(group)">Rate</th>
-						<th v-if="isFlat(group)">Amount</th>
-						<th v-if="hasTransferredQuantity">Transferred Qty</th>
-						<th v-if="permissions.canEdit || permissions.canRemove">Actions</th>
+						<th v-for="key in keys(group)" :key="key">{{ key === 'default' ? t('Qty') : key }}</th>
+						<th>{{ t('UOM') }}</th>
+						<th v-if="isFlat(group)">{{ t('Rate') }}</th>
+						<th v-if="isFlat(group)">{{ t('Amount') }}</th>
+						<th v-if="hasTransferredQuantity">{{ t('Transferred Qty') }}</th>
+						<th v-if="permissions.canEdit || permissions.canRemove">{{ t('Actions') }}</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -131,7 +132,7 @@ defineExpose({ loadData, getItems })
 								<strong v-else>{{ entry.values[key].qty || 0 }}</strong>
 								<template v-if="!isFlat(group)">
 								<label class="cell-extra">
-									Rate
+									{{ t('Rate') }}
 									<InputNumber
 										v-if="permissions.rateEditable"
 										:model-value="Number(entry.values[key].rate) || 0"
@@ -144,11 +145,11 @@ defineExpose({ loadData, getItems })
 									<span v-else>{{ money(entry.values[key].rate) }}</span>
 								</label>
 								<small v-if="lastRates.hint(groupIndex, entryIndex, key)" class="cell-extra last-rate">{{ lastRates.hint(groupIndex, entryIndex, key) }}</small>
-								<small class="cell-extra">Amount: {{ money(Number(entry.values[key].qty || 0) * Number(entry.values[key].rate || 0)) }}</small>
+								<small class="cell-extra">{{ t('Amount') }}: {{ money(Number(entry.values[key].qty || 0) * Number(entry.values[key].rate || 0)) }}</small>
 								</template>
 								<template v-if="mode === 'grn_po'">
-									<small class="cell-extra">Pending: {{ entry.values[key].pending_qty || 0 }}</small>
-									<small class="cell-extra">Allowed: {{ entry.values[key].allowed_qty || 0 }}</small>
+									<small class="cell-extra">{{ t('Pending') }}: {{ entry.values[key].pending_qty || 0 }}</small>
+									<small class="cell-extra">{{ t('Allowed') }}: {{ entry.values[key].allowed_qty || 0 }}</small>
 								</template>
 							</template>
 							<span v-else>—</span>
@@ -179,7 +180,7 @@ defineExpose({ loadData, getItems })
 								<Button
 									v-if="permissions.canEdit"
 									icon="pi pi-pencil"
-									aria-label="Edit item"
+									:aria-label="t('Edit item')"
 									text
 									severity="secondary"
 									size="small"
@@ -188,7 +189,7 @@ defineExpose({ loadData, getItems })
 								<Button
 									v-if="permissions.canRemove"
 									icon="pi pi-trash"
-									aria-label="Remove item"
+									:aria-label="t('Remove item')"
 									text
 									severity="danger"
 									size="small"
@@ -214,14 +215,14 @@ defineExpose({ loadData, getItems })
 			@commit="commit"
 			@cancel="editPosition = null"
 		/>
-		<ActionDialog :visible="isSplitDialogVisible" header="Add Split" @close="isSplitDialogVisible = false">
+		<ActionDialog :visible="isSplitDialogVisible" :header="t('Add Split')" @close="isSplitDialogVisible = false">
 			<div class="form-field">
-				<label class="field-label" for="split-line">Line</label>
-				<Select v-model="splitLine" input-id="split-line" aria-label="Line" :options="lines.map((line) => line.label)" fluid />
+				<label class="field-label" for="split-line">{{ t('Line') }}</label>
+				<Select v-model="splitLine" input-id="split-line" :aria-label="t('Line')" :options="lines.map((line) => line.label)" fluid />
 			</div>
 			<template #footer>
-				<Button label="Cancel" size="small" severity="secondary" outlined @click="isSplitDialogVisible = false" />
-				<Button label="Add Split" size="small" :disabled="!splitLine" @click="confirmSplit" />
+				<Button :label="t('Cancel')" size="small" severity="secondary" outlined @click="isSplitDialogVisible = false" />
+				<Button :label="t('Add Split')" size="small" :disabled="!splitLine" @click="confirmSplit" />
 			</template>
 		</ActionDialog>
 	</div>

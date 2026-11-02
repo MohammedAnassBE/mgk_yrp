@@ -2,6 +2,7 @@
 import { computed } from "vue"
 import InputNumber from "primevue/inputnumber"
 import { displayName } from "../../shell/displayLanguage.js"
+import { t } from "../../shell/terminology.js"
 
 const props = defineProps({ rows: { type: Array, required: true }, editable: Boolean, busy: Boolean })
 defineEmits(["quantity"])
@@ -9,13 +10,13 @@ const attributes = computed(() => [...new Set(props.rows.flatMap((row) => Object
 </script>
 
 <template>
-	<div class="list-card table-scroll transit-items" tabindex="0" aria-label="Transfer items">
+	<div class="list-card table-scroll transit-items" tabindex="0" :aria-label="t('Transfer items')">
 		<table>
 			<thead><tr>
-				<th>Item</th>
-				<th v-for="attribute in attributes" :key="attribute">{{ attribute }}</th>
-				<th>UOM</th><th>Quantity</th><th>Transferred Qty</th><th>Pending</th>
-				<th v-if="editable">Quantity to transfer</th>
+				<th>{{ t('Item') }}</th>
+				<th v-for="attribute in attributes" :key="attribute">{{ t(attribute) }}</th>
+				<th>{{ t('UOM') }}</th><th>{{ t('Quantity') }}</th><th>{{ t('Transferred Qty') }}</th><th>{{ t('Pending') }}</th>
+				<th v-if="editable">{{ t('Quantity to transfer') }}</th>
 			</tr></thead>
 			<tbody><tr v-for="row in rows" :key="row.source_row">
 				<td>{{ displayName("Item", row.item) }}</td>

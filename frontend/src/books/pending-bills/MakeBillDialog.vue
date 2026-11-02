@@ -1,4 +1,5 @@
 <script setup>
+import { t } from "../../shell/terminology.js"
 import { displayName } from "../../shell/displayLanguage.js"
 import { computed, ref, watch } from "vue"
 import Button from "primevue/button"
@@ -70,25 +71,25 @@ async function submit() {
 </script>
 
 <template>
-	<Dialog :visible="visible" modal header="Make Bill" class="make-bill-dialog" :style="{ width: 'min(960px, 96vw)' }" :closable="!saving"
+	<Dialog :visible="visible" modal :header="t('Make Bill')" class="make-bill-dialog" :style="{ width: 'min(960px, 96vw)' }" :closable="!saving"
 		@update:visible="emit('update:visible', $event)">
-		<p v-if="loading" role="status"><i class="pi pi-spin pi-spinner" aria-hidden="true" /> Loading GRN rows and taxes…</p>
+		<p v-if="loading" role="status"><i class="pi pi-spin pi-spinner" aria-hidden="true" /> {{ t("Loading GRN rows and taxes…") }}</p>
 		<p v-if="error" class="editor-error" role="alert">{{ error }}</p>
 		<p v-for="note in notes" :key="note" class="make-bill-note">{{ note }}</p>
 		<section v-for="block in blocks" :key="block.supplier" class="make-bill-block" :class="{ 'has-error': block.error }">
-			<header><h3>{{ displayName('Supplier', block.supplier, block.supplier_name) }}</h3><span>{{ block.grns.length }} GRNs</span></header>
-			<ul class="make-bill-grns" aria-label="GRNs in this bill">
-				<li v-for="grn in block.grns" :key="grn">{{ grn }}<button type="button" :disabled="saving" :aria-label="`Remove ${grn}`" title="Remove from this bill" @click="remove(grn)"><i class="pi pi-times" aria-hidden="true" /></button></li>
+			<header><h3>{{ displayName('Supplier', block.supplier, block.supplier_name) }}</h3><span>{{ block.grns.length }} {{ t("GRNs") }}</span></header>
+			<ul class="make-bill-grns" :aria-label="t('GRNs in this bill')">
+				<li v-for="grn in block.grns" :key="grn">{{ grn }}<button type="button" :disabled="saving" :aria-label="`Remove ${grn}`" :title="t('Remove from this bill')" @click="remove(grn)"><i class="pi pi-times" aria-hidden="true" /></button></li>
 			</ul>
 			<div class="make-bill-fields">
-				<label><span>Supplier Invoice No *</span><InputText v-model="block.bill_no" :id="`bill-no-${block.supplier}`" :disabled="saving" :aria-label="`${block.supplier_name} Supplier Invoice No`" /></label>
-				<label><span>Supplier Invoice Date *</span><DateInput v-model="block.bill_date" :input-id="`bill-date-${block.supplier}`" :aria-label="`${block.supplier_name} Supplier Invoice Date`" required /></label>
+				<label><span>{{ t("Supplier Invoice No.") }} *</span><InputText v-model="block.bill_no" :id="`bill-no-${block.supplier}`" :disabled="saving" :aria-label="`${block.supplier_name} Supplier Invoice No`" /></label>
+				<label><span>{{ t("Supplier Invoice Date") }} *</span><DateInput v-model="block.bill_date" :input-id="`bill-date-${block.supplier}`" :aria-label="`${block.supplier_name} Supplier Invoice Date`" required /></label>
 			</div>
 			<p v-if="block.error" class="editor-error" role="alert">{{ block.error }}</p>
 			<div v-for="(draft, draftIndex) in block.drafts" :key="draft.against" class="make-bill-draft">
-				<small class="make-bill-type">{{ block.drafts.length > 1 ? `${typeLabel(draft.against)} bill · ` : '' }}{{ draft.tax_type }}</small>
+				<small class="make-bill-type">{{ block.drafts.length > 1 ? `${t(typeLabel(draft.against))} ${t('bill')} · ` : '' }}{{ t(draft.tax_type) }}</small>
 				<div class="table-scroll"><table class="make-bill-items">
-					<thead><tr><th>Item</th><th>UOM</th><th class="numeric">Qty</th><th class="numeric">GRN Rate</th><th class="numeric">Rate</th><th class="numeric">Amount</th><th class="numeric">GST %</th><th v-for="[field, label] in taxColumns(draft)" :key="field" class="numeric">{{ label }}</th></tr></thead>
+					<thead><tr><th>{{ t("Item") }}</th><th>{{ t("UOM") }}</th><th class="numeric">{{ t("Qty") }}</th><th class="numeric">{{ t("GRN Rate") }}</th><th class="numeric">{{ t("Rate") }}</th><th class="numeric">{{ t("Amount") }}</th><th class="numeric">{{ t("GST") }} %</th><th v-for="[field, label] in taxColumns(draft)" :key="field" class="numeric">{{ label }}</th></tr></thead>
 					<tbody><tr v-for="group in draftGroups(draft)" :key="group.key">
 						<td>{{ displayName('Item', group.item, group.item_name || group.item) }}</td><td>{{ group.uom }}</td>
 						<td class="numeric">{{ group.qty }}</td><td class="numeric">{{ money(group.grn_rate) }}</td>
@@ -100,14 +101,14 @@ async function submit() {
 				</table></div>
 			</div>
 			<footer class="make-bill-totals">
-				<span>Net <strong>{{ money(blockTotals(block).net_total) }}</strong></span>
-				<span>Tax <strong>{{ money(blockTotals(block).total_tax) }}</strong></span>
-				<span>Grand Total <strong>{{ money(blockTotals(block).grand_total) }}</strong></span>
+				<span>{{ t("Net") }} <strong>{{ money(blockTotals(block).net_total) }}</strong></span>
+				<span>{{ t("Tax") }} <strong>{{ money(blockTotals(block).total_tax) }}</strong></span>
+				<span>{{ t("Grand Total") }} <strong>{{ money(blockTotals(block).grand_total) }}</strong></span>
 			</footer>
 		</section>
 		<template #footer>
-			<Button label="Cancel" severity="secondary" outlined :disabled="saving" @click="emit('update:visible', false)" />
-			<Button label="Create & Submit Bills" :disabled="busy || !blocks.length" :loading="saving" @click="submit" />
+			<Button :label="t('Cancel')" severity="secondary" outlined :disabled="saving" @click="emit('update:visible', false)" />
+			<Button :label="t('Create & Submit Bills')" :disabled="busy || !blocks.length" :loading="saving" @click="submit" />
 		</template>
 	</Dialog>
 </template>

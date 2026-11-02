@@ -1,4 +1,5 @@
 <script setup>
+import { t } from "../shell/terminology.js"
 import { computed, ref, watch, onScopeDispose } from "vue"
 import StockItemGridEditor from "./StockItemGridEditor.vue"
 import { callRead, callMethod } from "../api/client.js"
@@ -52,11 +53,11 @@ defineExpose({ getItems: () => grid.value?.getItems() || [], isReady: () => !loa
 <template>
 	<div v-if="loading" class="loading-state" role="status">
 		<i class="pi pi-spin pi-spinner" />
-		Loading items…
+		{{ t('Loading items…') }}
 	</div>
 	<div v-else-if="error" class="error-state" role="alert">
 		{{ error }}
-		<button type="button" class="button secondary small" @click="initialize">Retry</button>
+		<button type="button" class="button secondary small" @click="initialize">{{ t('Retry') }}</button>
 	</div>
 	<StockItemGridEditor
 		v-else
