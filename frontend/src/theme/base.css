@@ -1,5 +1,7 @@
+@font-face { font-family: "MGK Tamil"; src: url("/assets/mgk_yrp/fonts/NotoSansTamil-Regular.ttf") format("truetype"); font-weight: 100 500; font-display: swap; unicode-range: U+0B80-0BFF, U+200C-200D, U+25CC; }
+@font-face { font-family: "MGK Tamil"; src: url("/assets/mgk_yrp/fonts/NotoSansTamil-Bold.ttf") format("truetype"); font-weight: 600 900; font-display: swap; unicode-range: U+0B80-0BFF, U+200C-200D, U+25CC; }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--color-page); color: var(--color-text); font-family: "Inter Variable", sans-serif; }
+body { margin: 0; background: var(--color-page); color: var(--color-text); font-family: "Inter Variable", "MGK Tamil", sans-serif; }
 button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: wait; opacity: .55; }
