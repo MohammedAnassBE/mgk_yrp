@@ -3,7 +3,7 @@ from unittest.mock import Mock, patch
 import frappe
 from frappe.tests import IntegrationTestCase
 
-from mgk_yrp.party_defaults import get_own_location, get_party_defaults
+from mgk_yrp.party_defaults import get_head_office, get_own_location, get_party_defaults
 from mgk_yrp.tests.fixtures import make_supplier, make_warehouse
 
 MODULE = "mgk_yrp.party_defaults"
@@ -93,10 +93,36 @@ class TestPartyDefaults(IntegrationTestCase):
 			self.assertEqual(get_own_location(), {"location": None, "warehouse": None, "warehouses": []})
 		supplier = make_supplier()
 		warehouse = make_warehouse(supplier=supplier)
-		with patch(f"{MODULE}.frappe.db.get_single_value", return_value=supplier):
+		settings = {"default_location": supplier}
+		with patch(f"{MODULE}.frappe.db.get_single_value", side_effect=lambda _doctype, field: settings.get(field)):
 			self.assertEqual(
 				get_own_location(), {"location": supplier, "warehouse": warehouse, "warehouses": [warehouse]}
 			)
+
+	def test_default_warehouse_is_own_location_and_head_office_warehouse(self):
+		self.addCleanup(frappe.db.rollback)
+		location = make_supplier(is_company_location=1)
+		first, second = make_warehouse(supplier=location), make_warehouse(supplier=location)
+		frappe.db.set_value("Supplier", {"mgk_is_head_office": 1}, "mgk_is_head_office", 0)
+		frappe.db.set_value("Supplier", location, "mgk_is_head_office", 1)
+		frappe.db.set_single_value("MGK Settings", {"default_location": location, "default_warehouse": None})
+		self.assertIsNone(get_own_location()["warehouse"])
+		with self.assertRaisesRegex(frappe.ValidationError, "must have exactly one warehouse; found 2"):
+			get_head_office()
+		frappe.db.set_single_value("MGK Settings", "default_warehouse", second)
+		self.assertEqual(
+			get_own_location(), {"location": location, "warehouse": second, "warehouses": sorted([first, second])}
+		)
+		self.assertEqual(get_head_office(), {"location": location, "warehouse": second})
+
+	def test_default_warehouse_is_ignored_when_head_office_is_another_location(self):
+		self.addCleanup(frappe.db.rollback)
+		location, head_office = make_supplier(is_company_location=1), make_supplier(is_company_location=1)
+		own, office = make_warehouse(supplier=location), make_warehouse(supplier=head_office)
+		frappe.db.set_value("Supplier", {"mgk_is_head_office": 1}, "mgk_is_head_office", 0)
+		frappe.db.set_value("Supplier", head_office, "mgk_is_head_office", 1)
+		frappe.db.set_single_value("MGK Settings", {"default_location": location, "default_warehouse": own})
+		self.assertEqual(get_head_office(), {"location": head_office, "warehouse": office})
 
 	def test_candidate_queries_are_permission_aware(self):
 		with (

@@ -2,7 +2,7 @@ import { documentModule } from "../documents/registry.js"
 import { bookManifest } from "../books/manifest.js"
 
 export function connectedDocuments(doc, meta) {
-	const routes = Object.fromEntries(bookManifest.map((book) => [book.doctype, book.routePath]))
+	const routes = Object.fromEntries(bookManifest.filter((book) => book.opensRecords !== false).map((book) => [book.doctype, book.routePath]))
 	routes["MGK Delivery Challan Close"] = "/delivery-challan-close"
 	return meta.fields.filter((field) => field.fieldtype === "Link" && routes[field.options] && doc[field.fieldname])
 		.map((field) => ({ label: field.label, doctype: field.options, name: doc[field.fieldname], to: `${routes[field.options]}/${encodeURIComponent(doc[field.fieldname])}` }))

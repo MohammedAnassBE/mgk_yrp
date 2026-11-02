@@ -7,7 +7,7 @@ import LinkField from "../document/fields/LinkField.vue"
 import { callRead } from "../api/client.js"
 import { clone } from "../document/mappedDraft.js"
 import { itemFilters as getItemFilters, validateItem } from "./editorModes.js"
-import { attributeLinkProps } from "./attributeValues.js"
+import { attributeLinkProps, defaultAttributes } from "./attributeValues.js"
 import { attributeValueName } from "../shell/displayLanguage.js"
 
 const props = defineProps({ mode: String, defaults: Object, dimensions: Array, permissions: Object, poEntries: Array, itemGroup: String, editing: Object, disabled: Boolean })
@@ -30,12 +30,12 @@ async function resolve(name) {
 	error.value = ""
 	entry.value = null
 	try {
-		const data = await callRead("yrp.yrp.doctype.yrp_item.yrp_item.get_attribute_details", { item_name: name })
+		const data = await callRead("mgk_yrp.stock.attribute_defaults.get_attribute_details", { item_name: name })
 		if (sequence !== current) return
 		if (!data) throw new Error(`Could not resolve ${name}.`)
 		details.value = data
 		const values = Object.fromEntries((data.primary_attribute_values?.length ? data.primary_attribute_values : ["default"]).map((key) => [key, { qty: 0 }]))
-		entry.value = { name, dimensions: clone(dimensions.value), attributes: {}, primary_attribute: data.primary_attribute || "", default_uom: data.default_uom, values }
+		entry.value = { name, dimensions: clone(dimensions.value), attributes: defaultAttributes(data), primary_attribute: data.primary_attribute || "", default_uom: data.default_uom, values }
 	} catch (cause) { if (sequence === current) error.value = cause.message }
 	finally { if (sequence === current) loading.value = false }
 }

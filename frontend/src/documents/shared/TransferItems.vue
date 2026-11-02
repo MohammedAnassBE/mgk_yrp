@@ -19,7 +19,7 @@ const attributes = computed(() => [...new Set(props.rows.flatMap((row) => Object
 				<th v-if="editable">{{ t('Quantity to transfer') }}</th>
 			</tr></thead>
 			<tbody><tr v-for="row in rows" :key="row.source_row">
-				<td>{{ displayName("Item", row.item) }}</td>
+				<td>{{ displayName("Item", row.item_template || row.item) }}</td>
 				<td v-for="attribute in attributes" :key="attribute">{{ attributeValueName(attribute, row.attributes[attribute]) || '—' }}</td>
 				<td>{{ row.uom }}</td><td>{{ row.original_qty }}</td><td>{{ row.transferred_qty }}</td><td>{{ row.pending_qty }}</td>
 				<td v-if="editable">

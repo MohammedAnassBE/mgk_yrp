@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import frappe
 from frappe.utils import add_days, today
+from yrp.yrp.doctype.yrp_item.yrp_item import create_variant
 
 from mgk_yrp.tests.close_fixtures import CloseTestCase
 from mgk_yrp.tests.fixtures import (
@@ -11,6 +12,7 @@ from mgk_yrp.tests.fixtures import (
 	make_purchase_invoice,
 	make_purchase_order,
 	make_supplier,
+	make_template_item,
 )
 from mgk_yrp.web.pending_bills import create_bills, get_bill_drafts, get_pending_bills
 
@@ -58,6 +60,17 @@ class TestWebPendingBills(CloseTestCase):
 		grn = groups[0]["grns"][0]
 		self.assertEqual(grn.against, "Job Work")
 		self.assertEqual([(row["item"], row["qty"], row["rate"], row["amount"]) for row in grn["items"]], [(self.output_item, 2, 10, 20)])
+
+	def test_draft_and_pending_rows_split_variant_into_template_and_attributes(self):
+		template, attributes = make_template_item()
+		variant = create_variant(template.name, attributes).insert(ignore_permissions=True).name
+		supplier = make_supplier()
+		order = make_purchase_order(supplier=supplier, warehouse=self.main, items=[{"item": variant, "qty": 5, "rate": 100}])
+		receipt = make_po_grn(order)
+		row = get_bill_drafts([receipt.name])[0]["items"][0]
+		self.assertEqual((row["item"], row["item_template"], row["item_attributes"]), (variant, template.name, attributes))
+		item = self.pending_for(supplier)[0]["grns"][0]["items"][0]
+		self.assertEqual((item["item"], item["item_template"], item["item_attributes"]), (variant, template.name, attributes))
 
 	def test_billed_grns_leave_and_unbilled_ones_stay(self):
 		billed = self.make_aged_grn(self.supplier, 10)

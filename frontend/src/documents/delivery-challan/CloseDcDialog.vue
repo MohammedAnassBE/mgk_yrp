@@ -7,7 +7,8 @@ import { callMethod } from "../../api/client.js"
 import { closeDeliveryChallan, jobWorkMethods } from "../shared/jobWork.js"
 import { intro, summary } from "../delivery-challan-close/presentation.js"
 import { itemColumns as outputColumns } from "../delivery-challan-close/preview.js"
-import { money } from "../previewValues.js"
+import { itemTableRows, money, withAttributeColumns } from "../previewValues.js"
+import { loadItemAttributes, withItemAttributes } from "../itemAttributes.js"
 import { displayName } from "../../shell/displayLanguage.js"
 import { formatDate } from "../../shared/formatDate.js"
 import { isSaveShortcut } from "../../document/lifecycle.js"
@@ -24,6 +25,11 @@ const is_saving = ref(false)
 const error = ref("")
 const notice = computed(() => close_preview.value && intro(close_preview.value, money))
 const lines = computed(() => close_preview.value ? summary(close_preview.value).lines : [])
+const tables = computed(() => [{ title: "Inputs consumed", columns: inputColumns, rows: close_preview.value?.items || [] },
+	{ title: "Linked GRN outputs", columns: outputColumns, rows: close_preview.value?.outputs || [] }].map((table) => {
+	const rows = withItemAttributes(table.rows)
+	return { ...table, columns: withAttributeColumns(table.columns, rows), rows: itemTableRows(rows, table.columns) }
+}))
 let is_disposed = false
 
 async function load() {
@@ -32,7 +38,9 @@ async function load() {
 	error.value = ""
 	try {
 		const result = await callMethod(jobWorkMethods.previewClose, { source_name: props.doc.name })
-		if (!is_disposed) close_preview.value = result
+		if (is_disposed) return
+		close_preview.value = result
+		await loadItemAttributes([...(result?.items || []), ...(result?.outputs || [])].map((row) => row.item))
 	} catch (cause) { if (!is_disposed) error.value = cause.message }
 	finally { if (!is_disposed) is_loading.value = false }
 }
@@ -47,10 +55,7 @@ async function save() {
 }
 function keydown(event) { if (isSaveShortcut(event)) { event.preventDefault(); save() } }
 function cell(row, column) {
-	const value = row[column.key]
-	if (column.money) return money(value)
-	if (value == null || value === "") return "—"
-	return column.doctype ? displayName(column.doctype, value) : value
+	return column.money ? money(row[column.key]) : row[column.key] ?? "—"
 }
 function close() { if (!is_saving.value) emit("close") }
 onMounted(() => globalThis.window?.addEventListener?.("keydown", keydown))
@@ -72,8 +77,7 @@ onScopeDispose(() => { is_disposed = true; globalThis.window?.removeEventListene
 					<div v-for="line in lines" :key="line.label"><dt>{{ t(line.label) }}</dt>
 						<dd>{{ line.money ? money(line.value) : (line.value ?? '—') }}</dd></div>
 				</dl>
-				<div v-for="table in [{ title: 'Inputs consumed', columns: inputColumns, rows: close_preview.items || [] },
-					{ title: 'Linked GRN outputs', columns: outputColumns, rows: close_preview.outputs || [] }]" :key="table.title">
+				<div v-for="table in tables" :key="table.title">
 					<h3 class="close-table-title">{{ t(table.title) }}</h3>
 					<p v-if="!table.rows.length" class="muted">{{ t('None') }}</p>
 					<div v-else class="list-card table-scroll" tabindex="0" :aria-label="table.title">

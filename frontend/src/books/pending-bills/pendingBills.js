@@ -1,4 +1,6 @@
-import { displayName } from "../../shell/displayLanguage.js"
+import { attributeValueName } from "../../shell/displayLanguage.js"
+import { t } from "../../shell/terminology.js"
+import { templateName } from "../../documents/previewValues.js"
 import { flt, groupItemRows, invoiceTotals, rateChanged, setGroupRate } from "../../documents/purchase-invoice/fieldEvents.js"
 
 export const method = "mgk_yrp.web.pending_bills"
@@ -7,7 +9,9 @@ export const bucketLabel = (bucket) => bucket.replace("-", "–")
 export const typeLabel = (against) => against === "Purchase Order" ? "PO" : "Job Work"
 
 export function itemTooltip(grn) {
-	return (grn.items || []).map((row) => `${displayName("Item", row.item, row.item_name || row.item)} · ${row.qty} × ${flt(row.rate, 2)} = ${flt(row.amount, 2)}`).join("\n")
+	return (grn.items || []).map((row) => [templateName(row),
+		...Object.entries(row.item_attributes || {}).map(([attribute, value]) => `${t(attribute)}: ${attributeValueName(attribute, value)}`),
+		`${row.qty} × ${flt(row.rate, 2)} = ${flt(row.amount, 2)}`].join(" · ")).join("\n")
 }
 
 /** Selected GRN names grouped by supplier, in page order. */

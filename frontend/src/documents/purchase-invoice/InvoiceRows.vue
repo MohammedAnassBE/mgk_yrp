@@ -1,12 +1,14 @@
 <script setup>
 import { formatDate } from "../../shared/formatDate.js"
-import { computed } from "vue"
+import { computed, ref, watch } from "vue"
 import InputNumber from "primevue/inputnumber"
 import { hasPermission } from "../../permissions/usePermissions.js"
 import { fieldState } from "../../document/fieldConditions.js"
 import { formatFieldValue } from "../../document/fieldDisplay.js"
 import { clone } from "../../document/mappedDraft.js"
-import { money } from "../previewValues.js"
+import { itemAttributeNames, money } from "../previewValues.js"
+import { loadItemAttributes, withItemAttributes } from "../itemAttributes.js"
+import { attributeValueName } from "../../shell/displayLanguage.js"
 import { groupItemRows, grnSummaries, setGroupRate } from "./fieldEvents.js"
 import { t } from "../../shell/terminology.js"
 
@@ -15,7 +17,13 @@ const emit = defineEmits(["change"])
 const child = computed(() => props.metas.find((meta) => meta.name === "MGK Purchase Invoice Item"))
 const permissionMeta = computed(() => ({ permissions: props.meta.permissions }))
 const receipts = computed(() => grnSummaries(props.groups, props.dates))
-const itemGroups = computed(() => groupItemRows(props.doc.items || []))
+const itemGroups = computed(() => withItemAttributes(groupItemRows(props.doc.items || [])))
+const attributes = computed(() => itemAttributeNames(itemGroups.value))
+const attributeError = ref("")
+watch(() => (props.doc.items || []).map((row) => row.item), (names) => {
+	attributeError.value = ""
+	loadItemAttributes(names).catch((cause) => { attributeError.value = cause.message })
+}, { immediate: true })
 const canRemove = computed(() => !props.disabled && Number(props.doc.docstatus || 0) === 0)
 const fields = computed(() => {
 	const names = ["item", "qty", "uom", "grn_rate", "rate", "amount", "gst_rate",
@@ -44,13 +52,16 @@ function remove(name) { emit("change", "items", clone(props.doc.items).filter((r
 					<td v-if="canRemove" class="numeric"><button type="button" class="grn-remove" :aria-label="`Remove ${receipt.name}`" @click="remove(receipt.name)">×</button></td>
 				</tr></tbody>
 			</table>
+			<p v-if="attributeError" class="editor-error" role="alert">{{ attributeError }}</p>
 			<div class="table-scroll"><table class="invoice-item-table">
-				<thead><tr><th v-for="field in fields" :key="field.fieldname" :class="{ 'item-column': field.fieldname === 'item', numeric: numeric(field), 'rate-column': field.fieldname === 'rate' }">{{ t(field.label) }}</th></tr></thead>
+				<thead><tr><template v-for="field in fields" :key="field.fieldname"><th :class="{ 'item-column': field.fieldname === 'item', numeric: numeric(field), 'rate-column': field.fieldname === 'rate' }">{{ t(field.label) }}</th>
+					<template v-if="field.fieldname === 'item'"><th v-for="attribute in attributes" :key="attribute">{{ t(attribute) }}</th></template></template></tr></thead>
 				<tbody><tr v-for="group in itemGroups" :key="group.key">
-					<td v-for="field in fields" :key="field.fieldname" :class="{ 'item-column': field.fieldname === 'item', numeric: numeric(field), 'rate-column': field.fieldname === 'rate' }">
+					<template v-for="field in fields" :key="field.fieldname"><td :class="{ 'item-column': field.fieldname === 'item', numeric: numeric(field), 'rate-column': field.fieldname === 'rate' }">
 						<InputNumber v-if="editable(field)" :model-value="Number(group.rate) || 0" :min="0" :min-fraction-digits="2" :max-fraction-digits="2" :aria-label="`${group.item} rate`" fluid @update:model-value="change(group, $event)" />
-						<span v-else class="read-only-cell">{{ formatFieldValue(field, group[field.fieldname]) }}</span>
+						<span v-else class="read-only-cell">{{ formatFieldValue(field, field.fieldname === 'item' ? group.item_template || group.item : group[field.fieldname]) }}</span>
 					</td>
+					<template v-if="field.fieldname === 'item'"><td v-for="attribute in attributes" :key="attribute">{{ attributeValueName(attribute, group.item_attributes?.[attribute]) || '—' }}</td></template></template>
 				</tr></tbody>
 			</table></div>
 		</template>

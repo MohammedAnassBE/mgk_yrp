@@ -30,9 +30,9 @@ def get_bill_reason(bill_no):
 
 
 def get_entries(filters):
-	"""Credit/debit entries plus submitted bills as Credit rows, in posting order."""
+	"""Submitted credit/debit entries plus submitted bills as Credit rows, in posting order."""
 	entries = frappe.get_list(
-		DOCTYPE, filters=filters,
+		DOCTYPE, filters={**filters, "docstatus": 1},
 		fields=["name", "supplier", "posting_date", "entry_type", "amount", "reason", "creation"], limit_page_length=0,
 	)
 	for entry in entries:

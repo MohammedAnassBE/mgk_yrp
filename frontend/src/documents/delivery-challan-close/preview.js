@@ -1,4 +1,4 @@
-import { displayRows, fact, money } from "../previewValues.js"
+import { fact, itemTableRows, money } from "../previewValues.js"
 import { displayName } from "../../shell/displayLanguage.js"
 
 export function facts(doc, preview) {
@@ -15,6 +15,12 @@ export const itemColumns = [
 	{ key: "allocated_value", label: "Allocated value", money: true }, { key: "allocated_rate", label: "Allocated rate", money: true },
 ]
 
-export function itemRows(preview) { return displayRows(preview?.doc?.outputs ?? preview?.items ?? [], itemColumns) }
+/** Stored outputs, split by the template and attributes the server added to the preview rows. */
+export function itemRows(preview) {
+	const split = Object.fromEntries((preview?.items || []).map((row) => [row.item, row]))
+	const outputs = (preview?.doc?.outputs ?? preview?.items ?? []).map((row) => ({
+		item_template: split[row.item]?.item_template, item_attributes: split[row.item]?.item_attributes, ...row }))
+	return itemTableRows(outputs, itemColumns)
+}
 
 export function progress() { return null }

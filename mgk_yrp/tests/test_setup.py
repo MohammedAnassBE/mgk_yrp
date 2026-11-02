@@ -76,6 +76,25 @@ class TestSetup(IntegrationTestCase):
 		settings.reload()
 		self.assertEqual(settings.company_state_code, "33")
 
+	def test_settings_default_warehouse_must_belong_to_mgk_location(self):
+		self.addCleanup(frappe.db.rollback)
+		location, other = make_supplier(is_company_location=1), make_supplier(is_company_location=1)
+		own, foreign, disabled = make_warehouse(supplier=location), make_warehouse(supplier=other), make_warehouse(supplier=location)
+		frappe.db.set_value("Warehouse", disabled, "disabled", 1)
+		settings = frappe.get_single("MGK Settings")
+		settings.update({"company": get_company(), "company_gstin": "33AAAAA0000A1Z5", "default_location": None})
+		settings.default_warehouse = own
+		with self.assertRaisesRegex(frappe.ValidationError, "Set MGK Location before Default Warehouse"):
+			settings.validate()
+		settings.default_location = location
+		for warehouse, message in ((foreign, f"must belong to MGK Location {location}"), (disabled, "enabled, non-group")):
+			settings.default_warehouse = warehouse
+			with self.subTest(warehouse=warehouse), self.assertRaisesRegex(frappe.ValidationError, message):
+				settings.validate()
+		settings.default_warehouse = own
+		settings.save(ignore_permissions=True)
+		self.assertEqual(frappe.db.get_single_value("MGK Settings", "default_warehouse"), own)
+
 	def test_lock_documents_uses_parent_order_then_sorted_names(self):
 		documents = {doctype: ["B", "A", "A", ""] for doctype in reversed(LOCK_ORDER)}
 		with patch("mgk_yrp.stock.locking.frappe.db.sql") as query:

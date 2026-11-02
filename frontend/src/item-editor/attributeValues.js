@@ -16,3 +16,9 @@ export function attributeLinkProps(item, attribute) {
 		displayValue: (value) => attributeValueName(attribute, value),
 		createDoctype: ATTRIBUTE_VALUE, createDefaults: { attribute_name: attribute }, createWith: (doc) => createAttributeValue(item, doc) }
 }
+
+export function defaultAttributes(details) {
+	const defaults = details.attribute_defaults || {}
+	return Object.fromEntries((details.attributes || []).filter((attribute) => attribute !== details.primary_attribute && defaults[attribute])
+		.map((attribute) => [attribute, defaults[attribute]]))
+}

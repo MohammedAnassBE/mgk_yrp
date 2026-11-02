@@ -4,6 +4,7 @@ import frappe
 from frappe import _
 from frappe.utils import add_days, cint, flt, getdate, nowdate
 
+from mgk_yrp.web.preview import add_item_attributes
 from mgk_yrp.web.stock_balance import run_stock_balance
 
 
@@ -110,7 +111,7 @@ def get_stock_note(filters=None):
 	require_readable_filters(filters)
 	warehouses = readable_supplier_warehouses(allowed_warehouses())
 	_columns, data = run_stock_balance(report_filters(filters, warehouses))
-	rows = [frappe._dict(row) for row in data]
+	rows = add_item_attributes([frappe._dict(row) for row in data])
 	options = stock_options(warehouses)
 	warehouse_map = {row.name: row for row in warehouses}
 	supplier_map = {row.name: row.supplier_name for row in options["suppliers"]}

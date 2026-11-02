@@ -22,7 +22,7 @@ class TestWebPaymentLedger(IntegrationTestCase):
 			frappe.get_doc({
 				"doctype": DOCTYPE, "supplier": self.supplier, "posting_date": posting_date,
 				"entry_type": entry_type, "amount": amount, "reason": "Test",
-			}).insert()
+			}).insert().submit()
 
 	def test_running_balance_in_date_order(self):
 		ledger = get_payment_ledger(supplier=self.supplier)
@@ -41,6 +41,16 @@ class TestWebPaymentLedger(IntegrationTestCase):
 		[row] = ledger["suppliers"]
 		self.assertEqual((row["supplier"], row["credit"], row["debit"], row["balance"]), (self.supplier, 1200, 450, 750))
 		self.assertEqual(ledger["totals"], {"credit": 1200, "debit": 450, "balance": 750})
+
+	def test_draft_and_cancelled_entries_are_excluded(self):
+		values = {"doctype": DOCTYPE, "supplier": self.supplier, "entry_type": "Credit", "reason": "Test"}
+		frappe.get_doc({**values, "posting_date": "2026-01-10", "amount": 5000}).insert()
+		cancelled = frappe.get_doc({**values, "posting_date": "2026-02-01", "amount": 7000}).insert()
+		cancelled.submit()
+		cancelled.cancel()
+		ledger = get_payment_ledger(supplier=self.supplier)
+		self.assertEqual([row["balance"] for row in ledger["rows"]], [1000, 700, 900, 750])
+		self.assertEqual(get_payment_ledger(supplier=self.supplier, from_date="2026-02-15")["opening_balance"], 700)
 
 	def make_bill(self, posting_date, grand_total, docstatus=1, bill_no=None):
 		bill = frappe.get_doc({
@@ -73,7 +83,7 @@ class TestWebPaymentLedger(IntegrationTestCase):
 			frappe.get_doc({
 				"doctype": DOCTYPE, "supplier": other, "posting_date": posting_date,
 				"entry_type": entry_type, "amount": amount, "reason": "Other",
-			}).insert()
+			}).insert().submit()
 		ledger = get_payment_ledger(from_date="2026-01-02")
 		rows = [(row["supplier"], row["balance"]) for row in ledger["rows"] if row["supplier"] in (self.supplier, other)]
 		self.assertEqual(rows, [(self.supplier, 1000), (self.supplier, 700), (other, 30), (self.supplier, 900), (self.supplier, 750)])

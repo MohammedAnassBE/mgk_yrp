@@ -19,7 +19,6 @@ export function statusFilter(doctype, row) {
 	if (DISABLED_DOCTYPES.includes(doctype)) return ["disabled", "=", Number(row.disabled) || 0]
 	if (ALWAYS_ACTIVE_DOCTYPES.includes(doctype)) return null
 	if (doctype === "MGK Purchase Order") return row.status ? ["status", "=", row.status] : null
-	if (doctype === "MGK Supplier Credit Debit") return row.entry_type ? ["entry_type", "=", row.entry_type] : null
 	if (row.docstatus === undefined || row.docstatus === null) return null
 	const docstatus = Number(row.docstatus)
 	if (docstatus !== 1) return ["docstatus", "=", docstatus]

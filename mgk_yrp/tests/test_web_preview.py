@@ -1,3 +1,4 @@
+import json
 from unittest.mock import patch
 
 import frappe
@@ -17,7 +18,17 @@ from mgk_yrp.tests.fixtures import (
 	make_uom,
 	make_warehouse,
 )
-from mgk_yrp.web.preview import CHALLAN, CLOSE, INVOICE, PLAN, add_item_attributes, get_extra, get_preview
+from mgk_yrp.web.preview import (
+	CHALLAN,
+	CLOSE,
+	INVOICE,
+	PLAN,
+	add_item_attributes,
+	get_extra,
+	get_item_attributes,
+	get_preview,
+	get_preview_items,
+)
 
 
 class TestWebPreview(IntegrationTestCase):
@@ -150,6 +161,22 @@ class TestWebPreview(IntegrationTestCase):
 		order = self.make_order()
 		item = get_preview(order.doctype, order.name)["items"][0]
 		self.assertEqual(item["item_template"], item["item"])
+
+	def test_item_attribute_lookup_and_close_outputs_split_variants(self):
+		template, attributes = make_template_item()
+		variant = create_variant(template.name, attributes).insert(ignore_permissions=True).name
+		plain = make_item(stock_uom=make_uom("Kg"))
+		self.assertEqual(get_item_attributes(json.dumps([variant, plain])), {
+			variant: {"item_template": template.name, "item_attributes": attributes},
+			plain: {"item_template": plain, "item_attributes": {}},
+		})
+		close = frappe.get_doc({"doctype": CLOSE, "outputs": [{"item": variant}]})
+		output = get_preview_items(close)[0]
+		self.assertEqual((output["item_template"], output["item_attributes"]), (template.name, attributes))
+
+	def test_item_attribute_lookup_needs_item_read(self):
+		with patch("frappe.has_permission", return_value=False), self.assertRaises(frappe.PermissionError):
+			get_item_attributes(json.dumps(["Any Item"]))
 
 	def test_extra_plan_rows_are_permission_filtered(self):
 		challan = frappe.get_doc({"doctype": CHALLAN, "mgk_process_planning": "Preview Plan"})

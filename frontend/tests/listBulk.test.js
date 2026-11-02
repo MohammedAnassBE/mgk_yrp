@@ -69,7 +69,7 @@ test("status pills filter on the field behind the shown status", () => {
 	assert.deepEqual(statusFilter("MGK Delivery Challan", { docstatus: 1, is_return: 1 }), ["is_return", "=", 1])
 	assert.deepEqual(statusFilter("MGK Delivery Challan", { docstatus: 1, is_internal_transfer: 1, transfer_status: "In Transit" }), ["transfer_status", "=", "In Transit"])
 	assert.deepEqual(statusFilter("Supplier", { disabled: 1 }), ["disabled", "=", 1])
-	assert.deepEqual(statusFilter("MGK Supplier Credit Debit", { entry_type: "Debit" }), ["entry_type", "=", "Debit"])
+	assert.deepEqual(statusFilter("MGK Supplier Credit Debit", { docstatus: 0, entry_type: "Debit" }), ["docstatus", "=", 0])
 	assert.deepEqual(statusFilter("MGK Purchase Invoice", { docstatus: 2 }), ["docstatus", "=", 2])
 	assert.equal(statusFilter("MGK Goods Received Note", { docstatus: 1, purchase_invoice: "PI-1" }), null)
 	assert.equal(statusFilter("Address", { docstatus: 0 }), null)

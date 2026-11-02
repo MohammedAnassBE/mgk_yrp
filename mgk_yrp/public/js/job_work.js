@@ -78,13 +78,14 @@ async function save_plan_dialog(dialog, editor, delivery_challan, frm) {
 frappe.mgk_yrp.open_dispatch_dialog = function (names, warehouses, refresh) {
     const source_names = [...names];
     const must_move = new Set(warehouses).size > 1;
+    const can_move = frappe.model.can_create('YRP Stock Entry') && frappe.model.can_submit('YRP Stock Entry');
     const dialog = new frappe.ui.Dialog({ title: __('Create DC'),
         fields: [
             { fieldname: 'process_name', fieldtype: 'Link', options: 'YRP Process', label: __('Process'), reqd: 1 },
             { fieldname: 'supplier', fieldtype: 'Link', options: 'Supplier', label: __('Supplier'), reqd: 1,
                 get_query: () => ({ filters: { is_company_location: 0, disabled: 0 } }) },
             { fieldname: 'move_to_head_office', fieldtype: 'Check', label: __('Move stock to Head Office'),
-                default: must_move ? 1 : 0, read_only: must_move ? 1 : 0 },
+                default: must_move || can_move ? 1 : 0, read_only: must_move ? 1 : 0, hidden: must_move || can_move ? 0 : 1 },
         ],
         primary_action_label: __('Create DC'),
         primary_action: values => submit_dispatch(dialog, { source_names, process_name: values.process_name,

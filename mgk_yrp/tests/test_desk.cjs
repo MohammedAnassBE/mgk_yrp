@@ -95,6 +95,7 @@ function desk(permissions = {}) {
 			can_write: doctype => permissions[doctype] !== false && permissions[`write:${doctype}`] !== false,
 			can_read: doctype => permissions[doctype] !== false,
 			can_cancel: () => permissions.cancel !== false,
+			can_submit: doctype => permissions[doctype] !== false && permissions[`submit:${doctype}`] !== false,
 		},
 		ui: { form: { on: (doctype, handlers) => { events[doctype] = handlers; } } },
 	};
@@ -1674,8 +1675,9 @@ for (const warehouses of [['WH-1'], ['WH-1', 'WH-1'], ['WH-1', 'WH-2']]) {
 		assert.equal(fields.supplier.reqd, 1);
 		assert.deepEqual(JSON.parse(JSON.stringify(fields.supplier.get_query().filters)), { is_company_location: 0, disabled: 0 });
 		const forced = new Set(warehouses).size > 1;
-		assert.equal(Boolean(fields.move_to_head_office.default), forced);
+		assert.equal(Boolean(fields.move_to_head_office.default), true);
 		assert.equal(Boolean(fields.move_to_head_office.read_only), forced);
+		assert.equal(Boolean(fields.move_to_head_office.hidden), false);
 		await dialog.primary_action({ process_name: 'Dyeing', supplier: 'Supplier', move_to_head_office: 0 });
 		assert.equal(request.method, 'mgk_yrp.job_work.dc_from_grn.make_delivery_challan_from_grns');
 		assert.equal(Boolean(request.args.move_to_head_office), forced);
@@ -1684,6 +1686,17 @@ for (const warehouses of [['WH-1'], ['WH-1', 'WH-1'], ['WH-1', 'WH-2']]) {
 		assert.match(JSON.stringify(message), /YRP Stock Entry\/SE-1/);
 		assert.match(JSON.stringify(message), /YRP Stock Entry\/SE-2/);
 		assert.equal(refreshes, 1);
+	});
+}
+
+for (const denied of ['YRP Stock Entry', 'submit:YRP Stock Entry']) {
+	test(`J19 dispatch move defaults off and hides without stock entry rights: ${denied}`, async () => {
+		const environment = desk({ [denied]: false });
+		const dialogs = dialogHarness(environment);
+		await environment.frappe.mgk_yrp.open_dispatch_dialog(['GRN-1'], ['WH-1'], () => {});
+		const field = dialogs[0].fields.find(row => row.fieldname === 'move_to_head_office');
+		assert.equal(Boolean(field.default), false);
+		assert.equal(Boolean(field.hidden), true);
 	});
 }
 

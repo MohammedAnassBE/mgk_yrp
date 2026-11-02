@@ -1,6 +1,6 @@
 [
  {
-  "config": "{\"schema_version\": 1, \"screens\": {\"home\": {\"blocks\": [{\"id\": \"purchase-order\", \"type\": \"mgk-purchase-order\"}, {\"id\": \"billing\", \"type\": \"mgk-billing\"}, {\"id\": \"pending-bills\", \"type\": \"mgk-pending-bills\"}, {\"id\": \"delivery-challan\", \"type\": \"mgk-delivery-challan\"}, {\"id\": \"goods-received-note\", \"type\": \"mgk-goods-received-note\"}, {\"id\": \"supplier-credit-debit\", \"type\": \"mgk-supplier-credit-debit\"}]}}}",
+  "config": "{\"schema_version\": 1, \"screens\": {\"home\": {\"blocks\": [{\"id\": \"purchase-order\", \"type\": \"mgk-purchase-order\"}, {\"id\": \"billing\", \"type\": \"mgk-billing\"}, {\"id\": \"delivery-challan\", \"type\": \"mgk-delivery-challan\"}, {\"id\": \"goods-received-note\", \"type\": \"mgk-goods-received-note\"}, {\"id\": \"supplier-credit-debit\", \"type\": \"mgk-supplier-credit-debit\"}, {\"id\": \"pending-bills\", \"type\": \"mgk-pending-bills\"}]}}}",
   "description": "Purchase Order, Billing, Delivery Challan, Goods Received Note and Supplier Credit/Debit books.",
   "disabled": 0,
   "docstatus": 0,
@@ -22,7 +22,7 @@
   "render_mode": "Configurable Layout"
  },
  {
-  "config": "{\"schema_version\": 1, \"screens\": {\"home\": {\"blocks\": [{\"id\": \"billing\", \"type\": \"mgk-billing\"}, {\"id\": \"pending-bills\", \"type\": \"mgk-pending-bills\"}, {\"id\": \"supplier-credit-debit\", \"type\": \"mgk-supplier-credit-debit\"}]}}}",
+  "config": "{\"schema_version\": 1, \"screens\": {\"home\": {\"blocks\": [{\"id\": \"billing\", \"type\": \"mgk-billing\"}, {\"id\": \"supplier-credit-debit\", \"type\": \"mgk-supplier-credit-debit\"}, {\"id\": \"pending-bills\", \"type\": \"mgk-pending-bills\"}]}}}",
   "description": "Billing, Supplier Credits and Supplier Debits books.",
   "disabled": 0,
   "docstatus": 0,

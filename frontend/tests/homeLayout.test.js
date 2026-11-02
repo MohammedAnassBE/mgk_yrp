@@ -29,8 +29,8 @@ test("all configured blocks hidden produces an empty layout", () => {
 	assert.deepEqual(getHomeBlocks(layout([dc, grn], { dc: true, grn: true })), [])
 })
 
-test("fallback order is PO, Billing, Pending Bills, DC, GRN, Stock, Masters, Credits & Debits without DC Close or Payment Ledger cards", () => {
-	const types = ["purchase-order", "billing", "pending-bills", "delivery-challan", "goods-received-note", "stock", "masters", "supplier-credit-debit"]
+test("fallback order is PO, Billing, DC, GRN, Stock, Masters, Credits & Debits, Pending Bills without DC Close or Payment Ledger cards", () => {
+	const types = ["purchase-order", "billing", "delivery-challan", "goods-received-note", "stock", "masters", "supplier-credit-debit", "pending-bills"]
 	assert.deepEqual(getHomeBlocks({}).map((block) => block.type), types.map((key) => `mgk-${key}`))
 	assert.deepEqual(getHomeBlocks(layout([])), defaultBlocks)
 	assert.deepEqual(getHomeBlocks(layout([{ id: "unknown", type: "unknown" }])), defaultBlocks)

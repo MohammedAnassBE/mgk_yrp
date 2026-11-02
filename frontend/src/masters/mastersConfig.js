@@ -16,7 +16,7 @@ const definitions = [
 		fieldOverrides: { item_name: { reqd: 1 }, attributes: { hidden: 0, depends_on: "" } },
 		baseFilters: [["variant_of", "is", "not set"]], baseOrFilters: [["has_variants", "=", 1], ["disabled", "=", 0]],
 		hiddenSections: ["accounting", "accounting_tab", "sales_details", "sales", "sales_tab", "website", "website_tab", "deferred_accounting_section", "customer_details"],
-		hideFormFields: ["weight_per_unit", "weight_uom"], hideChildTables: ["categories"], childColumns: { attributes: ["attribute"], uoms: ["uom", "conversion_factor"],
+		hideFormFields: ["weight_per_unit", "weight_uom"], hideChildTables: ["categories"], childColumns: { attributes: ["attribute", "mgk_default_value"], uoms: ["uom", "conversion_factor"],
 			mgk_process_conversions: ["process_name", "item", "from_uom", "from_qty", "to_uom", "to_qty"] },
 		boolLabels: {
 			is_yarn_item: { on: "Yarn item", off: "Not a yarn item" },

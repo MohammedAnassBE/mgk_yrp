@@ -4,11 +4,23 @@
 			frm.set_query("item", "mgk_process_conversions", () => ({
 				filters: { variant_of: ["is", "not set"], disabled: 0 },
 			}));
+			frm.set_query("mgk_default_value", "attributes", (doc, cdt, cdn) => ({
+				query: "mgk_yrp.stock.attribute_defaults.search_default_values",
+				params: { item: doc.__islocal ? null : doc.name, attribute: locals[cdt][cdn].attribute || "" },
+			}));
 		},
 		stock_uom(frm) {
 			return Promise.all((frm.doc.mgk_process_conversions || []).map(row =>
 				frappe.model.set_value(row.doctype, row.name, "from_uom", frm.doc.stock_uom)
 			));
+		},
+	});
+
+	frappe.ui.form.on("Item Variant Attribute", {
+		attribute(frm, cdt, cdn) {
+			if (locals[cdt][cdn].mgk_default_value) {
+				return frappe.model.set_value(cdt, cdn, "mgk_default_value", null);
+			}
 		},
 	});
 
