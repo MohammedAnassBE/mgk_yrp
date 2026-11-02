@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 import frappe
 from frappe import _
 from frappe.utils import cstr
@@ -26,11 +28,41 @@ def get_preview(doctype: str, name: str) -> dict:
 	return {
 		"doc": get_preview_doc(doc),
 		"is_submittable": int(doc.meta.is_submittable),
-		"items": [row.as_dict() for row in doc.get("outputs" if doctype == CLOSE else "items") or []],
+		"items": get_preview_items(doc),
 		"connections": connections,
 		"timeline": get_timeline(doc, linked_events),
 		"extra": get_extra(doc),
 	}
+
+
+def get_preview_items(doc):
+	if doc.doctype == CLOSE:
+		return [row.as_dict() for row in doc.get("outputs") or []]
+	return add_item_attributes([row.as_dict() for row in doc.get("items") or []])
+
+
+def add_item_attributes(rows):
+	"""Set each row's template item and variant attribute values for the split preview columns."""
+	names = list({row.get("item") for row in rows if row.get("item")})
+	templates, attributes = get_item_templates(names), defaultdict(dict)
+	for value in frappe.get_all(
+		"Item Variant Attribute",
+		filters={"parent": ["in", names or [""]], "parenttype": "Item", "parentfield": "attributes"},
+		fields=["parent", "attribute", "attribute_value"],
+		order_by="idx asc",
+	):
+		if value.attribute_value:
+			attributes[value.parent][value.attribute] = value.attribute_value
+	for row in rows:
+		item = row.get("item")
+		row["item_template"] = templates.get(item) or item
+		row["item_attributes"] = attributes.get(item, {})
+	return rows
+
+
+def get_item_templates(names):
+	rows = frappe.get_all("Item", filters={"name": ["in", names or [""]]}, fields=["name", "variant_of"])
+	return {row.name: row.variant_of for row in rows}
 
 
 def get_preview_doc(doc):
@@ -150,7 +182,7 @@ def get_extra(doc):
 		return {"plan_rows": []}
 	plan = frappe.get_doc(PLAN, plan_name)
 	plan.apply_fieldlevel_read_permissions()
-	return {"plan_rows": [row.as_dict() for row in plan.get("items") or []]}
+	return {"plan_rows": add_item_attributes([row.as_dict() for row in plan.get("items") or []])}
 
 
 def get_close_extra(doc):

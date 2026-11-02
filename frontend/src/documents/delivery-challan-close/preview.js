@@ -1,7 +1,8 @@
 import { displayRows, fact, money } from "../previewValues.js"
+import { displayName } from "../../shell/displayLanguage.js"
 
 export function facts(doc, preview) {
-	return [fact("DC", doc.delivery_challan, "/delivery-challan"), fact("Process", preview?.extra?.process_name),
+	return [fact("DC", doc.delivery_challan, "/delivery-challan"), fact("Process", displayName("YRP Process", preview?.extra?.process_name)),
 		fact("Total DC Value", money(doc.total_dc_value)), fact("Total Output Qty", doc.total_output_qty),
 		fact("Value per Unit", money(doc.value_per_unit)), fact("Loss Value", money(doc.loss_value)),
 		fact("Reopen status", doc.reopen_status, null, null, { optional: true })]

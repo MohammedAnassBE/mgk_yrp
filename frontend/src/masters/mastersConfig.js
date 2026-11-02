@@ -35,9 +35,10 @@ const definitions = [
 	{
 		key: "processes", doctype: "YRP Process", entityLabel: "Process", titleFields: ["process_name"], label: "Processes", code: "PRC",
 		description: "Production and job work stages.", columns: ["process_name"],
-		formOrder: ["process_name"],
-		formGroups: [{ label: "Process identity", fields: ["process_name"] }],
-		labels: { process_name: "Process Name" },
+		formOrder: ["process_name", "mgk_tamil_name"],
+		formGroups: [{ label: "Process identity", fields: ["process_name", "mgk_tamil_name"] }],
+		labels: { process_name: "Process Name", mgk_tamil_name: "Process name (Tamil)" },
+		help: { mgk_tamil_name: "Enter the Tamil name shown in process Link fields and document views." },
 	},
 	{
 		key: "received-types", doctype: "YRP Received Type", entityLabel: "Received Type", titleFields: ["received_type_name"], label: "Received Types", code: "RT",

@@ -23,8 +23,8 @@ function stubFetch(calls) {
 }
 
 test("Tamil name masters match the reference app and every master form lists the field", () => {
-	assert.deepEqual(TAMIL_NAME_DOCTYPES, ["Item", "Supplier", "Warehouse", "MGK Agent"])
-	for (const key of ["items", "suppliers", "warehouses", "agents"]) {
+	assert.deepEqual(TAMIL_NAME_DOCTYPES, ["Item", "Supplier", "Warehouse", "MGK Agent", "YRP Process", "Item Group"])
+	for (const key of ["items", "suppliers", "warehouses", "agents", "processes"]) {
 		const master = getMaster(key)
 		assert.ok(hasTamilName(master.doctype))
 		assert.ok(master.formOrder.includes("mgk_tamil_name"), key)
@@ -86,4 +86,38 @@ test("Tamil mode falls back to the English title for records without a Tamil nam
 		setLanguage("en")
 		restore()
 	}
+})
+
+test("Process and Item Group names switch to Tamil in facts, list fields and PO tabs", async () => {
+	const { displayName, fieldDisplayName, tabLabel, tamilNamesSettled } = await import("../src/shell/displayLanguage.js")
+	const { orderedTabs } = await import("../src/list/listQuery.js")
+	const { default: purchaseOrderBook } = await import("../src/books/purchase-order/config.js")
+	const deliveryChallan = await import("../src/documents/delivery-challan/presentation.js")
+	const purchaseOrder = await import("../src/documents/purchase-order/presentation.js")
+	const rows = { "YRP Process": [{ name: "Dyeing", mgk_tamil_name: "சாயம்", process_name: "Dyeing" }],
+		"Item Group": [{ name: "Karigan Items", mgk_tamil_name: "காரிகான் பொருட்கள்", item_group_name: "Karigan Items" },
+			{ name: "Salavai Cone Items", mgk_tamil_name: "", item_group_name: "Salavai Cone Items" }] }
+	const original = globalThis.fetch
+	globalThis.fetch = async (url) => {
+		const params = new URL(String(url), "http://x").searchParams
+		const names = JSON.parse(params.get("filters") || "[[0,0,[]]]")[0][2]
+		const message = (rows[params.get("doctype")] || []).filter((row) => names.includes(row.name))
+		return { ok: true, status: 200, json: async () => ({ message }) }
+	}
+	const tabs = () => orderedTabs(purchaseOrderBook.tabs).map(tabLabel)
+	const doc = { process_name: "Dyeing", item_group: "Karigan Items", items: [] }
+	try {
+		setLanguage("ta")
+		tabs(); displayName("YRP Process", "Dyeing")
+		await tamilNamesSettled()
+		assert.equal(displayName("YRP Process", "Dyeing"), "சாயம்")
+		assert.equal(fieldDisplayName("process_name", "Dyeing"), "சாயம்")
+		assert.equal(fieldDisplayName("item_group", "Karigan Items"), "காரிகான் பொருட்கள்")
+		assert.equal(deliveryChallan.summary(doc).lines.find((line) => line.label === "Process").value, "சாயம்")
+		assert.equal(purchaseOrder.viewFacts(doc).find((fact) => fact.label === "Item group").value, "காரிகான் பொருட்கள்")
+		assert.deepEqual(tabs(), ["அனைத்தும்", "காரிகான் பொருட்கள்", "சலவைக்கோன்"], "Item Group Tamil name, else the tab's Tamil text")
+		setLanguage("en")
+		assert.deepEqual(tabs(), ["All", "Karigan", "Salavai Cone"])
+		assert.equal(displayName("YRP Process", "Dyeing"), "Dyeing")
+	} finally { globalThis.fetch = original; clearReadCaches(); setLanguage("en") }
 })

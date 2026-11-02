@@ -4,7 +4,7 @@ import { callRead } from "../api/client.js"
 export const ENGLISH = "en"
 export const TAMIL = "ta"
 export const TAMIL_NAME_FIELD = "mgk_tamil_name"
-export const TAMIL_NAME_DOCTYPES = Object.freeze(["Item", "Supplier", "Warehouse", "MGK Agent"])
+export const TAMIL_NAME_DOCTYPES = Object.freeze(["Item", "Supplier", "Warehouse", "MGK Agent", "YRP Process", "Item Group"])
 const LANGUAGES = new Set([ENGLISH, TAMIL])
 
 function storageKey() {
@@ -49,10 +49,11 @@ export const LINK_FIELD_DOCTYPES = Object.freeze({
 	supplier: "Supplier", delivery_location: "Supplier", from_location: "Supplier", to_location: "Supplier",
 	handling_supplier: "Supplier", default_location: "Supplier",
 	warehouse: "Warehouse", from_warehouse: "Warehouse", to_warehouse: "Warehouse", transit_warehouse: "Warehouse",
-	mgk_agent: "MGK Agent", item: "Item", input_item: "Item",
+	mgk_agent: "MGK Agent", item: "Item", input_item: "Item", process_name: "YRP Process", item_group: "Item Group",
 })
 /** Each master's English title field, used where a master's own list shows its title. */
-export const TITLE_FIELDS = Object.freeze({ Item: "item_name", Supplier: "supplier_name", Warehouse: "warehouse_name", "MGK Agent": "agent_name" })
+export const TITLE_FIELDS = Object.freeze({ Item: "item_name", Supplier: "supplier_name", Warehouse: "warehouse_name", "MGK Agent": "agent_name",
+	"YRP Process": "process_name", "Item Group": "item_group_name" })
 const LOOKUP_CHUNK = 100
 const tamilNames = reactive({})
 const englishTitles = reactive({})
@@ -151,6 +152,13 @@ async function fetchTamilNames(doctype, names) {
 			for (const name of chunk) requested.delete(cacheKey(doctype, name))
 		}
 	}
+}
+
+/** List tab label: Tamil mode prefers the tab's Item Group Tamil name, then the tab's own `tamil` text. */
+export function tabLabel(tab) {
+	if (!isTamil.value) return tab.label
+	const group = (tab.filters || []).find(([fieldname, operator]) => fieldname === "item_group" && operator === "=")
+	return (group && tamilName("Item Group", group[2])) || tab.tamil || tab.label
 }
 
 /** Adds `tamil` to Link suggestions in Tamil mode; the stored value stays the record name. */

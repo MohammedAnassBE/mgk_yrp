@@ -88,5 +88,25 @@
   "fieldtype": "Data",
   "label": "Warehouse Name (Tamil)",
   "insert_after": "warehouse_name"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "YRP Process-mgk_tamil_name",
+  "dt": "YRP Process",
+  "module": "MGK YRP",
+  "fieldname": "mgk_tamil_name",
+  "fieldtype": "Data",
+  "label": "Process Name (Tamil)",
+  "insert_after": "process_name"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Item Group-mgk_tamil_name",
+  "dt": "Item Group",
+  "module": "MGK YRP",
+  "fieldname": "mgk_tamil_name",
+  "fieldtype": "Data",
+  "label": "Item Group Name (Tamil)",
+  "insert_after": "item_group_name"
  }
 ]
