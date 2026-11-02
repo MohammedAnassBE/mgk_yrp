@@ -39,7 +39,7 @@ test("list tabs and toolbar switch words with the language", async () => {
 			const buttons = nodes(tabs.root, (node) => node.tag === "button").map(text)
 			const words = text(toolbar.root)
 			if (language === "ta") {
-				assert.deepEqual(buttons.map((label) => label.split(" ")[0]), ["அனைத்தும்", "திற", "வழியில்", "மூடப்பட்டது", "திருப்புகள்"])
+				assert.deepEqual(buttons.map((label) => label.split(" ")[0]), ["அனைத்தும்", "திறந்தவை", "வழியில்", "மூடப்பட்டது", "திருப்புகள்"])
 				assert.ok(text(tabs.root).includes("4 பதிவுகள்"))
 				for (const word of ["வடிகட்டிகள்", "நெடுவரிசைகள்", "தேதி", "கடைசியாகப் புதுப்பித்தது"]) assert.ok(words.includes(word), word)
 			} else {
@@ -57,9 +57,11 @@ test("status pills, column labels and empty states on the list follow the terms"
 			assert.ok(text(page.root).includes(language === "ta" ? "அனுமதி இல்லை" : "No access"))
 		} finally { page.close() }
 		const { statusPill } = await import("../src/list/statusPill.js")
-		const { t } = await import("../src/shell/terminology.js")
+		const { statusText, t } = await import("../src/shell/terminology.js")
 		assert.equal(t(statusPill("MGK Purchase Order", { status: "To Receive" }).label), language === "ta" ? "பெற வேண்டியது" : "To Receive")
 		assert.equal(t("Total Qty"), language === "ta" ? "மொத்த அளவு" : "Total Qty")
+		assert.equal(statusText(statusPill("MGK Delivery Challan", { docstatus: 1 }).label), language === "ta" ? "திறந்தவை" : "Open")
+		assert.equal(t("Open"), language === "ta" ? "திற" : "Open", "the Open button keeps its verb")
 	})
 })
 

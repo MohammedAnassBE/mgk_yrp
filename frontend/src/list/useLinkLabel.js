@@ -20,6 +20,9 @@ export function useLinkLabel(props) {
 		} catch (cause) { if (current === sequence) error.value = cause.message }
 	}, { immediate: true })
 	onBeforeUnmount(() => sequence++)
-	const label = computed(() => props.modelValue ? displayName(props.doctype, props.modelValue, englishLabel.value) : englishLabel.value)
+	const label = computed(() => {
+		if (!props.modelValue) return englishLabel.value
+		return props.displayValue ? props.displayValue(props.modelValue) : displayName(props.doctype, props.modelValue, englishLabel.value)
+	})
 	return { label, error }
 }

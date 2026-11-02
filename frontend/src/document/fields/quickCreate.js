@@ -10,6 +10,8 @@ const masterFor = (doctype) => masters.find((master) => master.doctype === docty
 // Desk title fields that the server recomputes from another field.
 const titleOverrides = { Contact: "first_name" }
 const entityLabels = { "YRP Item Attribute Value": "Attribute Value" }
+// Optional fields worth filling at creation, shown beside the title and mandatory fields.
+const optionalFields = { "YRP Item Attribute Value": ["mgk_tamil_name"] }
 const isScalar = (value) => ["string", "number"].includes(typeof value) && value !== ""
 
 export function quickCreateLabel(doctype) { return masterFor(doctype)?.entityLabel || entityLabels[doctype] || doctype }
@@ -41,7 +43,7 @@ function equalityFilters(filters, names) {
 }
 
 function isShown(field, draft, meta, master, user, title) {
-	if (field.fieldname === title || field.contextField) return true
+	if (field.fieldname === title || field.contextField || optionalFields[meta.name]?.includes(field.fieldname)) return true
 	if (master && (!master.fields.includes(field.fieldname) || master.hideFormFields?.includes(field.fieldname))) return false
 	const state = fieldState(field, draft, meta, user)
 	return state.visible && state.required && !field.read_only && isEmpty(draft[field.fieldname], field)

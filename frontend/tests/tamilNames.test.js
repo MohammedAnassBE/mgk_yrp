@@ -24,7 +24,7 @@ function stubFetch(calls) {
 }
 
 test("Tamil name masters match the reference app and every master form lists the field", () => {
-	assert.deepEqual(TAMIL_NAME_DOCTYPES, ["Item", "Supplier", "Warehouse", "MGK Agent", "YRP Process", "Item Group"])
+	assert.deepEqual(TAMIL_NAME_DOCTYPES, ["Item", "Supplier", "Warehouse", "MGK Agent", "YRP Process", "Item Group", "YRP Item Attribute Value"])
 	for (const key of ["items", "suppliers", "warehouses", "agents", "processes"]) {
 		const master = getMaster(key)
 		assert.ok(hasTamilName(master.doctype))

@@ -8,6 +8,7 @@ TERMINOLOGY = "MGK Workspace"
 CACHE_KEY = "mgk_ui_terms"
 REALTIME_EVENT = "mgk_ui_terms_updated"
 DEFAULT_TERMS_DIR = Path(__file__).parent / "default_terms"
+KEYED_TERMS_PATH = Path(__file__).parent / "keyed_terms.json"
 
 
 def normalize(english):
@@ -31,6 +32,11 @@ def get_default_terms():
 	return terms
 
 
+def get_keyed_terms():
+	"""Defaults read by key, for English text whose meaning differs by place (status "Open" vs the Open button)."""
+	return json.loads(KEYED_TERMS_PATH.read_text(encoding="utf-8"))
+
+
 def get_term_rows():
 	"""Rows of the MGK terminology record, empty before the layout and its terminology exist."""
 	if not frappe.db.exists("YRP UI Terminology", TERMINOLOGY):
@@ -47,9 +53,13 @@ def build_terms():
 	terms = {
 		term_key(english): {"source": english, "ta": tamil} for english, tamil in get_default_terms().items()
 	}
+	keyed = get_keyed_terms()
+	terms.update({key: {**row, "keyed": 1} for key, row in keyed.items()})
 	for row in get_term_rows():
 		if row.term_key and row.source_text:
 			terms[row.term_key] = {"source": row.source_text, "ta": row.tamil_text or ""}
+			if row.term_key in keyed:
+				terms[row.term_key]["keyed"] = 1
 	return terms
 
 
@@ -64,8 +74,12 @@ def get_ui_terms():
 
 
 def get_tamil_labels():
-	"""Normalized English to Tamil, for lookups by English text."""
-	return {normalize(row["source"]): row["ta"] for row in get_terms().values() if row.get("ta")}
+	"""Normalized English to Tamil, for lookups by English text; keyed terms are read only by key."""
+	return {
+		normalize(row["source"]): row["ta"]
+		for row in get_terms().values()
+		if row.get("ta") and not row.get("keyed")
+	}
 
 
 def translate(english, tamil=1):
@@ -83,17 +97,24 @@ def seed_terms():
 		doc = frappe.get_doc("YRP UI Terminology", TERMINOLOGY)
 	else:
 		doc = frappe.get_doc({"doctype": "YRP UI Terminology", "ui_layout": TERMINOLOGY})
-	keys = {row.term_key for row in doc.terms}
-	sources = {normalize(row.source_text) for row in doc.terms}
-	missing = {
-		english: tamil
+	missing_rows = get_missing_term_rows(doc.terms)
+	for key, english, tamil in missing_rows:
+		doc.append("terms", {"term_key": key, "source_text": english, "tamil_text": tamil})
+	if missing_rows or doc.is_new():
+		doc.save(ignore_permissions=True)
+
+
+def get_missing_term_rows(rows):
+	"""(key, English, Tamil) of defaults with no row yet; an English default also counts as present by its text."""
+	keyed = get_keyed_terms()
+	keys = {row.term_key for row in rows}
+	sources = {normalize(row.source_text) for row in rows if row.term_key not in keyed}
+	missing = [
+		(term_key(english), english, tamil)
 		for english, tamil in get_default_terms().items()
 		if term_key(english) not in keys and normalize(english) not in sources
-	}
-	for english, tamil in missing.items():
-		doc.append("terms", {"term_key": term_key(english), "source_text": english, "tamil_text": tamil})
-	if missing or doc.is_new():
-		doc.save(ignore_permissions=True)
+	]
+	return missing + [(key, row["source"], row["ta"]) for key, row in keyed.items() if key not in keys]
 
 
 def terms_changed(doc=None, method=None):

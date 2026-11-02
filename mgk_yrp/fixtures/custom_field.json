@@ -108,5 +108,15 @@
   "fieldtype": "Data",
   "label": "Item Group Name (Tamil)",
   "insert_after": "item_group_name"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "YRP Item Attribute Value-mgk_tamil_name",
+  "dt": "YRP Item Attribute Value",
+  "module": "MGK YRP",
+  "fieldname": "mgk_tamil_name",
+  "fieldtype": "Data",
+  "label": "Attribute Value (Tamil)",
+  "insert_after": "attribute_value"
  }
 ]

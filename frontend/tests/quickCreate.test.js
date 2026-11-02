@@ -121,6 +121,7 @@ test("quick create form shows the title field and empty mandatory fields with ma
 const attributeValueMeta = { name: "YRP Item Attribute Value", autoname: "hash", title_field: "attribute_value", permissions: [], fields: [
 	{ fieldname: "attribute_name", fieldtype: "Link", options: "Item Attribute", label: "Attribute Name", reqd: 1 },
 	{ fieldname: "attribute_value", fieldtype: "Data", label: "Attribute Value", reqd: 1 },
+	{ fieldname: "mgk_tamil_name", fieldtype: "Data", label: "Attribute Value (Tamil)" },
 ] }
 const submitDialog = async (page) => {
 	await nodes(page.root, (node) => node.tag === "form")[0].props.onSubmit({ preventDefault() {} })
@@ -164,9 +165,18 @@ test("candidate links create with context defaults and the create row can be tur
 	}, { allowCreate: false })
 })
 
+test("attribute value create sends the typed Tamil name only when given", async () => {
+	const { createAttributeValue } = await import("../src/item-editor/attributeValues.js")
+	const calls = []
+	const call = async (method, args) => { calls.push(args); return args.value }
+	await createAttributeValue("Tee", { attribute_name: "Colour", attribute_value: "Grey", mgk_tamil_name: "சாம்பல்" }, call)
+	await createAttributeValue("Tee", { attribute_name: "Colour", attribute_value: "Red" }, call)
+	assert.deepEqual(calls, [{ item: "Tee", attribute: "Colour", value: "Grey", tamil_name: "சாம்பல்" }, { item: "Tee", attribute: "Colour", value: "Red" }])
+})
+
 test("quick create form shows known context read-only and prefills the typed value", () => {
 	const form = quickCreateForm("YRP Item Attribute Value", [attributeValueMeta], "Grey", { defaults: { attribute_name: "Colour" } }, { user: { name: "Administrator" } })
-	assert.deepEqual(form.fields.map((field) => [field.fieldname, Boolean(field.read_only)]), [["attribute_name", true], ["attribute_value", false]])
+	assert.deepEqual(form.fields.map((field) => [field.fieldname, Boolean(field.read_only)]), [["attribute_name", true], ["attribute_value", false], ["mgk_tamil_name", false]])
 	assert.equal(form.draft.attribute_name, "Colour")
 	assert.equal(form.draft.attribute_value, "Grey")
 	const contact = { name: "Contact", title_field: "full_name", permissions: [], fields: [{ fieldname: "first_name", fieldtype: "Data" }, { fieldname: "full_name", fieldtype: "Data", read_only: 1 }] }

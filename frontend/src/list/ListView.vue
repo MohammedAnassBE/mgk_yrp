@@ -1,5 +1,5 @@
 <script setup>
-import { t } from "../shell/terminology.js"
+import { statusText, t } from "../shell/terminology.js"
 import { computed, ref } from "vue"
 import ListPageHeader from "../shell/ListPageHeader.vue"
 import ListToolbar from "./ListToolbar.vue"
@@ -89,11 +89,11 @@ function ariaSort(column) { return query.sortField === column.fieldname ? (query
 				<div class="table-scroll desktop-list"><table>
 					<thead><tr><th v-if="canSelectTable" class="select-cell"><input type="checkbox" :aria-label="t('Select all loaded')" :checked="tableAllSelected" :indeterminate="tableNames.length > 0 && !tableAllSelected" @change="tableSelection.toggleAll"></th><th v-for="column in columns" :key="column.fieldname" :aria-sort="column.indicator || column.clientOnly ? undefined : ariaSort(column)"><span v-if="column.indicator || column.clientOnly">{{ t(column.label) }}</span><button v-else type="button" @click="sort(column.fieldname, true)">{{ t(column.label) }}<span v-if="query.sortField === column.fieldname">{{ query.sortDirection === 'asc' ? ' ↑' : ' ↓' }}</span></button></th><th :aria-label="t('Open record')" /></tr></thead>
 					<tbody><tr v-for="row in data.rows" :key="row.name" tabindex="0" :aria-label="`Open ${row.name}`" @click="rowClick($event, row)" @keydown.enter.self="openRow(row)">
-						<td v-if="canSelectTable" class="select-cell"><input type="checkbox" :aria-label="`Select ${row.name}`" :checked="tableNames.includes(row.name)" @click.stop @change="tableSelection.toggle(row.name)"></td><td v-for="column in columns" :key="column.fieldname"><RouterLink v-if="column.fieldname === 'name'" class="record-id" :to="documentRoute(row.name)" @click="savePosition">{{ row.name }}</RouterLink><span v-else-if="column.indicator" class="status" :class="[indicator(row).className, { 'list-filter-value': filterFor(row, '__status') }]" @click="filterClick($event, row, '__status')">{{ t(indicator(row).label) }}</span><span v-else :class="{ 'list-filter-value': filterFor(row, column.fieldname) }" @click="filterClick($event, row, column.fieldname)">{{ displayValue(row, column) }}</span></td><td class="row-arrow" aria-hidden="true">›</td>
+						<td v-if="canSelectTable" class="select-cell"><input type="checkbox" :aria-label="`Select ${row.name}`" :checked="tableNames.includes(row.name)" @click.stop @change="tableSelection.toggle(row.name)"></td><td v-for="column in columns" :key="column.fieldname"><RouterLink v-if="column.fieldname === 'name'" class="record-id" :to="documentRoute(row.name)" @click="savePosition">{{ row.name }}</RouterLink><span v-else-if="column.indicator" class="status" :class="[indicator(row).className, { 'list-filter-value': filterFor(row, '__status') }]" @click="filterClick($event, row, '__status')">{{ statusText(indicator(row).label) }}</span><span v-else :class="{ 'list-filter-value': filterFor(row, column.fieldname) }" @click="filterClick($event, row, column.fieldname)">{{ displayValue(row, column) }}</span></td><td class="row-arrow" aria-hidden="true">›</td>
 					</tr></tbody>
 				</table></div>
 				<div class="mobile-list"><RouterLink v-for="row in data.rows" :key="row.name" class="mobile-row" :to="documentRoute(row.name)" @click="savePosition">
-					<div class="mobile-row-head"><strong class="record-id">{{ row.name }}</strong><span class="status" :class="indicator(row).className">{{ t(indicator(row).label) }}</span><span class="row-arrow" aria-hidden="true">›</span></div>
+					<div class="mobile-row-head"><strong class="record-id">{{ row.name }}</strong><span class="status" :class="indicator(row).className">{{ statusText(indicator(row).label) }}</span><span class="row-arrow" aria-hidden="true">›</span></div>
 					<dl><div v-for="column in mobileColumns" :key="column.fieldname"><dt>{{ t(column.label) }}</dt><dd>{{ displayValue(row, column) }}</dd></div></dl>
 				</RouterLink></div>
 			</div>

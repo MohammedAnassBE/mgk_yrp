@@ -3,6 +3,7 @@ import base64
 import frappe
 from frappe.contacts.doctype.address.address import get_address_display
 from frappe.utils import flt, formatdate
+from yrp.attribute_value_identity import attribute_value_name
 from yrp.party_addresses import get_party_address
 
 from mgk_yrp.terminology.terms import get_tamil_labels, normalize
@@ -38,8 +39,13 @@ def get_print_name(doctype, name, tamil=0):
 def get_print_items(doc, tamil=0):
 	"""Item rows split into template item and one column per variant attribute, like the /web preview."""
 	rows = add_item_attributes([row.as_dict() for row in doc.get("items") or []])
+	attribute_labels = get_attribute_value_labels(rows, tamil)
 	for row in rows:
 		row["item_label"] = get_print_name("Item", row["item_template"], tamil)
+		row["attribute_labels"] = {
+			attribute: attribute_labels.get((attribute, value)) or value
+			for attribute, value in row["item_attributes"].items()
+		}
 	child_meta = frappe.get_meta(doc.meta.get_field("items").options)
 	return {
 		"rows": rows,
@@ -48,6 +54,20 @@ def get_print_items(doc, tamil=0):
 		"total_qty": sum(flt(row.get("qty")) for row in rows),
 		"total_amount": sum(flt(row.get("amount")) for row in rows),
 	}
+
+
+def get_attribute_value_labels(rows, tamil=0):
+	"""Tamil names of the rows' attribute values keyed by (attribute, value); empty unless printing in Tamil."""
+	pairs = {pair for row in rows for pair in row["item_attributes"].items()}
+	if not tamil or not pairs:
+		return {}
+	names = {attribute_value_name(*pair): pair for pair in pairs}
+	values = frappe.get_all(
+		"YRP Item Attribute Value",
+		filters={"name": ["in", list(names)], "mgk_tamil_name": ["is", "set"]},
+		fields=["name", "mgk_tamil_name"],
+	)
+	return {names[row.name]: row.mgk_tamil_name for row in values}
 
 
 def get_print_date(value):
