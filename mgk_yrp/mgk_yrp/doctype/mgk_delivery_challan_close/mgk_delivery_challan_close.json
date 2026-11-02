@@ -23,7 +23,8 @@
   "total_value_gap",
   "stock_valuation_adjustment",
   "reopen_status",
-  "amended_from"
+  "amended_from",
+  "company"
  ],
  "fields": [
   {
@@ -138,6 +139,14 @@
    "read_only": 1,
    "options": "MGK Delivery Challan Close",
    "no_copy": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "hidden": 1,
+   "read_only": 1
   }
  ],
  "permissions": [

@@ -35,7 +35,8 @@
   "amended_from",
   "receipt_source_section",
   "purchase_order",
-  "goods_received_note"
+  "goods_received_note",
+  "company"
  ],
  "fields": [
   {
@@ -260,6 +261,14 @@
    "options": "MGK Delivery Challan",
    "read_only": 1,
    "no_copy": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "hidden": 1,
+   "read_only": 1
   }
  ],
  "permissions": [

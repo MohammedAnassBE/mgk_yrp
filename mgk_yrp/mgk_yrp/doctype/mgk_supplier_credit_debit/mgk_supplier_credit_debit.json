@@ -9,7 +9,8 @@
   "posting_date",
   "entry_type",
   "amount",
-  "reason"
+  "reason",
+  "company"
  ],
  "fields": [
   {
@@ -50,6 +51,14 @@
    "fieldtype": "Small Text",
    "label": "Reason",
    "reqd": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "hidden": 1,
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 0,
