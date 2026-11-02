@@ -10,6 +10,7 @@ const definition = {
 	routePath: "/pending-bills",
 	presentation: "book",
 	showCreate: false,
+	opensRecords: false,
 	countFilters: [["docstatus", "=", 1], ["purchase_invoice", "is", "not set"]],
 	countLabel: "unbilled GRNs",
 	openLabel: "Open bills",

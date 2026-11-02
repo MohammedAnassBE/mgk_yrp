@@ -90,6 +90,9 @@ test("warehouse move uses the single document or all bulk warehouses", () => {
 	const selection = dispatchSelection({ names: ["GRN-1", "GRN-2"], rows: [{ warehouse: "Main" }, { warehouse: "Other" }] })
 	assert.equal(selection.is_forced, true)
 	assert.equal(selection.move_to_head_office, true)
+	const single = { doc: { name: "GRN-1", warehouse: "Main" } }
+	assert.equal(dispatchSelection(single, () => true).move_to_head_office, true)
+	assert.equal(dispatchSelection(single, (doctype, permission) => permission !== "submit").move_to_head_office, false)
 })
 
 test("bulk Create GRN opens the mapped receipt as an unsaved draft like Desk", async () => {
@@ -179,7 +182,7 @@ test("Update Plan item and received-type inputs share the document editor style 
 	} finally { page.close(); network.close() }
 })
 
-test("Create DC dialog forces and locks move for two warehouses and leaves one warehouse editable and off", async () => {
+test("Create DC dialog forces and locks move for two warehouses and leaves one warehouse editable and ticked", async () => {
 	const original = globalThis.window
 	globalThis.window = { frappe: { boot: { user: { can_create: ["YRP Stock Entry"], can_submit: ["YRP Stock Entry"] } } } }
 	for (const warehouses of [["Main"], ["Main", "Main"], ["Main", "Other"]]) {
@@ -193,7 +196,7 @@ test("Create DC dialog forces and locks move for two warehouses and leaves one w
 			assert.equal(checkbox.props.disabled, is_forced)
 			assert.equal(checkbox.props["aria-readonly"], is_forced)
 			assert.equal(checkbox.props["onUpdate:modelValue"] !== undefined, true)
-			assert.equal(checkbox.checked, is_forced)
+			assert.equal(checkbox.checked, true)
 			assert.equal(button(page.root, "Create DC").props.disabled, true)
 		} finally { page.close(); network.close() }
 	}

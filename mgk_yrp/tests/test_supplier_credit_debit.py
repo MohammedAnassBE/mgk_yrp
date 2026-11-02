@@ -41,9 +41,33 @@ class TestSupplierCreditDebit(IntegrationTestCase):
 			with self.assertRaises(frappe.MandatoryError):
 				self.make_entry(**{field: None}).insert()
 
+	def test_submit_cancel_and_amend(self):
+		doc = self.make_entry().insert()
+		self.assertEqual(frappe.get_meta(DOCTYPE).is_submittable, 1)
+		doc.submit()
+		self.assertEqual(doc.docstatus, 1)
+		doc.cancel()
+		self.assertEqual(doc.docstatus, 2)
+		amended = frappe.copy_doc(doc)
+		amended.update({"docstatus": 0, "amended_from": doc.name})
+		amended.insert()
+		self.assertEqual(amended.amended_from, doc.name)
+
+	def test_submitted_entry_cannot_be_edited(self):
+		doc = self.make_entry().insert().submit()
+		doc.amount = 500
+		with self.assertRaises(frappe.UpdateAfterSubmitError):
+			doc.save()
+
+	def test_entry_roles_can_submit_cancel_and_amend(self):
+		permissions = {row.role: row for row in frappe.get_meta(DOCTYPE).permissions}
+		for role in ("System Manager", "Accounts User", "Accounts Manager", "Purchase Manager"):
+			self.assertTrue(all(permissions[role].get(right) for right in ("submit", "cancel", "amend")), role)
+
 	def test_preview_returns_doc_and_timeline(self):
 		doc = self.make_entry().insert()
 		preview = get_preview(DOCTYPE, doc.name)
 		self.assertEqual(preview["doc"]["amount"], 100)
 		self.assertEqual(preview["items"], [])
 		self.assertTrue(preview["timeline"])
+		self.assertEqual(preview["is_submittable"], 1)

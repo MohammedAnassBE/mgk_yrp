@@ -161,6 +161,19 @@ class TestDispatchFromReceipt(IntegrationTestCase):
 			self.assertEqual(get_stock_balance(self.item, receipt.warehouse), 10)
 			receipt.reload().cancel()
 
+	def test_head_office_move_goes_to_settings_default_warehouse(self):
+		location, _first = self.head_office()
+		default = make_warehouse(supplier=location)
+		frappe.db.set_single_value("MGK Settings", {"default_location": location, "default_warehouse": default})
+		receipt = self.receipt()
+		result = self.dispatch([receipt], move=True)
+		challan = frappe.get_doc("MGK Delivery Challan", result["delivery_challan"])
+		self.assertEqual((challan.from_location, challan.from_warehouse), (location, default))
+		entry = frappe.get_doc("YRP Stock Entry", result["stock_entries"][0])
+		self.assertEqual((entry.from_warehouse, entry.to_warehouse), (self.warehouse, default))
+		self.assertEqual(get_stock_balance(self.item, default), 0)
+		self.assertEqual(get_stock_balance(self.item, self.warehouse), 0)
+
 	def test_dc_failure_rolls_back_head_office_move(self):
 		self.head_office()
 		receipt = self.receipt()

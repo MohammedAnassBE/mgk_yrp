@@ -7,7 +7,8 @@
   "company",
   "company_gstin",
   "company_state_code",
-  "default_location"
+  "default_location",
+  "default_warehouse"
  ],
  "fields": [
   {
@@ -16,6 +17,14 @@
    "label": "MGK Location",
    "options": "Supplier",
    "description": "Our own location: PO delivery location, DC from location, GRN receiving warehouse"
+  },
+  {
+   "fieldname": "default_warehouse",
+   "fieldtype": "Link",
+   "label": "Default Warehouse",
+   "options": "Warehouse",
+   "depends_on": "default_location",
+   "description": "Warehouse of the MGK Location used as its default, and as the Head Office warehouse when Create DC moves stock to Head Office"
   },
   {
    "fieldname": "company",

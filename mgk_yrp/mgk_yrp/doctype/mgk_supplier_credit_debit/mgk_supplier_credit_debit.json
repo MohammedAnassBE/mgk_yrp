@@ -10,7 +10,8 @@
   "entry_type",
   "amount",
   "reason",
-  "company"
+  "company",
+  "amended_from"
  ],
  "fields": [
   {
@@ -59,11 +60,21 @@
    "options": "Company",
    "hidden": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "options": "MGK Supplier Credit Debit",
+   "read_only": 1,
+   "no_copy": 1,
+   "print_hide": 1,
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 0,
  "links": [],
- "modified": "2026-10-31 18:20:00.000000",
+ "modified": "2026-11-02 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "MGK YRP",
  "name": "MGK Supplier Credit Debit",
@@ -81,7 +92,10 @@
    "export": 1,
    "print": 1,
    "email": 1,
-   "share": 1
+   "share": 1,
+   "submit": 1,
+   "cancel": 1,
+   "amend": 1
   },
   {
    "role": "Accounts User",
@@ -94,7 +108,10 @@
    "export": 1,
    "print": 1,
    "email": 1,
-   "share": 1
+   "share": 1,
+   "submit": 1,
+   "cancel": 1,
+   "amend": 1
   },
   {
    "role": "Accounts Manager",
@@ -107,7 +124,10 @@
    "export": 1,
    "print": 1,
    "email": 1,
-   "share": 1
+   "share": 1,
+   "submit": 1,
+   "cancel": 1,
+   "amend": 1
   },
   {
    "role": "Purchase Manager",
@@ -120,7 +140,10 @@
    "export": 1,
    "print": 1,
    "email": 1,
-   "share": 1
+   "share": 1,
+   "submit": 1,
+   "cancel": 1,
+   "amend": 1
   }
  ],
  "search_fields": "supplier,entry_type",
@@ -128,5 +151,6 @@
  "sort_order": "DESC",
  "states": [],
  "title_field": "supplier",
- "track_changes": 1
+ "track_changes": 1,
+ "is_submittable": 1
 }

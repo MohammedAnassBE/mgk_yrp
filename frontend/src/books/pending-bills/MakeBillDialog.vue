@@ -1,6 +1,6 @@
 <script setup>
 import { t } from "../../shell/terminology.js"
-import { displayName } from "../../shell/displayLanguage.js"
+import { attributeValueName, displayName } from "../../shell/displayLanguage.js"
 import { computed, ref, watch } from "vue"
 import Button from "primevue/button"
 import Dialog from "primevue/dialog"
@@ -9,7 +9,7 @@ import InputText from "primevue/inputtext"
 import DateInput from "../../shared/DateInput.vue"
 import { callMethod } from "../../api/client.js"
 import { toIsoDate } from "../../shared/formatDate.js"
-import { money } from "../../documents/previewValues.js"
+import { itemAttributeNames, money, templateName } from "../../documents/previewValues.js"
 import { notify } from "../../shared/notify.js"
 import { billPayload, blockTotals, buildBlocks, draftGroups, failedSupplier, method, removeGrn, setDraftRate, typeLabel, validateBlocks } from "./pendingBills.js"
 
@@ -89,9 +89,10 @@ async function submit() {
 			<div v-for="(draft, draftIndex) in block.drafts" :key="draft.against" class="make-bill-draft">
 				<small class="make-bill-type">{{ block.drafts.length > 1 ? `${t(typeLabel(draft.against))} ${t('bill')} · ` : '' }}{{ t(draft.tax_type) }}</small>
 				<div class="table-scroll"><table class="make-bill-items">
-					<thead><tr><th>{{ t("Item") }}</th><th>{{ t("UOM") }}</th><th class="numeric">{{ t("Qty") }}</th><th class="numeric">{{ t("GRN Rate") }}</th><th class="numeric">{{ t("Rate") }}</th><th class="numeric">{{ t("Amount") }}</th><th class="numeric">{{ t("GST") }} %</th><th v-for="[field, label] in taxColumns(draft)" :key="field" class="numeric">{{ label }}</th></tr></thead>
+					<thead><tr><th>{{ t("Item") }}</th><th v-for="attribute in itemAttributeNames(draft.items)" :key="attribute">{{ t(attribute) }}</th><th>{{ t("UOM") }}</th><th class="numeric">{{ t("Qty") }}</th><th class="numeric">{{ t("GRN Rate") }}</th><th class="numeric">{{ t("Rate") }}</th><th class="numeric">{{ t("Amount") }}</th><th class="numeric">{{ t("GST") }} %</th><th v-for="[field, label] in taxColumns(draft)" :key="field" class="numeric">{{ label }}</th></tr></thead>
 					<tbody><tr v-for="group in draftGroups(draft)" :key="group.key">
-						<td>{{ displayName('Item', group.item, group.item_name || group.item) }}</td><td>{{ group.uom }}</td>
+						<td>{{ templateName(group) }}</td>
+						<td v-for="attribute in itemAttributeNames(draft.items)" :key="attribute">{{ attributeValueName(attribute, group.item_attributes?.[attribute]) || '—' }}</td><td>{{ group.uom }}</td>
 						<td class="numeric">{{ group.qty }}</td><td class="numeric">{{ money(group.grn_rate) }}</td>
 						<td class="numeric rate-cell"><InputNumber :model-value="Number(group.rate) || 0" :min="0" :min-fraction-digits="2" :max-fraction-digits="2" :disabled="saving"
 							:aria-label="`${group.item_name || group.item} rate`" fluid @update:model-value="changeRate(block, draftIndex, group, $event)" /></td>

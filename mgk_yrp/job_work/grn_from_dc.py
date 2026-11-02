@@ -6,6 +6,7 @@ from yrp.yrp.doctype.yrp_item.yrp_item import get_or_create_variant, get_parent_
 
 from mgk_yrp.party_defaults import get_own_location
 from mgk_yrp.stock import locking
+from mgk_yrp.stock.attribute_defaults import fill_defaults, fill_entry_defaults
 from mgk_yrp.stock.dimensions import get_dimension_defaults
 from mgk_yrp.stock.item_editor import get_item_details
 from mgk_yrp.stock.process_conversion import get_process_conversion
@@ -34,7 +35,7 @@ def make_job_work_grn(source_names=None, source_name=None):
 			row["row_index"] = f"{index}-{row['row_index']}"
 			target.append("items", row)
 	apply_posting_datetime(target)
-	target.set_onload("item_details", get_item_details(target))
+	target.set_onload("item_details", fill_entry_defaults(get_item_details(target)))
 	return target
 
 
@@ -106,12 +107,12 @@ def prefilled_output(item, row_index, dimensions=None):
 
 
 def resolve_output_item(output_item, source_item):
-	"""Variant matching the source; the template itself when the source lacks an attribute, for the user to fill."""
+	"""Variant matching the source, blanks taken from the output's defaults; else the template for the user to fill."""
 	output = frappe.get_doc("Item", output_item)
 	if not output.has_variants:
 		return output_item
 	source = frappe.get_doc("Item", source_item)
-	values = {row.attribute: row.attribute_value for row in source.attributes}
+	values = fill_defaults(output_item, {row.attribute: row.attribute_value for row in source.attributes})
 	if any(not values.get(row.attribute) for row in output.attributes):
 		return output_item
 	return get_or_create_variant(output_item, {row.attribute: values[row.attribute] for row in output.attributes})

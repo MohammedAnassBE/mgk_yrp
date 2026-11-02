@@ -36,9 +36,8 @@ def get_preview(doctype: str, name: str) -> dict:
 
 
 def get_preview_items(doc):
-	if doc.doctype == CLOSE:
-		return [row.as_dict() for row in doc.get("outputs") or []]
-	return add_item_attributes([row.as_dict() for row in doc.get("items") or []])
+	table = "outputs" if doc.doctype == CLOSE else "items"
+	return add_item_attributes([row.as_dict() for row in doc.get(table) or []])
 
 
 def add_item_attributes(rows):
@@ -58,6 +57,16 @@ def add_item_attributes(rows):
 		row["item_template"] = templates.get(item) or item
 		row["item_attributes"] = attributes.get(item, {})
 	return rows
+
+
+@frappe.whitelist()
+def get_item_attributes(items) -> dict:
+	"""Template item and variant attribute values for each item name."""
+	if not frappe.has_permission("Item", "read"):
+		frappe.throw(_("Not permitted to read Item."), frappe.PermissionError)
+	names = frappe.parse_json(items) if isinstance(items, str) else items
+	rows = add_item_attributes([{"item": name} for name in names or []])
+	return {row["item"]: {"item_template": row["item_template"], "item_attributes": row["item_attributes"]} for row in rows}
 
 
 def get_item_templates(names):

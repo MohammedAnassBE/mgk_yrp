@@ -43,6 +43,19 @@ def get_head_office():
 	supplier.check_permission("read")
 	if supplier.disabled:
 		frappe.throw(frappe._("Head Office {0} is disabled.").format(location))
+	warehouse = get_default_warehouse(location) or get_single_warehouse(location)
+	frappe.get_doc("Warehouse", warehouse).check_permission("read")
+	return {"location": location, "warehouse": warehouse}
+
+
+def get_default_warehouse(location):
+	"""MGK Settings Default Warehouse when location is the MGK Location."""
+	if not location or frappe.db.get_single_value("MGK Settings", "default_location") != location:
+		return None
+	return frappe.db.get_single_value("MGK Settings", "default_warehouse") or None
+
+
+def get_single_warehouse(location):
 	warehouses = get_warehouse_candidates(location, ignore_permissions=True)
 	if len(warehouses) != 1:
 		frappe.throw(
@@ -50,8 +63,7 @@ def get_head_office():
 				location, len(warehouses)
 			)
 		)
-	frappe.get_doc("Warehouse", warehouses[0].name).check_permission("read")
-	return {"location": location, "warehouse": warehouses[0].name}
+	return warehouses[0].name
 
 
 def linked_candidates(doctype, supplier, fields, filters=None):
@@ -83,4 +95,5 @@ def get_own_location():
 	if not location:
 		return {"location": None, "warehouse": None, "warehouses": []}
 	defaults = get_party_defaults(location)
-	return {"location": location, "warehouse": defaults["warehouse"], "warehouses": defaults["warehouses"]}
+	warehouse = get_default_warehouse(location) or defaults["warehouse"]
+	return {"location": location, "warehouse": warehouse, "warehouses": defaults["warehouses"]}

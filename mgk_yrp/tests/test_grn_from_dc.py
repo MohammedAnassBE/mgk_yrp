@@ -165,6 +165,28 @@ class TestGRNFromDC(IntegrationTestCase):
 		output = make_template([attribute], attribute["attribute"])
 		self.assertEqual(resolve_output_item(output.name, self.raw), output.name)
 
+	def test_missing_output_attribute_filled_from_default_resolves_variant(self):
+		fit, slim = make_item_attribute()
+		output = make_template([self.size, {**fit, "mgk_default_value": slim}], self.size["attribute"])
+		variant = resolve_output_item(output.name, self.raw)
+		attributes = {row.attribute: row.attribute_value for row in frappe.get_doc("Item", variant).attributes}
+		self.assertEqual(attributes, {self.size["attribute"]: self.small, fit["attribute"]: slim})
+
+	def test_source_value_wins_over_output_default(self):
+		output = make_template([self.size, {**self.colour, "mgk_default_value": self.blue}], self.size["attribute"])
+		attributes = {row.attribute: row.attribute_value for row in frappe.get_doc("Item", resolve_output_item(output.name, self.raw)).attributes}
+		self.assertEqual(attributes[self.colour["attribute"]], self.red)
+
+	def test_partial_defaults_keep_template_with_defaults_prefilled(self):
+		fit, slim = make_item_attribute()
+		finish, _value = make_item_attribute()
+		output = make_template([self.size, {**fit, "mgk_default_value": slim}, finish], self.size["attribute"])
+		self.assertEqual(resolve_output_item(output.name, self.raw), output.name)
+		self.set_conversions([output.name])
+		entries = [entry for group in self.mapped().get_onload().item_details for entry in group["items"]]
+		self.assertEqual([entry["attributes"].get(fit["attribute"]) for entry in entries], [slim])
+		self.assertFalse(entries[0]["attributes"].get(finish["attribute"]))
+
 	def test_unfilled_attributes_drop_zero_rows_and_block_positive_qty(self):
 		def groups(qty):
 			entry = {"name": "Output", "attributes": {"Colour": "Red", "Size": ""}, "values": {"default": {"qty": qty}}}

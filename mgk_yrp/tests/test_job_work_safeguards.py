@@ -292,18 +292,20 @@ class TestJobWorkSafeguardsLifecycle(CloseTestCase):
 		save_process_plan(challan.name, groups)
 		self.assert_plan_lines(challan, [3, 7, 5])
 
-	def test_real_conversion_rows_reject_shared_output_template(self):
+	def test_real_conversion_rows_reject_duplicate_template_and_variant_outputs(self):
 		template, attributes = make_template_item()
-		first = get_or_create_variant(template.name, attributes)
-		add_attribute_value(template.attributes[0].as_dict(), "Second")
-		second = get_or_create_variant(template.name, {next(iter(attributes)): "Second"})
-		for outputs in ((template.name, first), (first, second)):
+		variant = get_or_create_variant(template.name, attributes)
+		cases = (
+			((template.name, template.name), "Row 2: .* is already in row 1"),
+			((template.name, variant), f"Row 2: Output Item {variant} is a variant"),
+		)
+		for outputs, message in cases:
 			with self.subTest(outputs=outputs):
 				input_template = frappe.get_doc("Item", frappe.db.get_value("Item", self.raw_item, "variant_of"))
 				input_template.set("mgk_process_conversions", [{
 					"process_name": self.process_name, "item": output, "from_qty": 1, "to_qty": 1,
 				} for output in outputs])
-				with self.assertRaisesRegex(frappe.ValidationError, "Row 2: .* is already in row 1"):
+				with self.assertRaisesRegex(frappe.ValidationError, message):
 					input_template.save()
 
 	def assert_plan_lines(self, challan, quantities):

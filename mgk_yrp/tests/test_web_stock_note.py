@@ -122,6 +122,7 @@ class TestWebStockNote(IntegrationTestCase):
 		self.assertEqual(result["summary"]["total_value"], 215.13)
 		self.assertEqual(result["rows"][0].supplier_name, "Vendor")
 		self.assertEqual(result["rows"][0].bal_val, 125.126)
+		self.assertEqual((result["rows"][0].item_template, result["rows"][0].item_attributes), ("Yarn", {}))
 
 	def test_real_stock_matches_desk_report_for_identical_filters(self):
 		self.addCleanup(frappe.set_user, frappe.session.user)

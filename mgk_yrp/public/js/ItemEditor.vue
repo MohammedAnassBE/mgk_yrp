@@ -103,7 +103,7 @@ onMounted(async () => {
     if (!root.value?.isConnected) return;
     context.value = message;
     ready.value = true;
-    observer = new MutationObserver(() => prefillDimensions());
+    observer = new MutationObserver(() => { prefillDimensions(); prefillAttributes(); });
     observer.observe(root.value, { childList: true, subtree: true });
     prefillDimensions();
 });
@@ -158,6 +158,29 @@ function prefillDimensions(reset = false) {
         if (!control || (!reset && initializedControls.has(control))) continue;
         initializedControls.add(control);
         if (reset || !control.get_value()) control.set_value(value);
+    }
+}
+
+const attributeDefaults = {};
+const attributeControlSelector = ['.dependent-attribute-controls', '.item-attribute-controls', '.item-attribute-controls-right']
+    .map(parent => `${parent} .frappe-control`).join(', ');
+
+function capitalize(text) { return text.charAt(0).toUpperCase() + text.slice(1); }
+
+async function prefillAttributes() {
+    const controls = [...(root.value?.querySelectorAll(attributeControlSelector) || [])]
+        .map(element => element.fieldobj).filter(control => control && !initializedControls.has(control));
+    if (!controls.length) return;
+    controls.forEach(control => initializedControls.add(control));
+    const itemControl = root.value.querySelector('.item-control .frappe-control')?.fieldobj;
+    const item = itemControl?.get_value();
+    if (!item || itemControl.df.read_only) return;
+    attributeDefaults[item] ||= frappe.xcall('mgk_yrp.stock.attribute_defaults.get_item_attribute_defaults', { item })
+        .catch(() => { delete attributeDefaults[item]; return {}; });
+    const defaults = await attributeDefaults[item];
+    for (const control of controls) {
+        const attribute = Object.keys(defaults).find(name => name === control.df.label || capitalize(name) === control.df.label);
+        if (attribute && control.wrapper.isConnected && !control.get_value()) control.set_value(defaults[attribute]);
     }
 }
 

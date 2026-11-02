@@ -14,9 +14,8 @@ const definition = {
 		{ key: "credit", label: "Credit", filters: [["entry_type", "=", "Credit"]] },
 		{ key: "debit", label: "Debit", filters: [["entry_type", "=", "Debit"]] },
 	],
-	defaultColumns: ["name", "supplier", "posting_date", "entry_type", "amount", "reason"],
-	statusField: "entry_type",
-	statusLabel: "Type",
+	defaultColumns: ["name", "supplier", "posting_date", "entry_type", "amount", "reason", "docstatus"],
+	statusField: "docstatus",
 	columnLabels: { posting_date: "Date", entry_type: "Type" },
 	relatedDoctypes: [],
 }

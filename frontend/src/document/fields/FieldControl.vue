@@ -49,7 +49,7 @@ function dateChanged(value) {
 			<span v-if="state.required" class="required">*</span>
 		</label>
 		<LinkField
-			v-if="['Link', 'Dynamic Link'].includes(field.fieldtype)"
+			v-if="['Link', 'Dynamic Link'].includes(field.fieldtype) || query.searchMethod"
 			:input-id="id"
 			:model-value="value"
 			:doctype="target"

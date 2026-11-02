@@ -9,10 +9,10 @@ export const jobWorkMethods = {
 	closeDc: "mgk_yrp.mgk_yrp.doctype.mgk_delivery_challan.mgk_delivery_challan.close_delivery_challan",
 }
 
-export function dispatchSelection({ doc, names, rows = [] }) {
+export function dispatchSelection({ doc, names, rows = [] }, can = hasPermission) {
 	const warehouses = doc ? [doc.warehouse] : rows.map((row) => row.warehouse)
 	const is_forced = new Set(warehouses).size > 1
-	return { source_names: doc ? [doc.name] : [...names], is_forced, move_to_head_office: is_forced }
+	return { source_names: doc ? [doc.name] : [...names], is_forced, move_to_head_office: is_forced || canMoveToHeadOffice(can) }
 }
 
 export async function createGrnFromSelection({ names }, { call, navigate }) {

@@ -72,15 +72,17 @@ test("Item keeps ERPNext required fields, YRP stock fields and MGK GST while omi
 	assert.deepEqual(config.fieldOverrides.attributes, { hidden: 0, depends_on: "" })
 })
 
-test("Item child tables show only the Desk columns; Variant Attributes is just the Item Attribute link", async () => {
+test("Item child tables show only the Desk columns; Variant Attributes are the Item Attribute link and its Default Value", async () => {
 	const childMeta = JSON.parse(await readFile(new URL("../../../erpnext/erpnext/stock/doctype/item_variant_attribute/item_variant_attribute.json", import.meta.url)))
+	const customFields = JSON.parse(await readFile(new URL("../../mgk_yrp/fixtures/custom_field.json", import.meta.url)))
+	childMeta.fields.push(...customFields.filter((field) => field.dt === "Item Variant Attribute"))
 	const itemMeta = { name: "Item", permissions: [], fields: [
 		{ fieldname: "units_section", fieldtype: "Section Break", label: "Units" },
 		{ fieldname: "attributes", fieldtype: "Table", label: "Variant Attributes", options: "Item Variant Attribute" }] }
 	const [field] = masterSections({ ...getMaster("items"), formGroups: null }, itemMeta, {}, { name: "Administrator" })[0].fields
 	const columns = tableFields({ ...childMeta, name: "Item Variant Attribute" }, field, { doctype: "Item", docstatus: 0 }, { ...childMeta, permissions: [] }, {}, { name: "Administrator" })
-	assert.deepEqual(columns.map((column) => [column.fieldname, column.fieldtype, column.options]), [["attribute", "Link", "Item Attribute"]])
-	assert.deepEqual(getMaster("items").childColumns, { attributes: ["attribute"], uoms: ["uom", "conversion_factor"],
+	assert.deepEqual(columns.map((column) => [column.fieldname, column.fieldtype, column.options]), [["attribute", "Link", "Item Attribute"], ["mgk_default_value", "Autocomplete", undefined]])
+	assert.deepEqual(getMaster("items").childColumns, { attributes: ["attribute", "mgk_default_value"], uoms: ["uom", "conversion_factor"],
 		mgk_process_conversions: ["process_name", "item", "from_uom", "from_qty", "to_uom", "to_qty"] })
 })
 

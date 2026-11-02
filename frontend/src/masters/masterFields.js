@@ -58,6 +58,7 @@ export function dynamicTarget(field, doc) { return field.fieldtype === "Dynamic 
 export function childChange(row, name, value, fields) {
 	const patch = { [name]: value }
 	for (const field of fields) if (field.fieldtype === "Dynamic Link" && field.options === name && row[name] !== value) patch[field.fieldname] = null
+	if (name === "attribute" && row.mgk_default_value && row.attribute !== value) patch.mgk_default_value = null
 	return patch
 }
 

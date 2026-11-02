@@ -30,25 +30,25 @@ export function transferDestination(doc) {
 			disabled: 0, is_group: 0, name: ["!=", doc.transit_warehouse] } }
 }
 
-function rowAttributes(doc) {
+function rowDetails(doc) {
 	const data = doc.__onload?.item_details || doc.item_details || []
 	const groups = typeof data === "string" ? JSON.parse(data) : data
-	const attributes = new Map()
+	const details = new Map()
 	for (const group of groups) for (const entry of group.items || []) {
 		for (const [variant, cell] of Object.entries(entry.values || {})) {
 			if (!cell?.name) continue
-			attributes.set(cell.name, { ...entry.attributes,
-				...(group.primary_attribute ? { [group.primary_attribute]: variant } : {}) })
+			details.set(cell.name, { template: entry.name, attributes: { ...entry.attributes,
+				...(group.primary_attribute ? { [group.primary_attribute]: variant } : {}) } })
 		}
 	}
-	return attributes
+	return details
 }
 
 export function transferItems(doc, pendingOnly = false) {
-	const attributes = rowAttributes(doc)
+	const details = rowDetails(doc)
 	const rows = pendingOnly ? pendingTransferRows(doc) : doc.items || []
 	return rows.map((row) => ({ source_row: row.name, item: row.item, uom: row.uom,
-		attributes: attributes.get(row.name) || {}, original_qty: Number(row.qty || 0),
+		item_template: details.get(row.name)?.template || row.item, attributes: details.get(row.name)?.attributes || {}, original_qty: Number(row.qty || 0),
 		transferred_qty: Number(row.transferred_qty || 0), pending_qty: pendingTransferQuantity(row),
 		qty: pendingTransferQuantity(row) }))
 }

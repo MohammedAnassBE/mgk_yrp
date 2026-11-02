@@ -33,9 +33,19 @@ export function total(items, field) {
 
 const attributeKey = (attribute) => `attribute:${attribute}`
 
+export function itemAttributeNames(items = []) {
+	return [...new Set(items.flatMap((row) => Object.keys(row.item_attributes || {})))]
+}
+
+/** Template item label: Tamil name in Tamil mode, else the row's item name for a plain item. */
+export function templateName(row) {
+	const template = row.item_template || row.item
+	return displayName("Item", template, template === row.item ? row.item_name || template : template)
+}
+
 /** Inserts one column per variant attribute present in `items` right after the item column. */
 export function withAttributeColumns(columns, items = []) {
-	const attributes = [...new Set(items.flatMap((row) => Object.keys(row.item_attributes || {})))]
+	const attributes = itemAttributeNames(items)
 	if (!attributes.length) return columns
 	const index = columns.findIndex((column) => column.key === "item") + 1
 	const added = attributes.map((attribute) => ({ key: attributeKey(attribute), label: attribute, attribute }))

@@ -9,6 +9,6 @@ import supplierCreditDebit from "./supplier-credit-debit/config.js"
 import paymentLedger from "./payment-ledger/config.js"
 import pendingBills from "./pending-bills/config.js"
 
-export const bookManifest = [purchaseOrder, billing, pendingBills, deliveryChallan, deliveryChallanClose, goodsReceivedNote, stock, masters, supplierCreditDebit, paymentLedger]
+export const bookManifest = [purchaseOrder, billing, deliveryChallan, deliveryChallanClose, goodsReceivedNote, stock, masters, supplierCreditDebit, pendingBills, paymentLedger]
 export const manifestByType = Object.fromEntries(bookManifest.map((book) => [book.type, book]))
 export const homeManifestByType = Object.fromEntries(bookManifest.filter((book) => book.showOnHome !== false).map((book) => [book.type, book]))

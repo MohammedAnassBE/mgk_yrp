@@ -1,6 +1,7 @@
 <script setup>
 import { t } from "../../shell/terminology.js"
-import { displayName } from "../../shell/displayLanguage.js"
+import { attributeValueName, displayName } from "../../shell/displayLanguage.js"
+import { itemAttributeNames, templateName } from "../../documents/previewValues.js"
 import { formatDate } from "../../shared/formatDate.js"
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue"
 import ListPageHeader from "../../shell/ListPageHeader.vue"
@@ -21,6 +22,7 @@ const loading = ref(true)
 const error = ref("")
 const visibleWarehouses = computed(() => supplierWarehouses(options.value, filters.supplier))
 const summary = computed(() => result.value.summary)
+const attributes = computed(() => itemAttributeNames(result.value.rows))
 const quantitySummary = computed(() => Object.entries(summary.value.uom_totals || {}).map(([uom, value]) => `${qty(value)} ${uom}`).join(" · ") || "0")
 const pickers = computed(() => [
 	{ key: "supplier", label: "Supplier", doctype: "Supplier", options: options.value.suppliers, title: options.value.title_fields?.Supplier },
@@ -85,9 +87,10 @@ onBeforeUnmount(() => { sequence++; refresh.cancel(); disposers.forEach((dispose
 			<div v-else class="stock-table-card">
 				<header><h2>{{ t("Available stock") }}</h2><span>{{ result.rows.length }} {{ t("lines") }}</span></header>
 				<div class="table-scroll"><table>
-					<thead><tr><th>{{ t("Item") }}</th><th>{{ t("Supplier") }}</th><th>{{ t("Warehouse") }}</th><th>{{ t("Received type") }}</th><th class="numeric">{{ t("Available") }}</th><th class="numeric">{{ t("Value") }}</th><th>{{ t("Inward dates") }}</th></tr></thead>
+					<thead><tr><th>{{ t("Item") }}</th><th v-for="attribute in attributes" :key="attribute">{{ t(attribute) }}</th><th>{{ t("Supplier") }}</th><th>{{ t("Warehouse") }}</th><th>{{ t("Received type") }}</th><th class="numeric">{{ t("Available") }}</th><th class="numeric">{{ t("Value") }}</th><th>{{ t("Inward dates") }}</th></tr></thead>
 					<tbody><tr v-for="(row, index) in result.rows" :key="index">
-						<td><RouterLink v-if="hasPermission('Item')" :to="`/manage/items/${encodeURIComponent(row.item)}`">{{ displayName('Item', row.item, row.item_name || row.item) }}</RouterLink><span v-else>{{ displayName('Item', row.item, row.item_name || row.item) }}</span><small>{{ row.item }}</small></td>
+						<td><RouterLink v-if="hasPermission('Item')" :to="`/manage/items/${encodeURIComponent(row.item)}`">{{ templateName(row) }}</RouterLink><span v-else>{{ templateName(row) }}</span><small>{{ row.item_template || row.item }}</small></td>
+						<td v-for="attribute in attributes" :key="attribute">{{ attributeValueName(attribute, row.item_attributes?.[attribute]) || '—' }}</td>
 						<td><RouterLink v-if="row.supplier && hasPermission('Supplier')" :to="`/manage/suppliers/${encodeURIComponent(row.supplier)}`">{{ displayName('Supplier', row.supplier, row.supplier_name || row.supplier) }}</RouterLink><span v-else>{{ displayName('Supplier', row.supplier, row.supplier_name || row.supplier) || t('Company stock') }}</span></td>
 						<td><RouterLink v-if="hasPermission('Warehouse')" :to="`/manage/warehouses/${encodeURIComponent(row.warehouse)}`">{{ displayName('Warehouse', row.warehouse, row.warehouse_name) }}</RouterLink><span v-else>{{ displayName('Warehouse', row.warehouse, row.warehouse_name) }}</span></td><td>{{ row.received_type || '—' }}</td>
 						<td class="numeric"><strong>{{ qty(row.bal_qty) }}</strong><small>{{ row.stock_uom }}</small></td><td class="numeric">{{ money(row.bal_val) }}</td>

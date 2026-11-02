@@ -6,6 +6,7 @@ from mgk_yrp.mgk_yrp.doctype.mgk_purchase_invoice.mgk_purchase_invoice import (
 	get_grn_rows,
 	get_unbilled_grn_filters,
 )
+from mgk_yrp.web.preview import add_item_attributes
 
 GRN = "MGK Goods Received Note"
 INVOICE = "MGK Purchase Invoice"
@@ -55,6 +56,7 @@ def get_grn_items(grn_names) -> dict:
 			"item": row.item, "item_name": item_names.get(row.item) or row.item, "qty": flt(row.qty),
 			"uom": row.uom, "rate": flt(row.rate), "amount": flt(row.amount),
 		})
+	add_item_attributes([row for rows in items.values() for row in rows])
 	return items
 
 
@@ -138,10 +140,10 @@ def build_invoice(supplier, against, grn_names, *, rates=None, bill_no=None, bil
 
 def get_draft(invoice) -> dict:
 	item_names = get_names({row.item for row in invoice.items}, "Item")
-	rows = [
+	rows = add_item_attributes([
 		{**{field: row.get(field) for field in DRAFT_ROW_FIELDS}, "item_name": item_names.get(row.item) or row.item}
 		for row in invoice.items
-	]
+	])
 	return {**{field: invoice.get(field) for field in DRAFT_FIELDS}, "items": rows}
 
 

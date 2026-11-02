@@ -118,5 +118,17 @@
   "fieldtype": "Data",
   "label": "Attribute Value (Tamil)",
   "insert_after": "attribute_value"
+ },
+ {
+  "doctype": "Custom Field",
+  "name": "Item Variant Attribute-mgk_default_value",
+  "dt": "Item Variant Attribute",
+  "module": "MGK YRP",
+  "fieldname": "mgk_default_value",
+  "fieldtype": "Autocomplete",
+  "label": "Default Value",
+  "insert_after": "attribute_value",
+  "in_list_view": 1,
+  "description": "Prefilled when this item is added to a new PO, DC or GRN."
  }
 ]
