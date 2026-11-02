@@ -9,6 +9,7 @@ CACHE_KEY = "mgk_ui_terms"
 REALTIME_EVENT = "mgk_ui_terms_updated"
 DEFAULT_TERMS_DIR = Path(__file__).parent / "default_terms"
 KEYED_TERMS_PATH = Path(__file__).parent / "keyed_terms.json"
+SEEDED_KEYS_DEFAULT = "mgk_seeded_term_keys"
 
 
 def normalize(english):
@@ -50,11 +51,15 @@ def get_term_rows():
 
 
 def build_terms():
-	terms = {
-		term_key(english): {"source": english, "ta": tamil} for english, tamil in get_default_terms().items()
-	}
+	"""The terminology rows; the shipped defaults only stand in before the record exists."""
 	keyed = get_keyed_terms()
-	terms.update({key: {**row, "keyed": 1} for key, row in keyed.items()})
+	terms = {}
+	if not frappe.db.exists("YRP UI Terminology", TERMINOLOGY):
+		terms = {
+			term_key(english): {"source": english, "ta": tamil}
+			for english, tamil in get_default_terms().items()
+		}
+		terms.update({key: {**row, "keyed": 1} for key, row in keyed.items()})
 	for row in get_term_rows():
 		if row.term_key and row.source_text:
 			terms[row.term_key] = {"source": row.source_text, "ta": row.tamil_text or ""}
@@ -64,7 +69,7 @@ def build_terms():
 
 
 def get_terms():
-	"""Term key to `{source, ta}`: the shipped defaults overlaid with the editable terminology rows."""
+	"""Term key to `{source, ta}` from the editable terminology rows."""
 	return frappe.cache.get_value(CACHE_KEY, generator=build_terms)
 
 
@@ -90,18 +95,37 @@ def translate(english, tamil=1):
 
 
 def seed_terms():
-	"""Add missing default terms to the MGK terminology; existing rows and user edits are never changed."""
+	"""Add default terms never seeded before; rows the user edited or deleted stay as they are."""
 	if not frappe.db.exists("YRP UI Layout", TERMINOLOGY):
 		return
+	seeded = get_seeded_keys()
 	if frappe.db.exists("YRP UI Terminology", TERMINOLOGY):
 		doc = frappe.get_doc("YRP UI Terminology", TERMINOLOGY)
+		if seeded is None:
+			seeded = {row.term_key for row in doc.terms}
 	else:
 		doc = frappe.get_doc({"doctype": "YRP UI Terminology", "ui_layout": TERMINOLOGY})
-	missing_rows = get_missing_term_rows(doc.terms)
+		seeded = set()
+	missing_rows = [row for row in get_missing_term_rows(doc.terms) if row[0] not in seeded]
 	for key, english, tamil in missing_rows:
 		doc.append("terms", {"term_key": key, "source_text": english, "tamil_text": tamil})
 	if missing_rows or doc.is_new():
 		doc.save(ignore_permissions=True)
+	set_seeded_keys(seeded | {row[0] for row in missing_rows} | get_default_keys())
+
+
+def get_default_keys():
+	return {term_key(english) for english in get_default_terms()} | set(get_keyed_terms())
+
+
+def get_seeded_keys():
+	"""Keys already offered to this site, or None before the first tracked seed."""
+	value = frappe.db.get_default(SEEDED_KEYS_DEFAULT)
+	return set(json.loads(value)) if value else None
+
+
+def set_seeded_keys(keys):
+	frappe.db.set_default(SEEDED_KEYS_DEFAULT, json.dumps(sorted(keys)))
 
 
 def get_missing_term_rows(rows):
