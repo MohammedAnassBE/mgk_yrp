@@ -1,0 +1,15 @@
+{% if doc.comments %}
+<table><tr><td><strong>{{ label["Comments"] }}:</strong><br>{{ doc.comments | e | replace("\n", "<br>") | safe }}</td></tr></table>
+{% endif %}
+<table class="signature">
+	<tr>
+		<td style="width: 33%;">{{ label[left_signature] }}</td>
+		<td style="width: 33%;" class="center">{{ label["Prepared By"] }}</td>
+		<td style="width: 34%; text-align: right;"><span class="muted">{{ label["For"] }}</span> {{ get_print_company() }}<br><br><br>{{ label["Authorised Signatory"] }}</td>
+	</tr>
+</table>
+<table class="print-meta">
+	<tr>
+		<td>{{ label["Printed on"] }}: {{ frappe.utils.format_datetime(frappe.utils.now_datetime(), "dd-MM-yyyy HH:mm") }} &middot; {{ label["by"] }}: {{ frappe.get_fullname(frappe.session.user) }}</td>
+	</tr>
+</table>

@@ -1,0 +1,5 @@
+{% if doc.docstatus == 0 %}
+<div class="watermark">{{ label["DRAFT"] }}</div>
+{% elif doc.docstatus == 2 %}
+<div class="watermark">{{ label["CANCELLED"] }}</div>
+{% endif %}

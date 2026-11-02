@@ -17,6 +17,18 @@ app_include_js = ["mgk_yrp.bundle.js"]
 
 doctype_js = {"Item": "public/js/item.js"}
 
+jinja = {
+	"methods": [
+		"mgk_yrp.print_helpers.get_print_items",
+		"mgk_yrp.print_helpers.get_print_labels",
+		"mgk_yrp.print_helpers.get_print_name",
+		"mgk_yrp.print_helpers.get_tamil_font_face",
+		"mgk_yrp.print_helpers.get_print_date",
+		"mgk_yrp.print_helpers.get_print_address",
+		"mgk_yrp.print_helpers.get_print_company",
+	]
+}
+
 extend_doctype_class = {"YRP Stock Entry": ["mgk_yrp.overrides.stock_entry.MGKStockEntry"]}
 
 fixtures = [

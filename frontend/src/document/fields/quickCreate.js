@@ -22,7 +22,7 @@ export async function canQuickCreate(doctype, can = hasPermission) {
 
 export function hasExactMatch(options, text) {
 	const needle = String(text || "").trim().toLowerCase()
-	return options.some((option) => [option.value, option.tamil, linkDescription(option)]
+	return options.some((option) => [option.value, option.label, option.tamil, linkDescription(option)]
 		.some((value) => String(value || "").trim().toLowerCase() === needle))
 }
 

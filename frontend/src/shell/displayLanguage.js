@@ -71,13 +71,18 @@ function cacheKey(doctype, name) { return `${doctype}\u0000${name}` }
  * A variant without its own Tamil name shows its template's Tamil name plus the English variant suffix.
  */
 export function tamilName(doctype, name) {
-	if (!name || !isTamilDisplay(doctype)) return ""
+	return isTamilDisplay(doctype) ? storedTamilName(doctype, name) : ""
+}
+
+/** Tamil name of a Link value in either display language; Link suggestions show it as a second line. */
+export function storedTamilName(doctype, name) {
+	if (!name || !hasTamilName(doctype)) return ""
 	const value = String(name)
 	const key = cacheKey(doctype, value)
 	if (!requested.has(key)) queueLookup(doctype, value, key)
 	const template = variantTemplates[key]
 	if (tamilNames[key] || !template || !value.startsWith(template)) return tamilNames[key] || ""
-	const base = tamilName(doctype, template)
+	const base = storedTamilName(doctype, template)
 	return base ? `${base}${value.slice(template.length)}` : ""
 }
 
@@ -103,7 +108,7 @@ export function rememberTamilNames(doctype, rows) {
 		if (row[TITLE_FIELDS[doctype]]) englishTitles[key] = String(row[TITLE_FIELDS[doctype]]).trim()
 		if (!row.variant_of) continue
 		variantTemplates[key] = row.variant_of
-		if (!row[TAMIL_NAME_FIELD]) tamilName(doctype, row.variant_of)
+		if (!row[TAMIL_NAME_FIELD]) storedTamilName(doctype, row.variant_of)
 	}
 }
 
@@ -161,10 +166,10 @@ export function tabLabel(tab) {
 	return (group && tamilName("Item Group", group[2])) || tab.tamil || tab.label
 }
 
-/** Adds `tamil` to Link suggestions in Tamil mode; the stored value stays the record name. */
+/** Adds `tamil` to Link suggestions in both languages; the stored value stays the record name. */
 export async function withTamilNames(doctype, options) {
-	if (!isTamilDisplay(doctype) || !options.length) return options
-	for (const option of options) tamilName(doctype, option.value)
+	if (!hasTamilName(doctype) || !options.length) return options
+	for (const option of options) storedTamilName(doctype, option.value)
 	await tamilNamesSettled()
-	return options.map((option) => ({ ...option, tamil: tamilName(doctype, option.value) }))
+	return options.map((option) => ({ ...option, tamil: storedTamilName(doctype, option.value) }))
 }

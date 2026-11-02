@@ -9,5 +9,93 @@
   "property": "options",
   "property_type": "Text",
   "value": "Purchase Invoice Rate Difference\nWork Order Excess Usage\nReversal\nDelivery Challan Close"
+ },
+ {
+  "doctype": "Property Setter",
+  "name": "MGK Purchase Order-main-default_print_format",
+  "module": "MGK YRP",
+  "doc_type": "MGK Purchase Order",
+  "doctype_or_field": "DocType",
+  "field_name": null,
+  "property": "default_print_format",
+  "property_type": "Data",
+  "value": "MGK Purchase Order"
+ },
+ {
+  "doctype": "Property Setter",
+  "name": "MGK Delivery Challan-main-default_print_format",
+  "module": "MGK YRP",
+  "doc_type": "MGK Delivery Challan",
+  "doctype_or_field": "DocType",
+  "field_name": null,
+  "property": "default_print_format",
+  "property_type": "Data",
+  "value": "MGK Delivery Challan"
+ },
+ {
+  "doctype": "Property Setter",
+  "name": "MGK Goods Received Note-main-default_print_format",
+  "module": "MGK YRP",
+  "doc_type": "MGK Goods Received Note",
+  "doctype_or_field": "DocType",
+  "field_name": null,
+  "property": "default_print_format",
+  "property_type": "Data",
+  "value": "MGK Goods Received Note"
+ },
+ {
+  "doctype": "Property Setter",
+  "name": "Item-main-search_fields",
+  "module": "MGK YRP",
+  "doc_type": "Item",
+  "doctype_or_field": "DocType",
+  "field_name": null,
+  "property": "search_fields",
+  "property_type": "Data",
+  "value": "item_name,description,item_group,customer_code,mgk_tamil_name"
+ },
+ {
+  "doctype": "Property Setter",
+  "name": "Supplier-main-search_fields",
+  "module": "MGK YRP",
+  "doc_type": "Supplier",
+  "doctype_or_field": "DocType",
+  "field_name": null,
+  "property": "search_fields",
+  "property_type": "Data",
+  "value": "supplier_group,alias,mgk_tamil_name"
+ },
+ {
+  "doctype": "Property Setter",
+  "name": "Warehouse-main-search_fields",
+  "module": "MGK YRP",
+  "doc_type": "Warehouse",
+  "doctype_or_field": "DocType",
+  "field_name": null,
+  "property": "search_fields",
+  "property_type": "Data",
+  "value": "mgk_tamil_name"
+ },
+ {
+  "doctype": "Property Setter",
+  "name": "YRP Process-main-search_fields",
+  "module": "MGK YRP",
+  "doc_type": "YRP Process",
+  "doctype_or_field": "DocType",
+  "field_name": null,
+  "property": "search_fields",
+  "property_type": "Data",
+  "value": "mgk_tamil_name"
+ },
+ {
+  "doctype": "Property Setter",
+  "name": "Item Group-main-search_fields",
+  "module": "MGK YRP",
+  "doc_type": "Item Group",
+  "doctype_or_field": "DocType",
+  "field_name": null,
+  "property": "search_fields",
+  "property_type": "Data",
+  "value": "parent_item_group,mgk_tamil_name"
  }
 ]

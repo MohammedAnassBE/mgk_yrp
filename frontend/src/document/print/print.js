@@ -4,6 +4,12 @@ export function canPrint(doc, isNew, can) {
 	return Boolean(doc?.name && !isNew && can(doc.doctype, "print"))
 }
 
+/** Tamil mode picks the "(Tamil)" twin of the default (or of the doctype's own format) when it exists. */
+export function preferredPrintFormat({ formats = [], default_format: defaultFormat }, doctype, tamil) {
+	if (!tamil) return defaultFormat
+	return [`${defaultFormat} (Tamil)`, `${doctype} (Tamil)`].find((name) => formats.includes(name)) || defaultFormat
+}
+
 export function buildPrintUrl({ doctype, name, format, letterHead }) {
 	const query = new URLSearchParams({ doctype, name, format, no_letterhead: letterHead ? "0" : "1", trigger_print: "1" })
 	if (letterHead) query.set("letterhead", letterHead)

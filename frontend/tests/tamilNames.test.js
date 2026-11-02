@@ -33,15 +33,52 @@ test("Tamil name masters match the reference app and every master form lists the
 	assert.equal(hasTamilName("Address"), false)
 })
 
-test("English mode leaves Link suggestions untouched and makes no extra request", async () => {
+test("English mode shows the Tamil name under the English one and finds records by typed Tamil text", async () => {
 	setLanguage("en")
 	const calls = []
 	const restore = stubFetch(calls)
+	const page = await mountComponent("../../src/document/fields/LinkField.vue", { doctype: "Supplier", candidates: [{ value: "SUP-1" }, { value: "SUP-2" }] })
 	try {
-		const options = [{ value: "SUP-1" }]
-		assert.equal(await withTamilNames("Supplier", options), options)
-		assert.equal(calls.length, 0)
-	} finally { restore() }
+		inputs(page.root)[0].props.onInput({ target: { value: "முருகன்" } })
+		await new Promise((resolve) => setTimeout(resolve, 250))
+		await settle()
+		const rows = nodes(page.root, (node) => node.tag === "li")
+		assert.equal(rows.length, 1, "typed Tamil text matches the Tamil name")
+		assert.equal(textContent(nodes(rows[0], (node) => node.tag === "strong")[0]), "SUP-1")
+		assert.deepEqual(nodes(rows[0], (node) => node.tag === "small").map(textContent), [tamilRows["SUP-1"]])
+		assert.equal(await withTamilNames("Address", [{ value: "A-1" }]).then((rows) => rows[0].tamil), undefined)
+		assert.ok(!calls.some((url) => url.includes("Address")))
+	} finally { page.close(); restore() }
+})
+
+test("filter Link input lists both language names in each suggestion", async () => {
+	setLanguage("en")
+	const original = globalThis.fetch
+	globalThis.fetch = async (url) => {
+		const text = decodeURIComponent(String(url))
+		const message = text.includes("search_link") ? [{ value: "SUP-1", description: `Raw Material, ${tamilRows["SUP-1"]}` }]
+			: text.includes("frappe.client.get_list") ? [{ name: "SUP-1", mgk_tamil_name: tamilRows["SUP-1"] }] : []
+		return { ok: true, status: 200, json: async () => ({ message }) }
+	}
+	const page = await mountComponent("../../src/list/LinkInput.vue", { doctype: "Supplier" })
+	try {
+		await inputs(page.root)[0].props.onFocus()
+		await settle()
+		const row = nodes(page.root, (node) => node.tag === "li")[0]
+		assert.equal(textContent(nodes(row, (node) => node.tag === "strong")[0]), "SUP-1")
+		assert.deepEqual(nodes(row, (node) => node.tag === "small").map(textContent), [tamilRows["SUP-1"], "Raw Material"])
+	} finally { page.close(); globalThis.fetch = original; clearReadCaches() }
+})
+
+test("suggestion rows put the current language first and treat a typed Tamil name as an exact match", async () => {
+	const { linkRow } = await import("../src/list/linkOptions.js")
+	const { hasExactMatch } = await import("../src/document/fields/quickCreate.js")
+	const option = { value: "AG-1", label: "Buying Supplier", tamil: "வாங்கும் சப்ளையர்", description: "AG-1, வாங்கும் சப்ளையர்" }
+	assert.deepEqual(linkRow(option, false), { primary: "Buying Supplier", secondary: ["வாங்கும் சப்ளையர்", "AG-1"] })
+	assert.deepEqual(linkRow(option, true), { primary: "வாங்கும் சப்ளையர்", secondary: ["Buying Supplier", "AG-1"] })
+	assert.deepEqual(linkRow({ value: "Address 1" }, true), { primary: "Address 1", secondary: [] })
+	assert.equal(hasExactMatch([option], " வாங்கும் சப்ளையர் "), true)
+	assert.equal(hasExactMatch([option], "buying supplier"), true)
 })
 
 test("Tamil mode labels suggestions and the selected value in Tamil while storing the record name", async () => {

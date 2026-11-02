@@ -1,0 +1,34 @@
+{%- set items = get_print_items(doc, tamil) -%}
+<table>
+	<tr><td class="section-head" colspan="100">{{ label["Particulars"] }}</td></tr>
+	<tr>
+		<th class="center" style="width: 30px;">{{ label["S.No."] }}</th>
+		<th>{{ label["Item"] }}</th>
+		{% for attribute in items.attributes %}<th>{{ attribute }}</th>{% endfor %}
+		{% if items.has_received_type %}<th>{{ label["Received Type"] }}</th>{% endif %}
+		<th class="numeric">{{ label["Qty"] }}</th>
+		<th>{{ label["UOM"] }}</th>
+		<th class="numeric">{{ label["Rate"] }}</th>
+		<th class="numeric">{{ label[amount_label] }}</th>
+	</tr>
+	{% for row in items.rows %}
+	<tr>
+		<td class="center">{{ loop.index }}</td>
+		<td>{{ row.item_label }}</td>
+		{% for attribute in items.attributes %}<td>{{ row.item_attributes.get(attribute) or "" }}</td>{% endfor %}
+		{% if items.has_received_type %}<td>{{ row.received_type or "" }}</td>{% endif %}
+		<td class="numeric">{{ frappe.format(row.qty, {"fieldtype": "Float"}) }}</td>
+		<td>{{ row.uom or "" }}</td>
+		<td class="numeric">{{ frappe.utils.fmt_money(row.rate, currency="INR") }}</td>
+		<td class="numeric">{{ frappe.utils.fmt_money(row.amount, currency="INR") }}</td>
+	</tr>
+	{% endfor %}
+	<tr class="total-row">
+		<td colspan="{{ 2 + items.attributes|length + (1 if items.has_received_type else 0) }}" class="numeric">{{ label["Total"] }}</td>
+		<td class="numeric">{{ frappe.format(items.total_qty, {"fieldtype": "Float"}) }}</td>
+		<td></td>
+		<td></td>
+		<td class="numeric">{{ frappe.utils.fmt_money(items.total_amount, currency="INR") }}</td>
+	</tr>
+	<tr><td colspan="100" class="numeric"><strong>{{ label["In Words"] }}:</strong> {{ frappe.utils.money_in_words(items.total_amount, "INR") }}</td></tr>
+</table>

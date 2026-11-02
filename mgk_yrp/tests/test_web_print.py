@@ -73,6 +73,8 @@ class TestWebPrint(IntegrationTestCase):
 
 	def test_defaults_to_standard_without_a_doctype_default(self):
 		frappe.db.set_value("Letter Head", {"is_default": 1}, "is_default", 0)
+		frappe.db.delete("Property Setter", {"doc_type": ORDER, "property": "default_print_format"})
+		frappe.clear_cache(doctype=ORDER)
 		options = get_print_options(ORDER, self.order.name)
 		self.assertEqual(options["default_format"], "Standard")
 		self.assertEqual(options["default_letter_head"], "")
