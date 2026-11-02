@@ -1,4 +1,5 @@
 <script setup>
+import { t } from "../shell/terminology.js"
 import { computed } from "vue"
 import { useRoute } from "vue-router"
 import ListView from "../list/ListView.vue"
@@ -14,8 +15,8 @@ const master = computed(() => getMaster(route.params.master))
 <template>
 	<NotFound v-if="!master" />
 	<NoAccess v-else-if="!hasPermission(master.doctype, master.permission)" />
-	<ListView v-else :key="master.key" :doctype="master.doctype" :title="master.label" :default-columns="master.defaultColumns"
+	<ListView v-else :key="master.key" :doctype="master.doctype" :title="t(master.label)" :default-columns="master.defaultColumns"
 		:base-filters="master.baseFilters" :base-or-filters="master.baseOrFilters"
 		:status-field="master.statusField" :column-labels="master.columnLabels" :related-doctypes="master.relatedDoctypes" :document-route="master.route"
-		:create-route="`${master.route}/new`" :allow-create="canEditMaster(master)" back-route="/manage" back-label="Manage" />
+		:create-route="`${master.route}/new`" :allow-create="canEditMaster(master)" back-route="/manage" :back-label="t('Manage')" />
 </template>

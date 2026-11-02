@@ -8,6 +8,7 @@ import { formatFieldValue } from "../../document/fieldDisplay.js"
 import { clone } from "../../document/mappedDraft.js"
 import { money } from "../previewValues.js"
 import { groupItemRows, grnSummaries, setGroupRate } from "./fieldEvents.js"
+import { t } from "../../shell/terminology.js"
 
 const props = defineProps({ groups: Array, doc: Object, meta: Object, metas: Array, disabled: Boolean, dates: { type: Object, default: () => ({}) } })
 const emit = defineEmits(["change"])
@@ -30,11 +31,11 @@ function remove(name) { emit("change", "items", clone(props.doc.items).filter((r
 
 <template>
 	<div class="simple-table invoice-rows">
-		<p v-if="!child" class="error-state" role="alert">Billing row metadata is unavailable.</p>
-		<p v-else-if="!groups.length" class="empty-state compact">No GRN rows yet. Choose a supplier and type, then Get GRNs.</p>
+		<p v-if="!child" class="error-state" role="alert">{{ t('Billing row metadata is unavailable.') }}</p>
+		<p v-else-if="!groups.length" class="empty-state compact">{{ t('No GRN rows yet. Choose a supplier and type, then Get GRNs.') }}</p>
 		<template v-else>
 			<table class="grn-choices invoice-grns">
-				<thead><tr><th>GRN ID</th><th>Date</th><th class="numeric">Total Qty</th><th class="numeric">Total Amount</th><th v-if="canRemove"></th></tr></thead>
+				<thead><tr><th>{{ t('GRN ID') }}</th><th>{{ t('Date') }}</th><th class="numeric">{{ t('Total Qty') }}</th><th class="numeric">{{ t('Total Amount') }}</th><th v-if="canRemove"></th></tr></thead>
 				<tbody><tr v-for="receipt in receipts" :key="receipt.name">
 					<td><RouterLink v-if="hasPermission('MGK Goods Received Note')" :to="`/goods-received-note/${encodeURIComponent(receipt.name)}`">{{ receipt.name }}</RouterLink><span v-else>{{ receipt.name }}</span></td>
 					<td>{{ formatDate(receipt.posting_date) }}</td>
@@ -44,7 +45,7 @@ function remove(name) { emit("change", "items", clone(props.doc.items).filter((r
 				</tr></tbody>
 			</table>
 			<div class="table-scroll"><table class="invoice-item-table">
-				<thead><tr><th v-for="field in fields" :key="field.fieldname" :class="{ 'item-column': field.fieldname === 'item', numeric: numeric(field), 'rate-column': field.fieldname === 'rate' }">{{ field.label }}</th></tr></thead>
+				<thead><tr><th v-for="field in fields" :key="field.fieldname" :class="{ 'item-column': field.fieldname === 'item', numeric: numeric(field), 'rate-column': field.fieldname === 'rate' }">{{ t(field.label) }}</th></tr></thead>
 				<tbody><tr v-for="group in itemGroups" :key="group.key">
 					<td v-for="field in fields" :key="field.fieldname" :class="{ 'item-column': field.fieldname === 'item', numeric: numeric(field), 'rate-column': field.fieldname === 'rate' }">
 						<InputNumber v-if="editable(field)" :model-value="Number(group.rate) || 0" :min="0" :min-fraction-digits="2" :max-fraction-digits="2" :aria-label="`${group.item} rate`" fluid @update:model-value="change(group, $event)" />

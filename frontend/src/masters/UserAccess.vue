@@ -1,4 +1,5 @@
 <script setup>
+import { t } from "../shell/terminology.js"
 import { computed, onBeforeUnmount, onMounted, ref } from "vue"
 import MultiSelect from "primevue/multiselect"
 import InputText from "primevue/inputtext"
@@ -62,17 +63,17 @@ onBeforeUnmount(() => { disposed = true; sequence++ })
 
 <template>
 	<div class="access-editor">
-		<div v-if="loading" class="loading-state" role="status"><i class="pi pi-spin pi-spinner" />Loading access options…</div>
-		<div v-if="error" class="error-state" role="alert"><p>{{ error }}</p><Button label="Retry access options" severity="secondary" outlined @click="load" /></div>
-		<label><span class="field-label">Role profiles</span>
-			<MultiSelect :model-value="selectedProfiles" :options="[...new Set([...profiles, ...selectedProfiles])]" filter display="chip" aria-label="Role profiles" fluid :disabled="!canEdit || loading" @update:model-value="updateProfiles" />
-			<small class="field-help">A profile applies its complete role set when the User is saved.</small>
+		<div v-if="loading" class="loading-state" role="status"><i class="pi pi-spin pi-spinner" />{{ t('Loading access options…') }}</div>
+		<div v-if="error" class="error-state" role="alert"><p>{{ error }}</p><Button :label="t('Retry access options')" severity="secondary" outlined @click="load" /></div>
+		<label><span class="field-label">{{ t('Role profiles') }}</span>
+			<MultiSelect :model-value="selectedProfiles" :options="[...new Set([...profiles, ...selectedProfiles])]" filter display="chip" :aria-label="t('Role profiles')" fluid :disabled="!canEdit || loading" @update:model-value="updateProfiles" />
+			<small class="field-help">{{ t('A profile applies its complete role set when the User is saved.') }}</small>
 		</label>
-		<label><span class="field-label">Search roles</span><InputText v-model="search" aria-label="Search roles" fluid /></label>
-		<small class="field-help">{{ selectedRoles.size }} roles selected{{ selectedProfiles.length ? ' · Roles come from the selected profiles.' : '' }}</small>
+		<label><span class="field-label">{{ t('Search roles') }}</span><InputText v-model="search" :aria-label="t('Search roles')" fluid /></label>
+		<small class="field-help">{{ selectedRoles.size }} {{ t('roles selected') }}{{ selectedProfiles.length ? ` · ${t('Roles come from the selected profiles.')}` : '' }}</small>
 		<div class="role-checklist">
 			<label v-for="role in visibleRoles" :key="role" class="role-option" :class="{ selected: selectedRoles.has(role) }"><input type="checkbox" :checked="selectedRoles.has(role)" :disabled="!canEdit || loading || Boolean(selectedProfiles.length)" @change="toggleRole(role, $event.target.checked)" /><span>{{ role }}</span></label>
 		</div>
-		<p v-if="!loading && !visibleRoles.length" class="empty-state">No matching roles.</p>
+		<p v-if="!loading && !visibleRoles.length" class="empty-state">{{ t('No matching roles.') }}</p>
 	</div>
 </template>

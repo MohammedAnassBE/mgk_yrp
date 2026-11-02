@@ -1,4 +1,5 @@
 <script setup>
+import { t } from "../shell/terminology.js"
 import { computed, ref, watch } from "vue"
 import Dialog from "primevue/dialog"
 import { saveUserColumns, resetUserColumns } from "./listColumns.js"
@@ -46,23 +47,23 @@ async function persist(reset = false) {
 </script>
 
 <template>
-	<Dialog :visible="visible" modal header="Columns" class="list-dialog columns-dialog" :closable="!saving" @update:visible="$emit('update:visible', $event)">
-		<p>Choose and order columns for this book. ID stays first; {{ statusLabel }} stays last.</p>
+	<Dialog :visible="visible" modal :header="t('Columns')" class="list-dialog columns-dialog" :closable="!saving" @update:visible="$emit('update:visible', $event)">
+		<p>{{ t("Choose and order columns for this book.") }} {{ t("ID stays first") }}; {{ t(statusLabel) }} {{ t("stays last.") }}</p>
 		<div v-if="error" class="dialog-error" role="alert">{{ error }}</div>
 		<div class="columns-editor">
-			<div><label class="column-search">Find a column<input v-model="search" type="search" aria-label="Find a column" /></label>
-				<div class="column-picker"><label v-for="column in matching" :key="column.fieldname"><input v-model="column.enabled" type="checkbox" :disabled="saving" />{{ column.label }}</label><p v-if="!matching.length">No matching fields.</p></div>
+			<div><label class="column-search">{{ t("Find a column") }}<input v-model="search" type="search" :aria-label="t('Find a column')" /></label>
+				<div class="column-picker"><label v-for="column in matching" :key="column.fieldname"><input v-model="column.enabled" type="checkbox" :disabled="saving" />{{ t(column.label) }}</label><p v-if="!matching.length">{{ t("No matching fields.") }}</p></div>
 			</div>
 			<div class="column-order" @dragover.prevent @drop.prevent="move(dragField)">
-				<strong>ID (fixed)</strong>
+				<strong>{{ t("ID (fixed)") }}</strong>
 				<div v-for="(column, index) in enabled" :key="column.fieldname" class="column-order-row" :draggable="!saving" @dragstart="dragField = column.fieldname; $event.dataTransfer.setData('text/plain', column.fieldname)" @dragend="dragField = ''" @dragover.prevent.stop @drop.prevent.stop="move(dragField, column.fieldname)">
-					<span aria-hidden="true">⠿</span><span>{{ column.label }}</span>
+					<span aria-hidden="true">⠿</span><span>{{ t(column.label) }}</span>
 					<button type="button" class="button secondary small" :aria-label="`Move ${column.label} up`" :disabled="saving || index === 0" @click="step(index, -1)">↑</button>
 					<button type="button" class="button secondary small" :aria-label="`Move ${column.label} down`" :disabled="saving || index === enabled.length - 1" @click="step(index, 1)">↓</button>
 				</div>
-				<strong>{{ statusLabel }} (fixed)</strong>
+				<strong>{{ t(statusLabel) }} ({{ t("fixed") }})</strong>
 			</div>
 		</div>
-		<template #footer><button class="button secondary" type="button" :disabled="saving" @click="persist(true)">Reset</button><button class="button primary" type="button" :disabled="saving" @click="persist(false)">{{ saving ? "Saving…" : "Save columns" }}</button></template>
+		<template #footer><button class="button secondary" type="button" :disabled="saving" @click="persist(true)">{{ t("Reset") }}</button><button class="button primary" type="button" :disabled="saving" @click="persist(false)">{{ saving ? t("Saving…") : t("Save columns") }}</button></template>
 	</Dialog>
 </template>

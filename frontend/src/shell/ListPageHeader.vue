@@ -1,4 +1,5 @@
 <script setup>
+import { t } from "./terminology.js"
 import Breadcrumbs from "./Breadcrumbs.vue"
 
 defineProps({ title: { type: String, required: true }, back: { type: String, default: "" }, crumbs: { type: Array, default: () => [] } })
@@ -6,7 +7,7 @@ defineProps({ title: { type: String, required: true }, back: { type: String, def
 
 <template>
 	<header class="list-page-header">
-		<RouterLink v-if="back" class="head-back" :to="back" aria-label="Back" title="Back"><i class="pi pi-arrow-left" aria-hidden="true" /></RouterLink>
+		<RouterLink v-if="back" class="head-back" :to="back" :aria-label="t('Back')" :title="t('Back')"><i class="pi pi-arrow-left" aria-hidden="true" /></RouterLink>
 		<Breadcrumbs :items="[...crumbs, { label: title }]" />
 		<div v-if="$slots.default" class="list-page-actions"><slot /></div>
 	</header>

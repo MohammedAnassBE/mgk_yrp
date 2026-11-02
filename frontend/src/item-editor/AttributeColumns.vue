@@ -1,4 +1,5 @@
 <script setup>
+import { t } from "../shell/terminology.js"
 import { ref, watch } from "vue"
 import Button from "primevue/button"
 import InputNumber from "primevue/inputnumber"
@@ -84,25 +85,25 @@ function removeSelected() {
 
 <template>
 	<div class="attribute-columns">
-		<p v-if="loading" class="loading-state" role="status">Loading column options…</p>
+		<p v-if="loading" class="loading-state" role="status">{{ t('Loading column options…') }}</p>
 		<div v-if="error" class="form-banner" role="alert">
 			{{ error }}
-			<Button label="Retry column options" size="small" severity="secondary" @click="loadOptions" />
+			<Button :label="t('Retry column options')" size="small" severity="secondary" @click="loadOptions" />
 		</div>
 		<div v-for="(group, groupIndex) in items" :key="groupIndex" class="table-scroll pivot-group">
 			<table v-if="group.items.length">
 				<thead><tr>
-					<th v-if="editable"><input type="checkbox" aria-label="Select all rows"
+					<th v-if="editable"><input type="checkbox" :aria-label="t('Select all rows')"
 						:checked="isGroupSelected(groupIndex)" @change="selectGroup(groupIndex, $event.target.checked)"></th>
-					<th>Item</th>
-					<th v-for="dimension in dimensions" :key="dimension.fieldname">{{ dimension.label }}</th>
+					<th>{{ t('Item') }}</th>
+					<th v-for="dimension in dimensions" :key="dimension.fieldname">{{ t(dimension.label) }}</th>
 					<th v-for="attribute in nonPrimaryAttributes(group)" :key="attribute">{{ attribute }}</th>
-					<th v-for="size in sizes(group)" :key="size">{{ size === 'default' ? 'Quantity' : size }}</th>
-					<th>UOM</th>
-					<th v-if="mode !== 'plan'">Rate</th>
-					<th v-if="hasTransferredQuantity">Transferred Qty</th>
-					<th v-if="mode !== 'plan'">Amount</th>
-					<th v-if="editable" class="actions-column">Actions</th>
+					<th v-for="size in sizes(group)" :key="size">{{ size === 'default' ? t('Quantity') : size }}</th>
+					<th>{{ t('UOM') }}</th>
+					<th v-if="mode !== 'plan'">{{ t('Rate') }}</th>
+					<th v-if="hasTransferredQuantity">{{ t('Transferred Qty') }}</th>
+					<th v-if="mode !== 'plan'">{{ t('Amount') }}</th>
+					<th v-if="editable" class="actions-column">{{ t('Actions') }}</th>
 				</tr></thead>
 				<tbody><tr v-for="(entry, entryIndex) in group.items" :key="entryIndex">
 					<td v-if="editable"><input type="checkbox" :aria-label="`Select row ${entryIndex + 1}`"
@@ -110,7 +111,7 @@ function removeSelected() {
 						@change="selectRow(groupIndex, entryIndex, $event.target.checked)"></td>
 					<td><strong>{{ displayName("Item", entry.name) }}</strong></td>
 					<td v-for="dimension in dimensions" :key="dimension.fieldname">
-						<Select v-if="editable" :aria-label="dimension.label" :model-value="entry.dimensions?.[dimension.fieldname] || ''"
+						<Select v-if="editable" :aria-label="t(dimension.label)" :model-value="entry.dimensions?.[dimension.fieldname] || ''"
 							:options="columnOptions(entry.dimensions?.[dimension.fieldname], dimensionOptions[dimension.fieldname])"
 							@update:model-value="setDimension(entry, dimension.fieldname, $event)" />
 						<span v-else>{{ displayName(dimension.options, entry.dimensions?.[dimension.fieldname]) || '—' }}</span>
@@ -137,15 +138,15 @@ function removeSelected() {
 					</td>
 					<td v-if="mode !== 'plan'" class="numeric">{{ money(getRowAmount(group, entry)) }}</td>
 					<td v-if="editable" class="actions-column"><div class="row-actions">
-						<Button icon="pi pi-plus" aria-label="Add split" title="Add split" size="small" severity="secondary" text
+						<Button icon="pi pi-plus" :aria-label="t('Add split')" :title="t('Add split')" size="small" severity="secondary" text
 							@click="emit('split', groupIndex, entryIndex)" />
-						<Button icon="pi pi-times" aria-label="Remove row" title="Remove row" size="small" severity="danger" text
+						<Button icon="pi pi-times" :aria-label="t('Remove row')" :title="t('Remove row')" size="small" severity="danger" text
 							@click="emit('remove', groupIndex, entryIndex)" />
 					</div></td>
 				</tr></tbody>
 			</table>
 		</div>
-		<Button v-if="editable && selected.length" :label="`Remove Selected (${selected.length})`" size="small" severity="danger" outlined @click="removeSelected" />
+		<Button v-if="editable && selected.length" :label="`${t('Remove Selected')} (${selected.length})`" size="small" severity="danger" outlined @click="removeSelected" />
 	</div>
 </template>
 

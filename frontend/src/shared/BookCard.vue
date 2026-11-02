@@ -1,4 +1,5 @@
 <script setup>
+import { t } from "../shell/terminology.js"
 import { computed } from "vue"
 import { hasPermission } from "../permissions/usePermissions.js"
 const props = defineProps({ book: { type: Object, required: true }, count: { type: Number, default: null }, loading: Boolean, failed: Boolean })
@@ -11,19 +12,19 @@ const canCreate = computed(() => props.book.showCreate !== false && hasPermissio
 			<div class="group-card-head" :class="{ 'has-create': canCreate }">
 				<span class="group-code" :class="book.cover">{{ book.code }}</span>
 				<div class="group-copy">
-					<strong>{{ book.label }}</strong>
-					<small>{{ book.description }}</small>
+					<strong>{{ t(book.label) }}</strong>
+					<small>{{ t(book.description) }}</small>
 				</div>
 				<span class="group-record-count" :aria-busy="loading">
-					<span v-if="loading"><i class="pi pi-spin pi-spinner" aria-hidden="true" /> Counting…</span>
-					<span v-else-if="failed">Count unavailable</span>
-					<span v-else>{{ count ?? 0 }} {{ book.countLabel || 'records' }}</span>
+					<span v-if="loading"><i class="pi pi-spin pi-spinner" aria-hidden="true" /> {{ t("Counting…") }}</span>
+					<span v-else-if="failed">{{ t("Count unavailable") }}</span>
+					<span v-else>{{ count ?? 0 }} {{ t(book.countLabel || 'records') }}</span>
 				</span>
 			</div>
-			<div class="group-card-foot"><span>{{ book.openLabel || 'Open book' }}</span><strong aria-hidden="true">›</strong></div>
+			<div class="group-card-foot"><span>{{ t(book.openLabel || 'Open book') }}</span><strong aria-hidden="true">›</strong></div>
 			<span class="direct-card-rail" :class="book.cover" />
 		</RouterLink>
-		<RouterLink v-if="canCreate" class="button small book-create" :class="book.cover" :to="book.newPath || `${book.routePath}/new`">+ New</RouterLink>
+		<RouterLink v-if="canCreate" class="button small book-create" :class="book.cover" :to="book.newPath || `${book.routePath}/new`">+ {{ t("New") }}</RouterLink>
 	</div>
 </template>
 

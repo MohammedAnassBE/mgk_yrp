@@ -40,8 +40,12 @@ fixtures = [
 	},
 ]
 
-after_install = ["mgk_yrp.install.ensure_item_groups"]
-after_migrate = ["mgk_yrp.stock.dimension_fields.sync_dimension_fields", "mgk_yrp.install.ensure_item_groups"]
+after_install = ["mgk_yrp.install.ensure_item_groups", "mgk_yrp.terminology.terms.seed_terms"]
+after_migrate = [
+	"mgk_yrp.stock.dimension_fields.sync_dimension_fields",
+	"mgk_yrp.install.ensure_item_groups",
+	"mgk_yrp.terminology.terms.seed_terms",
+]
 
 doc_events = {
 	**{
@@ -56,6 +60,10 @@ doc_events = {
 		)
 	},
 	"YRP Stock Valuation Adjustment": {"on_update": "mgk_yrp.web.notify.valuation_updated"},
+	"YRP UI Terminology": {
+		"on_update": "mgk_yrp.terminology.terms.terms_changed",
+		"on_trash": "mgk_yrp.terminology.terms.terms_changed",
+	},
 	"Item": {"validate": "mgk_yrp.overrides.item.validate"},
 	"Supplier": {"validate": "mgk_yrp.overrides.supplier.validate"},
 	"YRP Stock Settings": {

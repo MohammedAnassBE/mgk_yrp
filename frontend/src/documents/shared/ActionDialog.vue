@@ -2,12 +2,13 @@
 import Dialog from "primevue/dialog"
 import "../../document/fields/fields.css"
 import "./actionDialog.css"
+import { t } from "../../shell/terminology.js"
 defineProps({ visible: Boolean, header: { type: String, required: true }, width: { type: String, default: "min(560px, 94vw)" } })
 defineEmits(["close", "show"])
 </script>
 
 <template>
-	<Dialog :visible="visible" modal :header="header" class="action-dialog" :style="{ width }" @show="$emit('show')" @update:visible="(open) => !open && $emit('close')">
+	<Dialog :visible="visible" modal :header="t(header)" class="action-dialog" :style="{ width }" @show="$emit('show')" @update:visible="(open) => !open && $emit('close')">
 		<slot />
 		<template #footer><slot name="footer" /></template>
 	</Dialog>

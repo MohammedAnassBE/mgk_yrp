@@ -18,6 +18,7 @@ import FieldControl from "./fields/FieldControl.vue"
 import MgkItemEditor from "../item-editor/MgkItemEditor.vue"
 import InvoiceItems from "../documents/purchase-invoice/InvoiceItems.vue"
 import { documentModule } from "../documents/registry.js"
+import { t } from "../shell/terminology.js"
 import { hasPermission } from "../permissions/usePermissions.js"
 import { visibleFields } from "./fieldConditions.js"
 import { connectedDocuments, summaryFields } from "./documentLayout.js"
@@ -53,11 +54,11 @@ function fieldValue(field) {
 	<NoAccess v-if="!hasPermission(book.doctype)" />
 	<section v-else class="page po-document-page book-entry">
 		<Breadcrumbs
-			:items="[{ label: book.label, to: book.listPath || book.routePath }, { label: route.params.name || doc?.name || 'New entry' }]"
+			:items="[{ label: t(book.label), to: book.listPath || book.routePath }, { label: route.params.name || doc?.name || t('New entry') }]"
 		/>
 		<div v-if="loading" class="loading-state" role="status">
 			<i class="pi pi-spin pi-spinner" />
-			Loading document…
+			{{ t('Loading document…') }}
 		</div>
 		<template v-else-if="doc && layout">
 			<DocumentHeader
@@ -80,7 +81,7 @@ function fieldValue(field) {
 						@discard="reload().then(() => notify.success('Changes discarded'))"
 					/>
 			</DocumentHeader>
-			<Message v-if="intro" :severity="intro.severity" :closable="false" class="form-banner">{{ intro.text }}</Message>
+			<Message v-if="intro" :severity="intro.severity" :closable="false" class="form-banner">{{ t(intro.text) }}</Message>
 			<ActionHost :runner="runner" />
 			<Message v-for="message in messages" :key="message" severity="warn" :closable="false" class="form-banner">{{ message }}</Message>
 			<Message
@@ -89,9 +90,9 @@ function fieldValue(field) {
 				:closable="false"
 				class="form-banner stale-banner"
 			>
-				This document was changed elsewhere —
+				{{ t('This document was changed elsewhere') }} —
 				<Button
-					label="Reload"
+					:label="t('Reload')"
 					severity="secondary"
 					outlined
 					size="small"
@@ -104,14 +105,14 @@ function fieldValue(field) {
 				severity="warn"
 				:closable="false"
 				class="form-banner"
-			>Missing required fields: {{ required.join(', ') }}.</Message>
+			>{{ t('Missing required fields') }}: {{ required.map(t).join(', ') }}.</Message>
 			<Message
 				v-if="error"
 				severity="error"
 				:closable="false"
 				class="form-banner"
 			>
-				<strong>Unable to complete this action</strong>
+				<strong>{{ t('Unable to complete this action') }}</strong>
 				<p class="server-error">{{ error }}</p>
 			</Message>
 			<Message
@@ -122,25 +123,25 @@ function fieldValue(field) {
 			>
 				{{ partyError }}
 				<Button
-					label="Retry defaults"
+					:label="t('Retry defaults')"
 					size="small"
 					severity="secondary"
 					@click="retryParty"
 				/>
 			</Message>
-			<p v-if="fieldsLoading || factsLoading" class="field-help" role="status">Loading document details…</p>
+			<p v-if="fieldsLoading || factsLoading" class="field-help" role="status">{{ t('Loading document details…') }}</p>
 			<Message v-if="fieldError" severity="error" :closable="false" class="form-banner">
-				{{ fieldError }} <Button label="Retry details" size="small" severity="secondary" @click="retryFields" />
+				{{ fieldError }} <Button :label="t('Retry details')" size="small" severity="secondary" @click="retryFields" />
 			</Message>
 			<Message v-if="factsError" severity="error" :closable="false" class="form-banner">
-				{{ factsError }} <Button label="Retry details" size="small" severity="secondary" @click="retryFacts" />
+				{{ factsError }} <Button :label="t('Retry details')" size="small" severity="secondary" @click="retryFacts" />
 			</Message>
 			<div :class="[editing ? 'form-layout' : 'po-saved-layout', { 'compact-layout': layout.compact }]">
 				<div class="form-stack">
 					<section v-if="editing" class="form-section">
 						<header class="mgk-card__head">
 							<span class="book-step">1</span>
-							<h2>{{ layout.heading }}</h2>
+							<h2>{{ t(layout.heading) }}</h2>
 						</header>
 						<div class="form-grid">
 							<FieldControl
@@ -161,13 +162,13 @@ function fieldValue(field) {
 						<div class="overview-head">
 							<span class="saved-book" :class="book.cover">{{ book.code }}</span>
 							<div>
-								<div class="book-entry-kicker">{{ book.label }}</div>
-								<h2>{{ layout.overviewTitle || doc.name }}</h2>
+								<div class="book-entry-kicker">{{ t(book.label) }}</div>
+								<h2>{{ t(layout.overviewTitle) || doc.name }}</h2>
 							</div>
 						</div>
 						<div class="po-facts">
 							<div v-for="(fact, index) in facts" :key="index" class="po-fact">
-								<span>{{ fact.label }}</span>
+								<span>{{ t(fact.label) }}</span>
 								<RouterLink v-if="fact.to && hasPermission(fact.doctype)" :to="fact.to"><strong>{{ fact.value || '—' }}</strong></RouterLink>
 								<strong v-else>{{ fact.value ?? '—' }}</strong>
 							</div>
@@ -177,10 +178,10 @@ function fieldValue(field) {
 						<header class="child-editor-head po-section-title">
 							<span class="book-step">2</span>
 							<div>
-								<h2>{{ layout.itemsTitle }}</h2>
-								<small>{{ editing ? layout.help : layout.readOnlyHelp || layout.help }}</small>
+								<h2>{{ t(layout.itemsTitle) }}</h2>
+								<small>{{ t(editing ? layout.help : layout.readOnlyHelp || layout.help) }}</small>
 							</div>
-							<span v-if="!editing" class="count-chip">{{ doc.items?.length || 0 }} rows</span>
+							<span v-if="!editing" class="count-chip">{{ doc.items?.length || 0 }} {{ t('rows') }}</span>
 						</header>
 						<MgkItemEditor
 							ref="itemEditor"
@@ -201,8 +202,8 @@ function fieldValue(field) {
 						<header class="child-editor-head">
 							<span class="book-step">{{ index + 2 }}</span>
 							<div>
-								<h2>{{ field.fieldname === 'outputs' ? 'Linked GRN outputs' : layout.itemsTitle }}</h2>
-								<small>{{ layout.help }}</small>
+								<h2>{{ t(field.fieldname === 'outputs' ? 'Linked GRN outputs' : layout.itemsTitle) }}</h2>
+								<small>{{ t(layout.help) }}</small>
 							</div>
 						</header>
 						<div class="table-field-body">
@@ -231,31 +232,31 @@ function fieldValue(field) {
 						:disabled="disabled"
 						@change="change"
 					/>
-					<p v-if="partyLoading" role="status" class="field-help">Loading party defaults…</p>
+					<p v-if="partyLoading" role="status" class="field-help">{{ t('Loading party defaults…') }}</p>
 					<DocumentSummary v-if="documentSummary" :summary="documentSummary" :editing="editing" :book="book" />
 					<section v-else class="po-totals-card">
-						<h2>Summary</h2>
+						<h2>{{ t('Summary') }}</h2>
 						<div v-for="(field, index) in summary" :key="field.fieldname" class="summary-line" :class="{ 'grand-total': index === summary.length - 1 }">
-							<span>{{ field.label }}</span>
+							<span>{{ t(field.label) }}</span>
 							<strong>{{ formatFieldValue(field, doc[field.fieldname] ?? 0) }}</strong>
 						</div>
 					</section>
 					<section class="po-progress-card">
-						<h2>Document status</h2>
-						<p><span class="status" :class="status.className">{{ status.label }}</span></p>
-						<p v-if="doc.__onload?.valuation_pending">Valuation is pending.</p>
-						<p v-if="valuationChip"><span class="status" :class="valuationChip.className">{{ valuationChip.label }}</span></p>
-						<p v-else-if="valuationStatus">Valuation: {{ valuationStatus }}</p>
-						<p v-if="doc.reopen_status">{{ doc.reopen_status }}</p>
-						<p v-if="doc.close_status">Close status: {{ doc.close_status }}</p>
+						<h2>{{ t('Document status') }}</h2>
+						<p><span class="status" :class="status.className">{{ t(status.label) }}</span></p>
+						<p v-if="doc.__onload?.valuation_pending">{{ t('Valuation is pending.') }}</p>
+						<p v-if="valuationChip"><span class="status" :class="valuationChip.className">{{ t(valuationChip.label) }}</span></p>
+						<p v-else-if="valuationStatus">{{ t('Valuation') }}: {{ t(valuationStatus) }}</p>
+						<p v-if="doc.reopen_status">{{ t(doc.reopen_status) }}</p>
+						<p v-if="doc.close_status">{{ t('Close status') }}: {{ t(doc.close_status) }}</p>
 						<RouterLink v-for="link in connected" :key="`${link.doctype}:${link.name}`" :to="link.to" class="connected-record">
-							<small>{{ link.label }}</small><strong>{{ link.name }} ›</strong>
+							<small>{{ t(link.label) }}</small><strong>{{ link.name }} ›</strong>
 						</RouterLink>
 						<ConnectedRecords :connections="connections" :record="doc" />
 						<ul v-if="editing && !documentSummary" class="order-checklist">
-							<li>Check the party and date</li>
-							<li>Enter item quantities</li>
-							<li>Review missing details before saving</li>
+							<li>{{ t('Check the party and date') }}</li>
+							<li>{{ t('Enter item quantities') }}</li>
+							<li>{{ t('Review missing details before saving') }}</li>
 						</ul>
 					</section>
 				</aside>
@@ -268,10 +269,10 @@ function fieldValue(field) {
 			/>
 		</template>
 		<div v-else class="error-state" role="alert">
-			<h2>{{ error.startsWith('Draft expired') ? 'Draft expired' : 'Unable to open document' }}</h2>
+			<h2>{{ t(error.startsWith('Draft expired') ? 'Draft expired' : 'Unable to open document') }}</h2>
 			<p>{{ error }}</p>
-			<RouterLink class="button secondary" :to="book.listPath || book.routePath">← Back to {{ book.label }}</RouterLink>
-			<button type="button" class="button secondary" @click="initialize">Retry</button>
+			<RouterLink class="button secondary" :to="book.listPath || book.routePath">← {{ t('Back to') }} {{ t(book.label) }}</RouterLink>
+			<button type="button" class="button secondary" @click="initialize">{{ t('Retry') }}</button>
 		</div>
 	</section>
 </template>

@@ -7,6 +7,7 @@ import ActionDialog from "../../documents/shared/ActionDialog.vue"
 import { downloadPrintPdf, getPrintOptions } from "../../api/client.js"
 import { notify } from "../../shared/notify.js"
 import { isTamil } from "../../shell/displayLanguage.js"
+import { t } from "../../shell/terminology.js"
 import { buildPrintPdfArgs, buildPrintUrl, openPrintUrl, preferredPrintFormat } from "./print.js"
 
 const props = defineProps({ doc: { type: Object, required: true }, names: Array, rows: Array, action: Object })
@@ -37,7 +38,7 @@ onScopeDispose(() => { is_disposed = true })
 
 function print() {
 	if (!is_ready.value || is_saving_pdf.value) return
-	if (!openPrintUrl(buildPrintUrl(selection()))) { error.value = "Please allow pop-ups to print."; return }
+	if (!openPrintUrl(buildPrintUrl(selection()))) { error.value = t("Please allow pop-ups to print."); return }
 	emit("close")
 }
 async function savePdf() {
@@ -57,17 +58,17 @@ function close() { if (!is_saving_pdf.value) emit("close") }
 	<ActionDialog visible header="Print document" width="min(440px, 94vw)" @close="close">
 		<div class="form-stack">
 			<Message v-if="error" severity="error" :closable="false" class="form-banner">{{ error }}</Message>
-			<div v-if="is_loading" class="loading-state" role="status">Loading print options…</div>
+			<div v-if="is_loading" class="loading-state" role="status">{{ t('Loading print options…') }}</div>
 			<template v-else-if="formats.length">
-				<label class="form-field"><span class="field-label">Print Format</span>
-					<Select v-model="format" :options="formats" :disabled="is_saving_pdf" aria-label="Print Format" fluid /></label>
-				<label class="form-field"><span class="field-label">Letter Head</span>
-					<Select v-model="letter_head" :options="letter_heads" :disabled="is_saving_pdf" aria-label="Letter Head" show-clear placeholder="No letter head" fluid /></label>
+				<label class="form-field"><span class="field-label">{{ t('Print Format') }}</span>
+					<Select v-model="format" :options="formats" :disabled="is_saving_pdf" :aria-label="t('Print Format')" fluid /></label>
+				<label class="form-field"><span class="field-label">{{ t('Letter Head') }}</span>
+					<Select v-model="letter_head" :options="letter_heads" :disabled="is_saving_pdf" :aria-label="t('Letter Head')" show-clear :placeholder="t('No letter head')" fluid /></label>
 			</template>
 		</div>
 		<template #footer>
-			<Button label="Save as PDF" icon="pi pi-file-pdf" severity="secondary" outlined :loading="is_saving_pdf" :disabled="!is_ready || is_saving_pdf" @click="savePdf" />
-			<Button label="Print" icon="pi pi-print" :disabled="!is_ready || is_saving_pdf" @click="print" />
+			<Button :label="t('Save as PDF')" icon="pi pi-file-pdf" severity="secondary" outlined :loading="is_saving_pdf" :disabled="!is_ready || is_saving_pdf" @click="savePdf" />
+			<Button :label="t('Print')" icon="pi pi-print" :disabled="!is_ready || is_saving_pdf" @click="print" />
 		</template>
 	</ActionDialog>
 </template>

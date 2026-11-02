@@ -8,6 +8,8 @@ import { callMethod, getMeta } from "../../api/client.js"
 import { missingFields } from "../fieldConditions.js"
 import { documentToast, notify } from "../../shared/notify.js"
 import { fullFormUrl, quickCreateDoc, quickCreateForm, quickCreateLabel } from "./quickCreate.js"
+import { isTamil } from "../../shell/displayLanguage.js"
+import { t } from "../../shell/terminology.js"
 
 const props = defineProps({ visible: Boolean, doctype: { type: String, required: true }, text: { type: String, default: "" },
 	filters: { type: [Object, Array], default: () => ({}) }, defaults: { type: Object, default: () => ({}) }, createWith: Function })
@@ -30,8 +32,8 @@ async function prepare() {
 }
 async function save() {
 	if (isSaving.value || !form.value) return
-	const missing = missingFields(form.value.fields, draft.value, form.value.meta, user).map((field) => field.label || field.fieldname)
-	if (missing.length) { error.value = `Missing required fields: ${missing.join(", ")}.`; return }
+	const missing = missingFields(form.value.fields, draft.value, form.value.meta, user).map((field) => t(field.label) || field.fieldname)
+	if (missing.length) { error.value = `${t("Missing required fields")}: ${missing.join(", ")}.`; return }
 	isSaving.value = true
 	error.value = ""
 	try {
@@ -49,21 +51,22 @@ function openFullForm() {
 	globalThis.window.open(fullFormUrl(props.doctype, draft.value), "_blank")
 	emit("close")
 }
+function phrase(english, label) { return isTamil.value ? `${t(english)} ${t(label)}` : `${english} ${label}` }
 function close() { if (!isSaving.value) emit("close") }
 watch(() => props.visible, (open) => { if (open) prepare() }, { immediate: true })
 </script>
 
 <template>
-	<ActionDialog :visible="visible" :header="`New ${quickCreateLabel(doctype)}`" @close="close">
+	<ActionDialog :visible="visible" :header="phrase('New', quickCreateLabel(doctype))" @close="close">
 		<form :id="formId" class="form-stack" @submit.prevent="save">
 			<Message v-if="error" severity="error" :closable="false" class="form-banner">{{ error }}</Message>
 			<FieldControl v-for="field in form?.fields || []" :key="field.fieldname" :field="field" :doc="draft" :meta="form.meta"
 				:metas="form.metas" :user="user" :disabled="isSaving" @change="(name, value) => { draft[name] = value }" />
 		</form>
 		<template #footer>
-			<Button class="quick-create-full" label="Open full form ↗" link :disabled="isSaving || !form" @click="openFullForm" />
-			<Button label="Cancel" severity="secondary" outlined :disabled="isSaving" @click="close" />
-			<Button :label="`Create ${quickCreateLabel(doctype)}`" type="submit" :form="formId" :loading="isSaving" :disabled="isSaving || !form" />
+			<Button class="quick-create-full" :label="`${t('Open full form')} ↗`" link :disabled="isSaving || !form" @click="openFullForm" />
+			<Button :label="t('Cancel')" severity="secondary" outlined :disabled="isSaving" @click="close" />
+			<Button :label="phrase('Create', quickCreateLabel(doctype))" type="submit" :form="formId" :loading="isSaving" :disabled="isSaving || !form" />
 		</template>
 	</ActionDialog>
 </template>

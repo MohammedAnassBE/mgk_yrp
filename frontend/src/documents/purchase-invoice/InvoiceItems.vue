@@ -8,6 +8,7 @@ import { createGrnFlow } from "./grnFlow.js"
 import { canGetGrns, groupGrnRows } from "./fieldEvents.js"
 import InvoiceRows from "./InvoiceRows.vue"
 import { money } from "../previewValues.js"
+import { t } from "../../shell/terminology.js"
 
 const props = defineProps({ doc: Object, disabled: Boolean, metas: Array, meta: Object })
 const emit = defineEmits(["change", "update", "loading", "messages"])
@@ -51,19 +52,19 @@ watch(() => [props.doc, props.doc.supplier, props.doc.against], () => { visible.
 	<section class="child-editor" :class="{ 'po-saved-items': Number(doc.docstatus) !== 0 }">
 		<header class="child-editor-head">
 			<span class="book-step">2</span>
-			<div><h2>Billed GRN rows</h2><small>Review the received goods included in this bill.</small></div>
-			<Button v-if="canGetGrns(doc) && !disabled" label="Get GRNs" size="small" severity="secondary" outlined :loading="busy" @click="open" />
+			<div><h2>{{ t('Billed GRN rows') }}</h2><small>{{ t('Review the received goods included in this bill.') }}</small></div>
+			<Button v-if="canGetGrns(doc) && !disabled" :label="t('Get GRNs')" size="small" severity="secondary" outlined :loading="busy" @click="open" />
 			<span v-else class="count-chip">{{ doc.items?.length || 0 }} rows</span>
 		</header>
 		<div class="table-field-body">
-			<p v-if="busy" role="status">Loading GRN details…</p>
-			<p v-if="error" role="alert" class="editor-error">{{ error }} <Button label="Retry Get GRNs" severity="secondary" size="small" @click="open" /></p>
+			<p v-if="busy" role="status">{{ t('Loading GRN details…') }}</p>
+			<p v-if="error" role="alert" class="editor-error">{{ error }} <Button :label="t('Retry Get GRNs')" severity="secondary" size="small" @click="open" /></p>
 			<InvoiceRows :groups="groups" :dates="dates" :doc="doc" :meta="meta" :metas="metas" :disabled="disabled || busy" @change="(name, rows) => emit('change', name, rows)" />
 		</div>
-		<Dialog v-model:visible="visible" modal header="Get GRNs" :style="{ width: 'min(640px, 94vw)' }" :closable="!busy">
-			<p>Unbilled GRNs</p>
+		<Dialog v-model:visible="visible" modal :header="t('Get GRNs')" :style="{ width: 'min(640px, 94vw)' }" :closable="!busy">
+			<p>{{ t('Unbilled GRNs') }}</p>
 			<table class="grn-choices">
-				<thead><tr><th></th><th>GRN ID</th><th>Date</th><th class="numeric">Total Qty</th><th class="numeric">Total Amount</th></tr></thead>
+				<thead><tr><th></th><th>{{ t('GRN ID') }}</th><th>{{ t('Date') }}</th><th class="numeric">{{ t('Total Qty') }}</th><th class="numeric">{{ t('Total Amount') }}</th></tr></thead>
 				<tbody>
 					<tr v-for="receipt in receipts" :key="receipt.name">
 						<td><input :id="`grn-${receipt.name}`" v-model="selected" type="checkbox" :value="receipt.name" :disabled="busy"></td>
@@ -74,9 +75,9 @@ watch(() => [props.doc, props.doc.supplier, props.doc.against], () => { visible.
 					</tr>
 				</tbody>
 			</table>
-			<p v-if="busy" role="status">Fetching GRN rows and taxes…</p>
+			<p v-if="busy" role="status">{{ t('Fetching GRN rows and taxes…') }}</p>
 			<p v-if="error" class="editor-error" role="alert">{{ error }}</p>
-			<template #footer><Button label="Fetch" :disabled="busy || !selected.length" :loading="busy" @click="fetchRows" /></template>
+			<template #footer><Button :label="t('Fetch')" :disabled="busy || !selected.length" :loading="busy" @click="fetchRows" /></template>
 		</Dialog>
 	</section>
 </template>

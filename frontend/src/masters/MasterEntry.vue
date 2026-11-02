@@ -1,4 +1,5 @@
 <script setup>
+import { t } from "../shell/terminology.js"
 import { displayName } from "../shell/displayLanguage.js"
 import { computed, ref } from "vue"
 import { useRoute } from "vue-router"
@@ -30,64 +31,64 @@ const { root, doc, metas, meta, sections, loading, busy, dirty, stale, error, me
 const back = computed(() => safeReturnPath(route.query.returnTo) || props.master.route)
 const heading = computed(() => {
 	const value = masterHeading(props.master, doc.value, meta.value, isNew.value)
-	return isNew.value ? value : { ...value, title: displayName(props.master.doctype, doc.value?.name, value.title) }
+	return { ...value, kicker: t(value.kicker), title: isNew.value ? t(value.title) : displayName(props.master.doctype, doc.value?.name, value.title) }
 })
 const toggleEditable = computed(() => toggle.value && editing.value && !fieldState(toggle.value, doc.value, meta.value).readOnly)
 function confirm() {
 	const action = pending.value
 	pending.value = null
 	if (action === "delete") remove()
-	else reload().then(() => notify.success("Changes discarded"))
+	else reload().then(() => notify.success(t("Changes discarded")))
 }
 </script>
 
 <template>
 	<NoAccess v-if="!canRead" />
 	<section v-else ref="root" class="page po-document-page book-entry master-book-entry">
-		<Breadcrumbs :items="[{ label: 'Manage', to: '/manage' }, { label: master.label, to: master.route }, { label: route.params.name || doc?.name || 'New entry' }]" />
-		<div v-if="loading" class="loading-state" role="status"><i class="pi pi-spin pi-spinner" />Loading {{ master.label }}…</div>
+		<Breadcrumbs :items="[{ label: t('Manage'), to: '/manage' }, { label: t(master.label), to: master.route }, { label: route.params.name || doc?.name || t('New entry') }]" />
+		<div v-if="loading" class="loading-state" role="status"><i class="pi pi-spin pi-spinner" />{{ t('Loading…') }} {{ t(master.label) }}</div>
 		<div v-else-if="variantTemplate" class="form-banner">
-			Variants are managed from their template <RouterLink class="record-id" :to="`${master.route}/${encodeURIComponent(variantTemplate)}`">{{ displayName('Item', variantTemplate) }}</RouterLink>
+			{{ t('Variants are managed from their template') }} <RouterLink class="record-id" :to="`${master.route}/${encodeURIComponent(variantTemplate)}`">{{ displayName('Item', variantTemplate) }}</RouterLink>
 		</div>
 		<template v-else-if="doc && meta">
 			<header class="detail-head">
-				<div class="book-entry-title"><RouterLink class="head-back" :to="back" aria-label="Back" title="Back"><i class="pi pi-arrow-left" aria-hidden="true" /></RouterLink><span class="book-entry-mark cover-masters"><small>MGK</small><strong>{{ master.code }}</strong></span><div class="book-entry-heading"><div class="book-entry-kicker">{{ heading.kicker }}</div><h1 class="doc-hero">{{ heading.title }}</h1></div></div>
+				<div class="book-entry-title"><RouterLink class="head-back" :to="back" :aria-label="t('Back')" :title="t('Back')"><i class="pi pi-arrow-left" aria-hidden="true" /></RouterLink><span class="book-entry-mark cover-masters"><small>MGK</small><strong>{{ master.code }}</strong></span><div class="book-entry-heading"><div class="book-entry-kicker">{{ heading.kicker }}</div><h1 class="doc-hero">{{ heading.title }}</h1></div></div>
 				<div class="head-actions">
-					<Button v-if="dirty && !isNew && editing" label="Discard changes" severity="secondary" outlined size="small" :disabled="busy" @click="pending = 'discard'" />
-					<Button v-if="canDelete" label="Delete" severity="secondary" outlined size="small" :disabled="busy" @click="pending = 'delete'" />
-					<Button v-if="editing && dirty" label="Save" class="forward-cta" size="small" :loading="busy" :disabled="accessBusy || Boolean(accessError)" @click="save" />
+					<Button v-if="dirty && !isNew && editing" :label="t('Discard changes')" severity="secondary" outlined size="small" :disabled="busy" @click="pending = 'discard'" />
+					<Button v-if="canDelete" :label="t('Delete')" severity="secondary" outlined size="small" :disabled="busy" @click="pending = 'delete'" />
+					<Button v-if="editing && dirty" :label="t('Save')" class="forward-cta" size="small" :loading="busy" :disabled="accessBusy || Boolean(accessError)" @click="save" />
 				</div>
 			</header>
-			<Message v-if="stale" severity="warn" :closable="false" class="form-banner">This master changed elsewhere. <Button label="Reload" size="small" severity="secondary" :disabled="busy" @click="pending = 'reload'" /></Message>
+			<Message v-if="stale" severity="warn" :closable="false" class="form-banner">{{ t('This master changed elsewhere.') }} <Button :label="t('Reload')" size="small" severity="secondary" :disabled="busy" @click="pending = 'reload'" /></Message>
 			<Message v-if="error" severity="error" :closable="false" class="form-banner"><p class="server-error">{{ error }}</p></Message>
 			<Message v-for="message in messages" :key="message" severity="warn" :closable="false" class="form-banner">{{ message }}</Message>
 			<div class="form-layout">
 				<div class="form-stack">
 					<section v-for="(section, index) in sections" :key="section.key" class="form-section">
-						<header class="mgk-card__head"><span class="book-step">{{ index + 1 }}</span><h2>{{ section.label }}</h2></header>
+						<header class="mgk-card__head"><span class="book-step">{{ index + 1 }}</span><h2>{{ t(section.label) }}</h2></header>
 						<div class="form-grid"><FieldControl v-for="field in section.fields" :key="field.fieldname" :field="field" :doc="doc" :meta="meta" :metas="metas" :disabled="busy || !editing" @change="change" /></div>
 					</section>
 					<section v-if="master.doctype === 'User'" class="form-section">
-						<header class="mgk-card__head"><span class="book-step">{{ sections.length + 1 }}</span><h2>Roles and access</h2></header>
+						<header class="mgk-card__head"><span class="book-step">{{ sections.length + 1 }}</span><h2>{{ t('Roles and access') }}</h2></header>
 						<UserAccess :doc="doc" :disabled="busy || !editing" @change="change" @loading="accessBusy = $event" @error="accessError = $event" />
 					</section>
 					<PartyAddresses v-if="master.party && !isNew" :doc="doc" :modified="doc.modified" :step="sections.length + 1" :blocked="dirty" />
 					<SupplierWarehouses v-if="master.doctype === 'Supplier' && !isNew && hasPermission('Warehouse')" :doc="doc" :modified="doc.modified" :step="sections.length + 2" :blocked="dirty" />
 				</div>
 				<aside class="book-entry-aside"><section class="order-summary-card">
-					<div class="book-entry-kicker">{{ master.label }}</div><h2>{{ isNew ? 'New entry' : doc.name }}</h2>
-					<p>{{ dirty ? 'You have unsaved changes.' : 'All changes saved.' }}</p>
-					<p v-if="!editing">{{ master.adminEditOnly ? 'Only a System Manager can edit users and roles.' : 'You have read access to this master.' }}</p>
-					<div v-if="toggle" class="master-status"><span class="status" :class="isDisabled ? 'status-disabled' : 'status-active'">{{ isDisabled ? 'Disabled' : 'Active' }}</span><Button v-if="toggleEditable" :label="isDisabled ? 'Enable' : 'Disable'" severity="secondary" outlined size="small" :disabled="busy" @click="change(toggle.fieldname, doc[toggle.fieldname] ? 0 : 1)" /></div>
-					<ul class="order-checklist"><li>Complete the required fields</li><li>Review linked records</li><li>Save your changes</li></ul>
+					<div class="book-entry-kicker">{{ t(master.label) }}</div><h2>{{ isNew ? t('New entry') : doc.name }}</h2>
+					<p>{{ t(dirty ? 'You have unsaved changes.' : 'All changes saved.') }}</p>
+					<p v-if="!editing">{{ t(master.adminEditOnly ? 'Only a System Manager can edit users and roles.' : 'You have read access to this master.') }}</p>
+					<div v-if="toggle" class="master-status"><span class="status" :class="isDisabled ? 'status-disabled' : 'status-active'">{{ t(isDisabled ? 'Disabled' : 'Active') }}</span><Button v-if="toggleEditable" :label="t(isDisabled ? 'Enable' : 'Disable')" severity="secondary" outlined size="small" :disabled="busy" @click="change(toggle.fieldname, doc[toggle.fieldname] ? 0 : 1)" /></div>
+					<ul class="order-checklist"><li>{{ t('Complete the required fields') }}</li><li>{{ t('Review linked records') }}</li><li>{{ t('Save your changes') }}</li></ul>
 				</section></aside>
 			</div>
 			<ActivityPanel v-if="!isNew" :doctype="master.doctype" :name="doc.name" :record="doc" />
 		</template>
-		<div v-else class="error-state" role="alert"><h2>Unable to open master</h2><p>{{ error }}</p><button class="button secondary" @click="initialize">Retry</button></div>
-		<Dialog :visible="Boolean(pending)" modal :header="pending === 'delete' ? 'Delete master' : 'Discard changes'" :style="{ width: 'min(440px, 94vw)' }" @update:visible="pending = null">
-			<p>{{ pending === 'delete' ? `Delete ${doc?.name}?` : 'Discard your changes and reload the saved master?' }}</p>
-			<template #footer><Button label="Keep working" severity="secondary" outlined @click="pending = null" /><Button label="Confirm" :severity="pending === 'delete' ? 'danger' : undefined" @click="confirm" /></template>
+		<div v-else class="error-state" role="alert"><h2>{{ t('Unable to open master') }}</h2><p>{{ error }}</p><button class="button secondary" @click="initialize">{{ t('Retry') }}</button></div>
+		<Dialog :visible="Boolean(pending)" modal :header="t(pending === 'delete' ? 'Delete master' : 'Discard changes')" :style="{ width: 'min(440px, 94vw)' }" @update:visible="pending = null">
+			<p>{{ pending === 'delete' ? `${t('Delete')} ${doc?.name}?` : t('Discard your changes and reload the saved master?') }}</p>
+			<template #footer><Button :label="t('Keep working')" severity="secondary" outlined @click="pending = null" /><Button :label="t('Confirm')" :severity="pending === 'delete' ? 'danger' : undefined" @click="confirm" /></template>
 		</Dialog>
 	</section>
 </template>

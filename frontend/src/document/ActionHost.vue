@@ -2,12 +2,13 @@
 import Button from "primevue/button"
 import Message from "primevue/message"
 import ActionDialog from "../documents/shared/ActionDialog.vue"
+import { t } from "../shell/terminology.js"
 defineProps({ runner: { type: Object, required: true } })
 </script>
 
 <template>
 	<Message v-if="runner.error.value" severity="error" :closable="false" class="form-banner">
-		<strong>Unable to complete this action</strong>
+		<strong>{{ t('Unable to complete this action') }}</strong>
 		<p class="server-error">{{ runner.error.value }}</p>
 	</Message>
 	<Message v-if="runner.result.value?.message" severity="success" :closable="true" class="form-banner action-result" @close="runner.result.value = null">
@@ -21,10 +22,10 @@ defineProps({ runner: { type: Object, required: true } })
 		:names="runner.dialog.value.target.names" :rows="runner.dialog.value.target.rows" :action="runner.dialog.value.action"
 		@done="runner.dialogDone" @close="runner.dialogClosed" />
 	<ActionDialog :visible="Boolean(runner.confirmation.value)" header="Please confirm" @close="runner.answer(false)">
-		<p>{{ runner.confirmation.value?.text }}</p>
+		<p>{{ t(runner.confirmation.value?.text) }}</p>
 		<template #footer>
-			<Button label="Keep working" severity="secondary" outlined @click="runner.answer(false)" />
-			<Button label="Confirm" autofocus @click="runner.answer(true)" />
+			<Button :label="t('Keep working')" severity="secondary" outlined @click="runner.answer(false)" />
+			<Button :label="t('Confirm')" autofocus @click="runner.answer(true)" />
 		</template>
 	</ActionDialog>
 </template>

@@ -12,6 +12,7 @@ import MultiLinkField from "./MultiLinkField.vue"
 import { fieldState } from "../fieldConditions.js"
 import { fieldQuery } from "../fieldQueries.js"
 import { dynamicTarget } from "../../masters/masterFields.js"
+import { t } from "../../shell/terminology.js"
 
 const props = defineProps({ field: Object, doc: Object, parentDoc: Object, meta: Object, metas: Array, candidates: { type: Array, default: null }, createDefaults: Object, disabled: Boolean, user: Object })
 const emit = defineEmits(["change"])
@@ -44,7 +45,7 @@ function dateChanged(value) {
 		:class="{ wide: [...longText, 'Table', 'Table MultiSelect'].includes(field.fieldtype) }"
 	>
 		<label class="field-label" :for="id">
-			{{ field.label || field.fieldname }}
+			{{ t(field.label) || field.fieldname }}
 			<span v-if="state.required" class="required">*</span>
 		</label>
 		<LinkField
@@ -52,7 +53,7 @@ function dateChanged(value) {
 			:input-id="id"
 			:model-value="value"
 			:doctype="target"
-			:label="field.label"
+			:label="t(field.label)"
 			:disabled="readOnly"
 			:candidates="candidates"
 			:create-defaults="createDefaults"
@@ -77,7 +78,7 @@ function dateChanged(value) {
 				:disabled="readOnly"
 				@update:model-value="change($event ? 1 : 0)"
 			/>
-			<span>{{ Number(value) ? field.boolLabels?.on || field.label : field.boolLabels?.off || `Not ${field.label?.toLowerCase()}` }}</span>
+			<span>{{ Number(value) ? t(field.boolLabels?.on || field.label) : field.boolLabels?.off ? t(field.boolLabels.off) : `${t('Not')} ${t(field.label)?.toLowerCase()}` }}</span>
 		</div>
 		<Select
 			v-else-if="field.fieldtype === 'Select'"
@@ -92,7 +93,7 @@ function dateChanged(value) {
 			v-else-if="['Date', 'Time', 'Datetime'].includes(field.fieldtype)"
 			:input-id="id"
 			:model-value="dateValue"
-			:aria-label="field.label || field.fieldname"
+			:aria-label="t(field.label) || field.fieldname"
 			:disabled="readOnly"
 			:time-only="field.fieldtype === 'Time'"
 			:show-time="field.fieldtype === 'Datetime'"

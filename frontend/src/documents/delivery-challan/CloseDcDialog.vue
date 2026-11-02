@@ -12,6 +12,7 @@ import { displayName } from "../../shell/displayLanguage.js"
 import { formatDate } from "../../shared/formatDate.js"
 import { isSaveShortcut } from "../../document/lifecycle.js"
 import { notify } from "../../shared/notify.js"
+import { t } from "../../shell/terminology.js"
 
 const props = defineProps({ doc: { type: Object, required: true }, names: Array, rows: Array, action: Object })
 const emit = defineEmits(["done", "close"])
@@ -57,27 +58,27 @@ onScopeDispose(() => { is_disposed = true; globalThis.window?.removeEventListene
 </script>
 
 <template>
-	<ActionDialog visible :header="`Close ${doc.name}`" width="min(960px, 94vw)" @show="load" @close="close">
+	<ActionDialog visible :header="`${t('Close')} ${doc.name}`" width="min(960px, 94vw)" @show="load" @close="close">
 		<form id="close-dc-form" class="form-stack" @submit.prevent="save">
 			<Message v-if="error" severity="error" :closable="false" class="form-banner">{{ error }}</Message>
-			<div v-if="is_loading" class="loading-state" role="status">Loading close preview…</div>
-			<button v-else-if="!close_preview && error" type="button" class="button secondary small" @click="load">Retry</button>
+			<div v-if="is_loading" class="loading-state" role="status">{{ t('Loading close preview…') }}</div>
+			<button v-else-if="!close_preview && error" type="button" class="button secondary small" @click="load">{{ t('Retry') }}</button>
 			<template v-if="close_preview">
-				<Message :severity="notice.severity" :closable="false" class="form-banner">{{ notice.text }}</Message>
+				<Message :severity="notice.severity" :closable="false" class="form-banner">{{ t(notice.text) }}</Message>
 				<dl class="close-facts">
-					<div><dt>Posting Date</dt><dd>{{ formatDate(close_preview.posting_date) }}</dd></div>
-					<div><dt>Supplier</dt><dd>{{ displayName('Supplier', close_preview.supplier) || '—' }}</dd></div>
-					<div><dt>Warehouse</dt><dd>{{ displayName('Warehouse', close_preview.warehouse) || '—' }}</dd></div>
-					<div v-for="line in lines" :key="line.label"><dt>{{ line.label }}</dt>
+					<div><dt>{{ t('Posting Date') }}</dt><dd>{{ formatDate(close_preview.posting_date) }}</dd></div>
+					<div><dt>{{ t('Supplier') }}</dt><dd>{{ displayName('Supplier', close_preview.supplier) || '—' }}</dd></div>
+					<div><dt>{{ t('Warehouse') }}</dt><dd>{{ displayName('Warehouse', close_preview.warehouse) || '—' }}</dd></div>
+					<div v-for="line in lines" :key="line.label"><dt>{{ t(line.label) }}</dt>
 						<dd>{{ line.money ? money(line.value) : (line.value ?? '—') }}</dd></div>
 				</dl>
 				<div v-for="table in [{ title: 'Inputs consumed', columns: inputColumns, rows: close_preview.items || [] },
 					{ title: 'Linked GRN outputs', columns: outputColumns, rows: close_preview.outputs || [] }]" :key="table.title">
-					<h3 class="close-table-title">{{ table.title }}</h3>
-					<p v-if="!table.rows.length" class="muted">None</p>
+					<h3 class="close-table-title">{{ t(table.title) }}</h3>
+					<p v-if="!table.rows.length" class="muted">{{ t('None') }}</p>
 					<div v-else class="list-card table-scroll" tabindex="0" :aria-label="table.title">
 						<table>
-							<thead><tr><th v-for="column in table.columns" :key="column.key" :class="{ numeric: column.numeric || column.money }">{{ column.label }}</th></tr></thead>
+							<thead><tr><th v-for="column in table.columns" :key="column.key" :class="{ numeric: column.numeric || column.money }">{{ t(column.label) }}</th></tr></thead>
 							<tbody><tr v-for="(row, index) in table.rows" :key="row.name || index">
 								<td v-for="column in table.columns" :key="column.key" :class="{ numeric: column.numeric || column.money }">{{ cell(row, column) }}</td>
 							</tr></tbody>
@@ -87,8 +88,8 @@ onScopeDispose(() => { is_disposed = true; globalThis.window?.removeEventListene
 			</template>
 		</form>
 		<template #footer>
-			<Button label="Cancel" severity="secondary" outlined :disabled="is_saving" @click="close" />
-			<Button label="Close DC" type="submit" form="close-dc-form" :loading="is_saving" :disabled="is_saving || !close_preview" />
+			<Button :label="t('Cancel')" severity="secondary" outlined :disabled="is_saving" @click="close" />
+			<Button :label="t('Close DC')" type="submit" form="close-dc-form" :loading="is_saving" :disabled="is_saving || !close_preview" />
 		</template>
 	</ActionDialog>
 </template>

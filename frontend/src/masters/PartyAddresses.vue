@@ -1,4 +1,5 @@
 <script setup>
+import { t } from "../shell/terminology.js"
 import { onBeforeUnmount, onMounted, ref, watch } from "vue"
 import { useRouter } from "vue-router"
 import { callRead } from "../api/client.js"
@@ -12,8 +13,8 @@ import { getMaster, masters } from "./mastersConfig.js"
 const props = defineProps({ doc: Object, modified: String, step: Number, blocked: Boolean })
 const router = useRouter()
 const groups = [
-	{ doctype: "Address", label: "Addresses", singular: "address", master: "addresses", fields: ["name", "address_title", "address_type", "address_line1", "address_line2", "city", "state", "pincode", "country"] },
-	{ doctype: "Contact", label: "Contacts", singular: "contact", master: "contacts", fields: ["name", "full_name", "email_id", "mobile_no", "phone"] },
+	{ doctype: "Address", label: "Addresses", createLabel: "Create address", emptyLabel: "No linked addresses yet.", master: "addresses", fields: ["name", "address_title", "address_type", "address_line1", "address_line2", "city", "state", "pincode", "country"] },
+	{ doctype: "Contact", label: "Contacts", createLabel: "Create contact", emptyLabel: "No linked contacts yet.", master: "contacts", fields: ["name", "full_name", "email_id", "mobile_no", "phone"] },
 ].filter((group) => hasPermission(group.doctype))
 const rows = ref({})
 const loading = ref(true)
@@ -41,7 +42,7 @@ async function load() {
 	finally { if (current === sequence) loading.value = false }
 }
 async function open(group, name) {
-	if (props.blocked) { error.value = "Save the party before opening an address or contact."; return }
+	if (props.blocked) { error.value = t("Save the party before opening an address or contact."); return }
 	try {
 		const path = `${getMaster(group.master).route}/${name ? encodeURIComponent(name) : "new"}`
 		const query = { returnTo: partyPath() }
@@ -61,15 +62,15 @@ onBeforeUnmount(() => { sequence++; refresh.cancel(); disposers.forEach((dispose
 
 <template>
 	<section class="form-section">
-		<header class="mgk-card__head"><span class="book-step">{{ step }}</span><h2>Addresses and contacts</h2></header>
+		<header class="mgk-card__head"><span class="book-step">{{ step }}</span><h2>{{ t('Addresses and contacts') }}</h2></header>
 		<div class="master-party-body">
-			<div v-if="loading" class="loading-state" role="status"><i class="pi pi-spin pi-spinner" />Loading linked records…</div>
-			<div v-else-if="error" class="error-state" role="alert"><p>{{ error }}</p><button class="button secondary" @click="load">Retry</button></div>
+			<div v-if="loading" class="loading-state" role="status"><i class="pi pi-spin pi-spinner" />{{ t('Loading linked records…') }}</div>
+			<div v-else-if="error" class="error-state" role="alert"><p>{{ error }}</p><button class="button secondary" @click="load">{{ t('Retry') }}</button></div>
 			<template v-else>
-				<p v-if="!groups.length" class="empty-state">You do not have access to addresses or contacts.</p>
+				<p v-if="!groups.length" class="empty-state">{{ t('You do not have access to addresses or contacts.') }}</p>
 				<section v-for="group in groups" :key="group.doctype">
-					<div class="manage-foot"><h3>{{ group.label }}</h3><button v-if="hasPermission(group.doctype, 'create')" class="button secondary small" :disabled="blocked" @click="open(group)">Create {{ group.singular }}</button></div>
-					<p v-if="!rows[group.doctype]?.length" class="field-help">No linked {{ group.label.toLowerCase() }} yet.</p>
+					<div class="manage-foot"><h3>{{ t(group.label) }}</h3><button v-if="hasPermission(group.doctype, 'create')" class="button secondary small" :disabled="blocked" @click="open(group)">{{ t(group.createLabel) }}</button></div>
+					<p v-if="!rows[group.doctype]?.length" class="field-help">{{ t(group.emptyLabel) }}</p>
 					<div v-for="row in rows[group.doctype]" :key="row.name" class="master-party-row"><a :href="`/web/manage/${group.master}/${encodeURIComponent(row.name)}`" @click.prevent="open(group, row.name)">{{ row.address_title || row.full_name || row.name }} ›</a><p>{{ detail(group, row) }}</p></div>
 				</section>
 			</template>

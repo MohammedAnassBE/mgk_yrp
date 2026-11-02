@@ -3,6 +3,7 @@ import { computed, ref, nextTick, onBeforeUnmount } from "vue"
 import FieldControl from "./fields/FieldControl.vue"
 import { fieldState, isEmpty, missingFields, visibleFields } from "./fieldConditions.js"
 import { companionText, formatFieldValue } from "./fieldDisplay.js"
+import { t } from "../shell/terminology.js"
 const props = defineProps({ fields: Array, doc: Object, meta: Object, metas: Array, candidates: Object, createDefaults: Object, autoFields: Array, hints: Object, disabled: Boolean, user: Object })
 const emit = defineEmits(["change"])
 const editing = ref(null)
@@ -45,16 +46,16 @@ function keydown(event) {
 onBeforeUnmount(() => globalThis.document?.removeEventListener?.("pointerdown", pointerdown, true))
 function display(field) {
 	const value = props.doc[field.fieldname]
-	if (field.fieldtype === "Check") return Number(value) ? "Yes" : "No"
-	if (Array.isArray(value)) return value.length ? `${value.length} selected` : "—"
+	if (field.fieldtype === "Check") return t(Number(value) ? "Yes" : "No")
+	if (Array.isArray(value)) return value.length ? `${value.length} ${t("selected")}` : "—"
 	return formatFieldValue(field, value)
 }
 </script>
 <template>
 	<section ref="root" class="order-summary-card details-panel">
 		<header class="details-panel-head">
-			<h2>Details</h2>
-			<span v-if="missing.length" class="missing-badge">{{ missing.length }} missing</span>
+			<h2>{{ t('Details') }}</h2>
+			<span v-if="missing.length" class="missing-badge">{{ missing.length }} {{ t('missing') }}</span>
 		</header>
 		<div
 			v-for="field in visible"
@@ -85,10 +86,10 @@ function display(field) {
 				@click="begin(field)"
 			>
 				<span class="detail-row-label">
-					{{ field.label }}
-					<small v-if="autoFields?.includes(field.fieldname)" class="auto-tag">auto</small>
+					{{ t(field.label) }}
+					<small v-if="autoFields?.includes(field.fieldname)" class="auto-tag">{{ t('auto') }}</small>
 				</span>
-				<strong v-if="missing.includes(field) && isEmpty(doc[field.fieldname], field)">Missing — choose {{ field.label }}</strong>
+				<strong v-if="missing.includes(field) && isEmpty(doc[field.fieldname], field)">{{ t('Missing — choose') }} {{ t(field.label) }}</strong>
 				<strong v-else>{{ display(field) }}</strong>
 			</button>
 			<small v-if="companionText(field, doc)" class="detail-companion">{{ companionText(field, doc) }}</small>

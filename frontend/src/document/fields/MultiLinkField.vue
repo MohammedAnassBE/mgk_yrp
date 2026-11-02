@@ -2,6 +2,7 @@
 import { computed, ref } from "vue"
 import LinkField from "./LinkField.vue"
 import { fieldQuery } from "../fieldQueries.js"
+import { t } from "../../shell/terminology.js"
 const props = defineProps({ field: Object, modelValue: Array, metas: Array, doc: Object, disabled: Boolean })
 const emit = defineEmits(["update:modelValue"])
 const selected = ref("")
@@ -21,7 +22,7 @@ function add(value) {
 				v-if="!disabled"
 				type="button"
 				class="button secondary small"
-				:aria-label="`Remove ${row[link.fieldname]}`"
+				:aria-label="`${t('Remove')} ${row[link.fieldname]}`"
 				@click="$emit('update:modelValue', modelValue.filter((_, position) => index !== position))"
 			>
 				×
@@ -31,10 +32,10 @@ function add(value) {
 			v-if="!disabled"
 			v-model="selected"
 			:doctype="link.options"
-			:label="field.label"
+			:label="t(field.label)"
 			v-bind="fieldQuery(field, doc)"
 			@select="add"
 		/>
 	</div>
-	<p v-else class="error-state">Link table metadata is unavailable.</p>
+	<p v-else class="error-state">{{ t('Link table metadata is unavailable.') }}</p>
 </template>

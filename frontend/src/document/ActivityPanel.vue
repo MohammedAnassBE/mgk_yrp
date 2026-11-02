@@ -3,25 +3,25 @@
 		<header class="document-activity__header">
 			<button type="button" class="document-activity__toggle" :aria-expanded="expanded" :aria-controls="bodyId" @click="toggle">
 				<i :class="expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-right'" aria-hidden="true" />
-				<h2 :id="headingId">Activity</h2>
+				<h2 :id="headingId">{{ t('Activity') }}</h2>
 				<span v-if="countLabel" class="document-activity__count">{{ countLabel }}</span>
 			</button>
 			<span v-if="!expanded && activity?.modified?.at" class="document-activity__summary">
-				Last modified {{ formatDisplayDatetime(activity.modified.at) }}
+				{{ t('Last modified') }} {{ formatDisplayDatetime(activity.modified.at) }}
 			</span>
 		</header>
 		<div v-if="expanded" :id="bodyId" class="document-activity__body">
 			<p v-if="error" class="document-activity__error" role="alert">
 				{{ error }}
-				<Button label="Retry" severity="secondary" text size="small" @click="load" />
+				<Button :label="t('Retry')" severity="secondary" text size="small" @click="load" />
 			</p>
-			<p v-else-if="loading && !activity" class="document-activity__muted" role="status">Loading activity…</p>
+			<p v-else-if="loading && !activity" class="document-activity__muted" role="status">{{ t('Loading activity…') }}</p>
 			<template v-else-if="activity">
 				<p class="document-activity__stamp document-activity__stamp--modified">
-					<strong>{{ activity.modified.user_name }}</strong> modified this
+					<strong>{{ activity.modified.user_name }}</strong> {{ t('modified this') }}
 					<span class="document-activity__time">· {{ formatDisplayDatetime(activity.modified.at) }}</span>
 				</p>
-				<ol v-if="entries.length" class="document-activity__versions" aria-label="Version history">
+				<ol v-if="entries.length" class="document-activity__versions" :aria-label="t('Version history')">
 					<li v-for="entry in entries" :key="entry.name" class="document-activity__version">
 						<div class="document-activity__version-head">
 							<strong>{{ entry.user_name || entry.user }}</strong>
@@ -29,16 +29,16 @@
 						</div>
 						<ul class="document-activity__lines">
 							<li v-for="(line, index) in describeActivityEntry(entry)" :key="index">
-								<template v-for="(segment, segmentIndex) in line" :key="segmentIndex"><strong v-if="segment.strong">{{ segment.text }}</strong><template v-else>{{ segment.text }}</template></template>
+								<template v-for="(segment, segmentIndex) in line" :key="segmentIndex"><strong v-if="segment.strong">{{ t(segment.text) }}</strong><template v-else>{{ segment.text }}</template></template>
 							</li>
 						</ul>
 					</li>
 				</ol>
-				<p v-else-if="!hasMore" class="document-activity__muted">No changes recorded since creation.</p>
+				<p v-else-if="!hasMore" class="document-activity__muted">{{ t('No changes recorded since creation.') }}</p>
 				<Button
 					v-if="hasMore"
 					class="document-activity__more"
-					label="Show more"
+					:label="t('Show more')"
 					icon="pi pi-angle-down"
 					severity="secondary"
 					text
@@ -48,7 +48,7 @@
 				/>
 				<p class="document-activity__stamp document-activity__stamp--created">
 					<strong>{{ activity.created.user_name }}</strong>
-					{{ activity.created.amended_from ? "amended this from" : "created this" }}
+					{{ t(activity.created.amended_from ? "amended this from" : "created this") }}
 					<strong v-if="activity.created.amended_from">{{ activity.created.amended_from }}</strong>
 					<span class="document-activity__time">· {{ formatDisplayDatetime(activity.created.at) }}</span>
 				</p>
@@ -62,6 +62,7 @@ import Button from "primevue/button"
 import { computed, ref, watch } from "vue"
 
 import { callRead } from "../api/client.js"
+import { t } from "../shell/terminology.js"
 import { formatDisplayDatetime } from "./activityFormat.js"
 import { activityRefreshKey, describeActivityEntry, isSavedDocumentName } from "./activityFormat.js"
 

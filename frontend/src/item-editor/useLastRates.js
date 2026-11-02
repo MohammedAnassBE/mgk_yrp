@@ -3,13 +3,14 @@ import { computed, onScopeDispose, ref, watch } from "vue"
 import { callMethod } from "../api/client.js"
 import { trailingTask } from "../list/listQuery.js"
 import { formatFieldValue } from "../document/fieldDisplay.js"
+import { t } from "../shell/terminology.js"
 
 export const lastRateMethod = "mgk_yrp.purchase.last_rate.get_last_purchase_rates"
 
 export function lastRateText(history) {
 	if (!history) return ""
 	const date = history.po_date ? ` · ${formatDate(history.po_date)}` : ""
-	return `Last: ₹${formatFieldValue({ fieldtype: "Currency" }, history.rate)} · ${history.purchase_order}${date}`
+	return `${t("Last")}: ₹${formatFieldValue({ fieldtype: "Currency" }, history.rate)} · ${history.purchase_order}${date}`
 }
 
 export function lastRateSignature(groups) {
