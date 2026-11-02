@@ -1,0 +1,39 @@
+{%- set label = get_print_labels(tamil) -%}
+{% include "mgk_yrp/templates/print_formats/styles.html" %}
+{% include "mgk_yrp/templates/print_formats/header.html" %}
+<div class="mgk-print">
+	{% include "mgk_yrp/templates/print_formats/status_watermark.html" %}
+	<table>
+		<tr>
+			<td style="width: 34%;">
+				<span class="muted">{{ label["From"] }}:</span><br>
+				<strong>{{ get_print_name("Supplier", doc.from_location, tamil) }}</strong>
+				{% if doc.from_warehouse %}<br><span class="muted">{{ label["Warehouse"] }}:</span> {{ get_print_name("Warehouse", doc.from_warehouse, tamil) }}{% endif %}<br>
+				{{ get_print_address(doc.from_location) | safe if doc.from_location else "" }}
+			</td>
+			<td style="width: 34%;">
+				<span class="muted">{{ label["To"] }}:</span><br>
+				<strong>{{ get_print_name("Supplier", doc.to_location, tamil) }}</strong>
+				{% if doc.to_warehouse %}<br><span class="muted">{{ label["Warehouse"] }}:</span> {{ get_print_name("Warehouse", doc.to_warehouse, tamil) }}{% endif %}<br>
+				{{ get_print_address(doc.to_location) | safe if doc.to_location else "" }}
+			</td>
+			<td style="width: 32%; padding: 0;">
+				<div class="title">{{ label["RETURN DELIVERY CHALLAN" if doc.is_return else "DELIVERY CHALLAN"] }}</div>
+				<table class="facts">
+					<tr><td class="label">{{ label["No."] }}:</td><td><strong>{{ doc.name }}</strong></td></tr>
+					<tr><td class="label">{{ label["Date"] }}:</td><td><strong>{{ get_print_date(doc.posting_date) }}</strong></td></tr>
+					<tr><td class="label">{{ label["Process"] }}:</td><td>{{ label["Internal Transfer"] if doc.is_internal_transfer else get_print_name("YRP Process", doc.process_name, tamil) }}</td></tr>
+					{% if doc.dc_number %}<tr><td class="label">{{ label["DC No."] }}:</td><td>{{ doc.dc_number }}</td></tr>{% endif %}
+					<tr><td class="label">{{ label["Vehicle No."] }}:</td><td>{{ doc.vehicle_number or "NA" }}</td></tr>
+					{% if doc.purchase_order %}<tr><td class="label">{{ label["PO"] }}:</td><td>{{ doc.purchase_order }}</td></tr>{% endif %}
+					{% if doc.goods_received_note %}<tr><td class="label">{{ label["GRN"] }}:</td><td>{{ doc.goods_received_note }}</td></tr>{% endif %}
+					{% if doc.return_against %}<tr><td class="label">{{ label["Return Against"] }}:</td><td>{{ doc.return_against }}</td></tr>{% endif %}
+				</table>
+			</td>
+		</tr>
+	</table>
+	{% set amount_label = "Value" %}
+	{% include "mgk_yrp/templates/print_formats/item_table.html" %}
+	{% set left_signature = "Receiver's Signature" %}
+	{% include "mgk_yrp/templates/print_formats/footer.html" %}
+</div>

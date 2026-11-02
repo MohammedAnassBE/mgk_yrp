@@ -3,6 +3,7 @@ from unittest.mock import patch
 import frappe
 from frappe.model.document import Document
 from frappe.tests import IntegrationTestCase
+from yrp.yrp.doctype.yrp_item.yrp_item import create_variant
 
 from mgk_yrp.mgk_yrp.doctype.mgk_purchase_order.mgk_purchase_order import mark_as_received
 from mgk_yrp.tests.fixtures import (
@@ -12,10 +13,11 @@ from mgk_yrp.tests.fixtures import (
 	make_purchase_invoice,
 	make_purchase_order,
 	make_supplier,
+	make_template_item,
 	make_uom,
 	make_warehouse,
 )
-from mgk_yrp.web.preview import CHALLAN, CLOSE, INVOICE, PLAN, get_extra, get_preview
+from mgk_yrp.web.preview import CHALLAN, CLOSE, INVOICE, PLAN, add_item_attributes, get_extra, get_preview
 
 
 class TestWebPreview(IntegrationTestCase):
@@ -115,6 +117,8 @@ class TestWebPreview(IntegrationTestCase):
 		apply.assert_called_once()
 		self.assertIsNone(preview["doc"].get("supplier"))
 		self.assertIsNone(preview["items"][0].get("item"))
+		self.assertEqual(preview["items"][0].pop("item_attributes"), {})
+		self.assertIsNone(preview["items"][0].pop("item_template"))
 		self.assertEqual(preview["doc"]["items"], preview["items"])
 		self.assertEqual(preview["extra"], {"supplier": None})
 		self.assertNotIn("__onload", preview["doc"])
@@ -132,6 +136,20 @@ class TestWebPreview(IntegrationTestCase):
 		self.assertEqual(preview["items"], [])
 		self.assertEqual(preview["doc"]["items"], [])
 		self.assertNotIn("__onload", preview["doc"])
+
+	def test_item_rows_carry_template_and_variant_attributes(self):
+		template, attributes = make_template_item()
+		variant = create_variant(template.name, attributes).insert(ignore_permissions=True).name
+		plain = make_item(stock_uom=make_uom("Kg"))
+		rows = add_item_attributes([{"item": variant}, {"item": plain}, {"item": None}])
+		self.assertEqual(rows[0]["item_template"], template.name)
+		self.assertEqual(rows[0]["item_attributes"], attributes)
+		self.assertEqual(rows[1]["item_template"], plain)
+		self.assertEqual(rows[1]["item_attributes"], {})
+		self.assertEqual(rows[2]["item_attributes"], {})
+		order = self.make_order()
+		item = get_preview(order.doctype, order.name)["items"][0]
+		self.assertEqual(item["item_template"], item["item"])
 
 	def test_extra_plan_rows_are_permission_filtered(self):
 		challan = frappe.get_doc({"doctype": CHALLAN, "mgk_process_planning": "Preview Plan"})

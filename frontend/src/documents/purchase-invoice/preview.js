@@ -1,5 +1,5 @@
 import { formatDate } from "../../shared/formatDate.js"
-import { displayRows, fact, money, rows } from "../previewValues.js"
+import { fact, itemTableRows, money, rows } from "../previewValues.js"
 
 export function facts(doc) {
 	return [fact("Against", doc.against), fact("Posting Date", formatDate(doc.posting_date)),
@@ -14,6 +14,6 @@ export const itemColumns = [
 	{ key: "amount", label: "Amount", money: true },
 ]
 
-export function itemRows(preview) { return displayRows(rows(preview), itemColumns) }
+export function itemRows(preview) { return itemTableRows(rows(preview), itemColumns) }
 
 export function progress() { return null }

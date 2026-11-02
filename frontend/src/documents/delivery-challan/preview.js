@@ -1,9 +1,10 @@
 import { formatDate } from "../../shared/formatDate.js"
-import { displayRows, fact, money, rows } from "../previewValues.js"
+import { displayName } from "../../shell/displayLanguage.js"
+import { fact, itemTableRows, money, rows } from "../previewValues.js"
 import { pendingTransferQuantity } from "../shared/transit.js"
 
 export function facts(doc) {
-	return [fact("Process", Number(doc.is_internal_transfer) ? "Internal transfer" : doc.process_name),
+	return [fact("Process", Number(doc.is_internal_transfer) ? "Internal transfer" : displayName("YRP Process", doc.process_name)),
 		fact("Posting Date", formatDate(doc.posting_date)), fact("Vehicle", doc.vehicle_number, null, null, { optional: true }),
 		fact("Declared Value", money(doc.total_declared_value)),
 		fact("Return Against", doc.return_against, "/delivery-challan", doc.return_against, { optional: true }),
@@ -24,7 +25,7 @@ export const itemColumns = [
 
 export function itemRows(preview) {
 	const is_internal = Number(preview?.doc?.is_internal_transfer)
-	return displayRows(rows(preview).map((row) => ({ ...row,
+	return itemTableRows(rows(preview).map((row) => ({ ...row,
 		pending_in_transit: is_internal ? pendingTransferQuantity(row) : null,
 		transferred_qty: is_internal ? row.transferred_qty : "—", returned_qty: is_internal ? row.returned_qty : "—",
 	})), itemColumns)
@@ -35,6 +36,6 @@ export const planColumns = [
 	{ key: "qty", label: "Qty", numeric: true }, { key: "uom", label: "UOM" },
 ]
 
-export function planRows(preview) { return displayRows(preview?.extra?.plan_rows || [], planColumns) }
+export function planRows(preview) { return itemTableRows(preview?.extra?.plan_rows || [], planColumns) }
 
 export function progress() { return null }

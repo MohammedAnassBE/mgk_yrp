@@ -8,6 +8,8 @@ TAMIL_NAMES = {
 	"Item": ("Item Name (Tamil)", "item_name"),
 	"Supplier": ("Supplier Name (Tamil)", "supplier_name"),
 	"Warehouse": ("Warehouse Name (Tamil)", "warehouse_name"),
+	"YRP Process": ("Process Name (Tamil)", "process_name"),
+	"Item Group": ("Item Group Name (Tamil)", "item_group_name"),
 }
 FIXTURE = Path(__file__).parents[1] / "fixtures" / "custom_field.json"
 

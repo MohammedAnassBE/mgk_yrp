@@ -1,7 +1,7 @@
 export const PAGE_SIZE = 20
 
 export function orderedTabs(tabs = []) {
-	return [{ key: "all", label: "All", filters: [] }, ...tabs.filter((tab) => tab.key !== "all")]
+	return [{ key: "all", label: "All", tamil: "அனைத்தும்", filters: [] }, ...tabs.filter((tab) => tab.key !== "all")]
 }
 
 export function deterministicOrder(field = "modified", direction = "desc") {

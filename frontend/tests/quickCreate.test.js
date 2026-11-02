@@ -50,7 +50,7 @@ test("quick create row appears after results when the typed text has no exact ma
 	await typeInto(page, "Acme")
 	const rows = options(page.root)
 	assert.equal(rows.length, 2)
-	assert.equal(textContent(rows[1]), "+ Create a new Supplier: “Acme”")
+	assert.equal(textContent(rows[1]), "+ Create a new Supplier")
 	assert.equal(rows[0].props["aria-selected"], true)
 }))
 
@@ -136,7 +136,7 @@ test("custom search links offer create and save through the caller's create hook
 			: original(url, options))(globalThis.fetch)
 		await typeInto(page, "Grey")
 		const rows = options(page.root)
-		assert.equal(textContent(rows[1]), "+ Create a new Attribute Value: “Grey”")
+		assert.equal(textContent(rows[1]), "+ Create a new Attribute Value")
 		rows[1].props.onMousedown({ preventDefault() {} })
 		await settle()
 		await submitDialog(page)

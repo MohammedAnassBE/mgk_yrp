@@ -6,7 +6,7 @@ import * as receipt from "../src/documents/goods-received-note/preview.js"
 import * as challan from "../src/documents/delivery-challan/preview.js"
 import * as billing from "../src/documents/purchase-invoice/preview.js"
 import * as close from "../src/documents/delivery-challan-close/preview.js"
-import { fact, remainingConnections, visibleFacts } from "../src/documents/previewValues.js"
+import { fact, remainingConnections, visibleFacts, withAttributeColumns } from "../src/documents/previewValues.js"
 
 const modules = [purchaseOrder, receipt, challan, billing, close]
 const values = (module, doc, preview) => Object.fromEntries(visibleFacts(module.facts(doc, preview)).map((fact) => [fact.label, fact.value]))
@@ -38,7 +38,8 @@ test("PO deliver-to-supplier facts include Process, stored pending quantity and 
 	assert.equal(facts["Pending qty"], 6)
 	assert.equal(facts.Amount, "200.00")
 	assert.deepEqual(purchaseOrder.progress(doc), { label: "Received / ordered", value: 4, max: 10 })
-	assert.equal(purchaseOrder.itemRows({ doc })[0].item, "Yarn · Fresh")
+	assert.deepEqual(purchaseOrder.itemRows({ doc })[0], { item: "Yarn", received_type: "Fresh", qty: 10, received_qty: 4,
+		pending_qty: 6, rate: 20, amount: 200 })
 	assert.equal(values(purchaseOrder, { ...doc, deliver_to_supplier: "0" }).Process, "Dyeing")
 	assert.equal(values(purchaseOrder, {}).Process, undefined)
 	assert.equal(facts.Supplier, undefined)
@@ -181,4 +182,37 @@ test("book previews show Comments only when set and schemas allow it on submit",
 		assert.equal(field.fieldtype, "Small Text")
 		assert.equal(field.allow_on_submit, 1)
 	}
+})
+
+test("PO, GRN, DC and Billing item tables show the template item, one column per attribute and Received Type", () => {
+	const items = [
+		{ item: "Yarn 30's-Red-S", item_template: "Yarn 30's", item_attributes: { Colour: "Red", Size: "S" }, received_type: "Accepted",
+			qty: 2, received_qty: 1, pending_qty: 1, rate: 5, amount: 10, goods_received_note: "GRN-1" },
+		{ item: "Cone", item_template: "Cone", item_attributes: {}, received_type: "Accepted", qty: 1, rate: 3, amount: 3 },
+		{ item: "Yarn 40's-Blue", item_template: "Yarn 40's", item_attributes: { Colour: "Blue" }, qty: 4, rate: 1, amount: 4 },
+	]
+	const original = structuredClone(items)
+	for (const module of [purchaseOrder, receipt, challan, billing]) {
+		const preview = { doc: {}, items }
+		const columns = withAttributeColumns(module.itemColumns, items)
+		const keys = columns.map((column) => column.key)
+		assert.deepEqual(keys.slice(0, 3), ["item", "attribute:Colour", "attribute:Size"])
+		assert.deepEqual(columns.slice(1, 3).map((column) => column.label), ["Colour", "Size"])
+		assert.equal(columns[0].doctype, "Item")
+		assert.equal(keys.includes("received_type"), module !== billing)
+		const rows = module.itemRows(preview)
+		assert.deepEqual(rows.map((row) => row.item), ["Yarn 30's", "Cone", "Yarn 40's"])
+		assert.deepEqual(rows.map((row) => [row["attribute:Colour"], row["attribute:Size"]]), [["Red", "S"], ["—", "—"], ["Blue", "—"]])
+		if (module !== billing) assert.deepEqual(rows.map((row) => row.received_type), ["Accepted", "Accepted", "—"])
+		assert.equal(rows[0].qty, 2)
+	}
+	assert.deepEqual(items, original)
+	assert.deepEqual(withAttributeColumns(billing.itemColumns, [{ item: "Yarn" }]), billing.itemColumns)
+	assert.equal(purchaseOrder.itemRows({ doc: {}, items: [{ item: "Old-Red" }] })[0].item, "Old-Red")
+})
+
+test("DC plan rows split the template item and attributes like the item table", () => {
+	const plan_rows = [{ item: "Dyed Yarn-Red", item_template: "Dyed Yarn", item_attributes: { Colour: "Red" }, received_type: "Fresh", qty: 10, uom: "Kg" }]
+	assert.deepEqual(withAttributeColumns(challan.planColumns, plan_rows).map((column) => column.key), ["item", "attribute:Colour", "received_type", "qty", "uom"])
+	assert.deepEqual(challan.planRows({ extra: { plan_rows } }), [{ item: "Dyed Yarn", "attribute:Colour": "Red", received_type: "Fresh", qty: 10, uom: "Kg" }])
 })

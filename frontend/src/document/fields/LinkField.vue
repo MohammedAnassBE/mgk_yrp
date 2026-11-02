@@ -3,9 +3,9 @@ import "../../shared/linkSuggestions.css"
 import { computed, ref, watch, onBeforeUnmount, getCurrentInstance } from "vue"
 import { callRead } from "../../api/client.js"
 import { trailingTask } from "../../list/listQuery.js"
-import { linkDescription } from "../../list/linkOptions.js"
+import { linkRow } from "../../list/linkOptions.js"
 import { useLinkLabel } from "../../list/useLinkLabel.js"
-import { withTamilNames } from "../../shell/displayLanguage.js"
+import { isTamil, withTamilNames } from "../../shell/displayLanguage.js"
 import QuickCreateDialog from "./QuickCreateDialog.vue"
 import { canQuickCreate, hasExactMatch, quickCreateLabel } from "./quickCreate.js"
 
@@ -23,7 +23,7 @@ const error = ref("")
 const active = ref(0)
 const inputElement = ref(null)
 const suggestionsElement = ref(null)
-const text = ref(props.modelValue || "")
+const text = ref(selectedLabel.value || "")
 const creatable = ref(false)
 const searchedText = ref(null)
 const createText = ref("")
@@ -35,13 +35,21 @@ const createOption = computed(() => {
 const rowCount = computed(() => results.value.length + (createOption.value ? 1 : 0))
 let sequence = 0
 
+function matchesText(option, needle) {
+	return [option.value, option.label, option.tamil].some((value) => String(value || "").toLowerCase().includes(needle.toLowerCase()))
+}
+
 async function searchOptions(needle) {
-	if (props.candidates !== null) return props.candidates.map((candidate) => typeof candidate === "string" ? { value: candidate } : { ...candidate, value: candidate.value || candidate.name }).filter((row) => row.value.toLowerCase().includes(needle.toLowerCase()))
+	if (props.candidates !== null) {
+		const options = props.candidates.map((candidate) => typeof candidate === "string" ? { value: candidate } : { ...candidate, value: candidate.value || candidate.name })
+		return (await withTamilNames(props.doctype, options)).filter((option) => matchesText(option, needle))
+	}
 	if (props.searchMethod) {
 		const values = await callRead(props.searchMethod, { ...props.searchArgs, txt: needle, page_len: 20 })
-		return values.map((value) => ({ value }))
+		return withTamilNames(props.doctype, (values || []).map((value) => ({ value })))
 	}
-	return callRead("frappe.desk.search.search_link", { doctype: props.doctype, txt: needle, filters: props.filters, query: props.query, page_length: 20 })
+	const rows = await callRead("frappe.desk.search.search_link", { doctype: props.doctype, txt: needle, filters: props.filters, query: props.query, page_length: 20 })
+	return withTamilNames(props.doctype, rows || [])
 }
 
 async function search() {
@@ -52,7 +60,7 @@ async function search() {
 		// A displayed title or Tamil name is not searchable text; search by the stored value instead.
 		const needle = String((text.value === selectedLabel.value ? props.modelValue : text.value) || "")
 		const searched = text.value
-		const [data, canCreate] = await Promise.all([withTamilNames(props.doctype, (await searchOptions(needle)) || []),
+		const [data, canCreate] = await Promise.all([searchOptions(needle),
 			props.allowCreate && text.value !== selectedLabel.value ? canQuickCreate(targetDoctype.value) : false])
 		if (current !== sequence) return
 		results.value = data || []
@@ -113,7 +121,7 @@ onBeforeUnmount(close)
 watch([open, loading, () => results.value.length], () => {
 	if (open.value) suggestionsElement.value?.scrollIntoView?.({ block: "nearest", behavior: "smooth" })
 }, { flush: "post" })
-watch(() => props.modelValue, (value) => { text.value = value || "" })
+watch(() => props.modelValue, () => { text.value = selectedLabel.value || "" })
 watch(selectedLabel, (value) => { if (!open.value) text.value = value })
 watch(() => [props.doctype, props.filters, props.candidates, props.searchArgs], () => { close(); results.value = []; creatable.value = false }, { deep: true })
 defineExpose({ focus: () => inputElement.value?.focus() })
@@ -153,9 +161,10 @@ defineExpose({ focus: () => inputElement.value?.focus() })
 					:aria-selected="index === active"
 					@mousedown.prevent="select(option)"
 				>
-					<strong>{{ option.tamil || option.value }}</strong>
-					<small v-if="option.tamil">{{ option.value }}</small>
-					<small v-if="linkDescription(option)">{{ linkDescription(option) }}</small>
+					<span class="link-option">
+						<strong>{{ linkRow(option, isTamil).primary }}</strong>
+						<small v-for="line in linkRow(option, isTamil).secondary" :key="line">{{ line }}</small>
+					</span>
 				</li>
 				<li
 					v-if="createOption"
@@ -165,7 +174,7 @@ defineExpose({ focus: () => inputElement.value?.focus() })
 					:aria-selected="active === results.length"
 					@mousedown.prevent="startCreate"
 				>
-					<strong>+ Create a new {{ quickCreateLabel(targetDoctype) }}: “{{ text.trim() }}”</strong>
+					<span aria-hidden="true">+</span> Create a new {{ quickCreateLabel(targetDoctype) }}
 				</li>
 			</ul>
 		</div>

@@ -94,7 +94,7 @@
  "autoname": "AG-.#####",
  "naming_rule": "Expression",
  "title_field": "agent_name",
- "search_fields": "agent_name",
+ "search_fields": "agent_name,mgk_tamil_name",
  "show_title_field_in_link": 1,
  "track_changes": 1
 }

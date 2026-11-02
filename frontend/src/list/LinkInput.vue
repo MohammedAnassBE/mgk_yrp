@@ -3,7 +3,8 @@ import "../shared/linkSuggestions.css"
 import { ref, watch, onBeforeUnmount, getCurrentInstance } from "vue"
 import { searchLinks } from "./listApi.js"
 import { trailingTask } from "./listQuery.js"
-import { linkDescription } from "./linkOptions.js"
+import { linkRow } from "./linkOptions.js"
+import { isTamil, withTamilNames } from "../shell/displayLanguage.js"
 import { useLinkLabel } from "./useLinkLabel.js"
 
 const props = defineProps({ modelValue: { default: "" }, doctype: { type: String, required: true }, label: { type: String, default: "Link value" }, placeholder: String, inputId: String })
@@ -22,7 +23,7 @@ async function search() {
 	loading.value = true
 	error.value = ""
 	try {
-		const data = await searchLinks(props.doctype, String(props.modelValue || ""))
+		const data = await withTamilNames(props.doctype, (await searchLinks(props.doctype, String(props.modelValue || ""))) || [])
 		if (current !== sequence) return
 		results.value = data
 		active.value = 0
@@ -72,7 +73,7 @@ watch(() => props.doctype, () => { close(); results.value = [] })
 			<div v-else-if="!results.length">No matches</div>
 			<ul :id="generatedId" role="listbox" :aria-label="label">
 				<li v-for="(option, index) in results" :id="`${generatedId}-${index}`" :key="option.value" role="option" :aria-selected="index === active" @mousedown.prevent="select(option)">
-					<strong>{{ option.value }}</strong><small v-if="linkDescription(option)">{{ linkDescription(option) }}</small>
+					<span class="link-option"><strong>{{ linkRow(option, isTamil).primary }}</strong><small v-for="line in linkRow(option, isTamil).secondary" :key="line">{{ line }}</small></span>
 				</li>
 			</ul>
 		</div>

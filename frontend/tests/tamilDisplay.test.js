@@ -88,14 +88,14 @@ test("read-only values, summaries, previews, list parties and filters switch wit
 	const stub = stubLists()
 	const doc = { name: "MGK-PO-26-00001", docstatus: 1, supplier: "Buying Supplier", delivery_location: "MGK Main",
 		warehouse: "Stores - MGK", mgk_agent: "AGT-1", items: [] }
-	const preview = { doc, items: [{ item: "Yarn 30's-Grey", received_type: "Fresh", qty: 1 }] }
+	const preview = { doc, items: [{ item: "Yarn 30's-Grey", item_template: "Yarn 30's", item_attributes: { Colour: "Grey" }, received_type: "Fresh", qty: 1 }] }
 	try {
 		setLanguage("ta")
 		const read = () => ({
 			facts: Object.fromEntries(purchaseOrder.viewFacts(doc).map((fact) => [fact.label, fact.value])),
 			summary: Object.fromEntries(purchaseOrder.summary(doc).lines.map((line) => [line.label, line.value])),
 			previewFacts: Object.fromEntries(purchaseOrderPreview.facts(doc, preview).map((fact) => [fact.label, fact.value])),
-			poItem: purchaseOrderPreview.itemRows(preview)[0].item, grnItem: receiptPreview.itemRows(preview)[0].item,
+			poItem: purchaseOrderPreview.itemRows(preview)[0], grnItem: receiptPreview.itemRows(preview)[0].item,
 			field: formatFieldValue({ fieldtype: "Link", options: "Supplier" }, "MGK Main"), party: recordParty("MGK Purchase Order", doc),
 			filter: filterLabel(["supplier", "=", "MGK Main"], [{ fieldname: "supplier", label: "Supplier", fieldtype: "Link", options: "Supplier" }]),
 		})
@@ -110,8 +110,10 @@ test("read-only values, summaries, previews, list parties and filters switch wit
 		assert.equal(tamil.summary.Supplier, "வாங்கும் சப்ளையர்")
 		assert.equal(tamil.summary["Delivery to"], "எம்ஜிகே மெயின்")
 		assert.equal(tamil.previewFacts["Deliver To"], "எம்ஜிகே மெயின் / கிடங்கு")
-		assert.equal(tamil.poItem, "நூல் 30-Grey · Fresh")
-		assert.equal(tamil.grnItem, "நூல் 30-Grey")
+		assert.equal(tamil.poItem.item, "நூல் 30")
+		assert.equal(tamil.poItem["attribute:Colour"], "Grey")
+		assert.equal(tamil.poItem.received_type, "Fresh")
+		assert.equal(tamil.grnItem, "நூல் 30")
 		assert.equal(tamil.field, "எம்ஜிகே மெயின்")
 		assert.equal(tamil.party, "வாங்கும் சப்ளையர்")
 		assert.equal(tamil.filter, "Supplier = எம்ஜிகே மெயின்")
@@ -119,7 +121,8 @@ test("read-only values, summaries, previews, list parties and filters switch wit
 		const english = read()
 		assert.equal(english.facts.Supplier, "Buying Supplier")
 		assert.equal(english.summary["Delivery to"], "MGK Main")
-		assert.equal(english.poItem, "Yarn 30's-Grey · Fresh")
+		assert.equal(english.poItem.item, "Yarn 30's")
+		assert.equal(english.poItem["attribute:Colour"], "Grey")
 		assert.equal(english.party, "Buying Supplier")
 	} finally { stub.restore() }
 })

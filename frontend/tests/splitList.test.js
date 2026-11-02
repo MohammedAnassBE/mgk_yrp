@@ -152,6 +152,21 @@ test("DC preview shows pending quantities only in its internal transit columns",
 	}
 })
 
+test("PO preview splits the template item, each attribute and Received Type into their own columns", async (context) => {
+	context.mock.timers.enable({ apis: ["setTimeout"] })
+	const page = await mountSplit({ preview: { doc: { docstatus: 1 },
+		items: [{ item: "yarn 30's-Red", item_template: "yarn 30's", item_attributes: { Colour: "Red" }, received_type: "Accepted", qty: 4, rate: 2, amount: 8 }],
+		extra: {} } })
+	try {
+		context.mock.timers.tick(120); await settle()
+		const headers = nodes(page.root, (node) => node.tag === "th").map(textContent)
+		assert.deepEqual(headers.slice(0, 4), ["Item", "Colour", "Received type", "Ordered"])
+		const cells = nodes(page.root, (node) => node.tag === "td").map(textContent)
+		assert.deepEqual(cells.slice(0, 4), ["yarn 30's", "Red", "Accepted", "4"])
+		assert.doesNotMatch(textContent(page.root), /·\s*Accepted/)
+	} finally { page.close() }
+})
+
 test("preview header uses the book cover colour and items show a totals row", async (context) => {
 	context.mock.timers.enable({ apis: ["setTimeout"] })
 	const page = await mountSplit({ doctype: "MGK Delivery Challan", preview: {

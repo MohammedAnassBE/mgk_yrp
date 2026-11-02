@@ -6,4 +6,7 @@
 .link-suggestions li { padding: 8px; cursor: pointer; border-radius: 6px; }
 .link-suggestions li[aria-selected="true"], .link-suggestions li:hover { background: var(--color-info-bg); }
 .link-suggestions small { display: block; color: var(--color-muted); }
-.link-suggestions li.link-create { border-top: 1px solid var(--color-line); color: var(--color-accent); }
+.link-option { display: grid; gap: 2px; min-width: 0; }
+.link-option strong { color: var(--color-text); font-size: var(--type-body); font-weight: 600; }
+.link-option small { color: var(--color-muted); font-size: var(--type-caption); }
+.link-suggestions li.link-create { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border-top: 1px solid var(--color-line); border-radius: 0; color: var(--color-text); }

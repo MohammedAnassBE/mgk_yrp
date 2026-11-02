@@ -1,6 +1,6 @@
 import { formatDate } from "../../shared/formatDate.js"
 import { displayName } from "../../shell/displayLanguage.js"
-import { displayRows, fact, money, rows } from "../previewValues.js"
+import { fact, itemTableRows, money, rows } from "../previewValues.js"
 import { statusPill } from "../../list/statusPill.js"
 import { transferIntro } from "../shared/transit.js"
 
@@ -11,7 +11,7 @@ export function facts(doc) {
 		...(is_internal ? [fact("Against", "Internal transfer")] : []),
 		...(doc.purchase_order ? [fact("PO", doc.purchase_order, "/purchase-order")] : []),
 		...deliveryChallans.map((name, index, links) => fact(links.length > 1 ? `DC ${index + 1}` : "DC", name, "/delivery-challan")),
-		fact("Process", doc.process_name),
+		fact("Process", displayName("YRP Process", doc.process_name)),
 		...(is_internal ? [fact("Transfer status", doc.transfer_status)] : []),
 		fact("Bill status", statusPill("MGK Goods Received Note", { ...doc, is_internal_transfer: 0 }).label, "/billing", doc.purchase_invoice || null),
 		fact("Amount", money(doc.total_amount)),
@@ -26,7 +26,7 @@ export const itemColumns = [
 
 export function itemRows(preview) {
 	const is_internal = Number(preview?.doc?.is_internal_transfer)
-	return displayRows(rows(preview).map((row) => ({ ...row,
+	return itemTableRows(rows(preview).map((row) => ({ ...row,
 		transferred_qty: is_internal ? row.transferred_qty : "—",
 	})), itemColumns)
 }

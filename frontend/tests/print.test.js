@@ -2,7 +2,8 @@ import test from "node:test"
 import assert from "node:assert/strict"
 import { mountComponent, nodes, textContent, settle } from "./helpers/component.js"
 import { clearReadCaches, downloadPrintPdf } from "../src/api/client.js"
-import { buildPrintPdfArgs, buildPrintUrl, canPrint, openPrintUrl, printAction } from "../src/document/print/print.js"
+import { buildPrintPdfArgs, buildPrintUrl, canPrint, openPrintUrl, preferredPrintFormat, printAction } from "../src/document/print/print.js"
+import { ENGLISH, TAMIL, setLanguage } from "../src/shell/displayLanguage.js"
 import { previewActions } from "../src/list/previewActions.js"
 
 const order = { doctype: "MGK Purchase Order", name: "PO/26 # 1", docstatus: 1 }
@@ -141,3 +142,31 @@ test("print dialog Save as PDF without a letter head downloads with no_letterhea
 		} finally { page.close() }
 	}, async (url) => url.includes("download_pdf") ? pdf : { ok: true, status: 200, json: async () => ({ message: { ...options, default_format: "Standard", default_letter_head: "" } }) })
 })
+
+test("preferred print format follows the display language", () => {
+	const doctype = "MGK Purchase Order"
+	const options = { formats: [doctype, `${doctype} (Tamil)`, "Standard"], default_format: doctype }
+	assert.equal(preferredPrintFormat(options, doctype, false), doctype)
+	assert.equal(preferredPrintFormat(options, doctype, true), `${doctype} (Tamil)`)
+	assert.equal(preferredPrintFormat({ ...options, default_format: "Standard" }, doctype, true), `${doctype} (Tamil)`)
+	assert.equal(preferredPrintFormat({ formats: [doctype, "Standard"], default_format: doctype }, doctype, true), doctype)
+})
+
+for (const [mode, expected] of [[ENGLISH, "MGK Purchase Order"], [TAMIL, "MGK Purchase Order (Tamil)"]]) {
+	test(`print dialog preselects the ${mode} format and still allows changing it`, async () => {
+		const tamilOptions = { ...options, formats: ["MGK Purchase Order", "MGK Purchase Order (Tamil)", "Standard"], default_format: "MGK Purchase Order" }
+		await withBrowser({ can_print: [order.doctype] }, async ({ opened }) => {
+			setLanguage(mode)
+			const page = await mountComponent("../../src/document/print/PrintDialog.vue", { doc: order, onClose: () => {} })
+			try {
+				await settle()
+				const format = nodes(page.root, (node) => node.tag === "select")[0]
+				assert.equal(format.props.value, expected)
+				format.props.onChange({ target: { value: "Standard" } })
+				await settle()
+				await button(page.root, "Print").props.onClick()
+				assert.equal(new URL(opened[0][0], "https://site").searchParams.get("format"), "Standard")
+			} finally { page.close(); setLanguage(ENGLISH) }
+		}, async () => ({ ok: true, status: 200, json: async () => ({ message: tamilOptions }) }))
+	})
+}

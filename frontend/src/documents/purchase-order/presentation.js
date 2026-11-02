@@ -20,7 +20,7 @@ export function viewFacts(doc) {
 	return [["Supplier", displayName("Supplier", doc.supplier)], ["PO date", formatDate(doc.po_date)],
 		["Delivery location", displayName("Supplier", doc.delivery_location)], ["Warehouse", displayName("Warehouse", doc.warehouse)],
 		["Goods routing", doc.goods_routing], ["MGK Agent", displayName("MGK Agent", doc.mgk_agent)],
-		["Handling supplier", displayName("Supplier", doc.handling_supplier)], ["Item group", doc.item_group || "Other"]].map(([label, value]) => ({ label, value }))
+		["Handling supplier", displayName("Supplier", doc.handling_supplier)], ["Item group", displayName("Item Group", doc.item_group) || "Other"]].map(([label, value]) => ({ label, value }))
 }
 
 export function connections(doc) {

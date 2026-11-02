@@ -5,7 +5,7 @@ import { documentModule } from "../documents/registry.js"
 import { connectedDocuments } from "../document/documentLayout.js"
 import { bookManifest } from "../books/manifest.js"
 import { formatDisplayDatetime } from "../document/activityFormat.js"
-import { columnTotals, isAmountFact, remainingConnections, visibleFacts } from "../documents/previewValues.js"
+import { columnTotals, isAmountFact, remainingConnections, rows, visibleFacts, withAttributeColumns } from "../documents/previewValues.js"
 import { previewActions } from "./previewActions.js"
 import { useActionRunner } from "../document/useActionRunner.js"
 import ActionHost from "../document/ActionHost.vue"
@@ -31,7 +31,9 @@ const presentation = computed(() => documentModule(props.doctype).preview)
 const doc = computed(() => preview.value?.doc)
 const facts = computed(() => visibleFacts(doc.value ? presentation.value?.facts(doc.value, preview.value) || [] : []))
 const itemRows = computed(() => preview.value ? presentation.value?.itemRows(preview.value) || [] : [])
-const itemColumns = computed(() => (presentation.value?.itemColumns || []).filter((column) => !column.internalOnly || Number(doc.value?.is_internal_transfer)))
+const itemColumns = computed(() => withAttributeColumns((presentation.value?.itemColumns || []).filter((column) => !column.internalOnly || Number(doc.value?.is_internal_transfer)),
+	rows(preview.value)))
+const planColumns = computed(() => withAttributeColumns(presentation.value?.planColumns || [], preview.value?.extra?.plan_rows))
 const planRows = computed(() => preview.value ? presentation.value?.planRows?.(preview.value) || [] : [])
 const progress = computed(() => doc.value ? presentation.value?.progress?.(doc.value, preview.value) : null)
 const intro = computed(() => preview.value ? presentation.value?.intro?.(preview.value) : null)
@@ -139,7 +141,7 @@ function cell(value, column) {
 			<p v-if="intro" class="form-banner">{{ intro }}</p>
 			<section v-if="itemColumns.length"><h3>Items · {{ itemRows.length }}</h3><div class="table-scroll preview-table"><table><thead><tr><th v-for="column in itemColumns" :key="column.key" :class="{ numeric: column.numeric || column.money }">{{ column.label }}</th></tr></thead><tbody><tr v-for="(item, index) in itemRows" :key="item.name || index"><td v-for="column in itemColumns" :key="column.key" :class="{ numeric: column.numeric || column.money }"><RouterLink v-if="itemRoute(item, column)" class="record-id" :to="itemRoute(item, column)">{{ cell(item[column.key], column) }}</RouterLink><template v-else>{{ cell(item[column.key], column) }}</template></td></tr></tbody><tfoot v-if="totals"><tr><td v-for="(column, index) in itemColumns" :key="column.key" :class="{ numeric: column.numeric || column.money }">{{ column.key in totals ? cell(totals[column.key], column) : index === 0 ? 'Total' : '' }}</td></tr></tfoot></table></div><p v-if="!itemRows.length" class="preview-muted">No items.</p></section>
 			<section v-if="connections.length"><h3>Connected records</h3><div class="preview-connections"><template v-for="connection in connections" :key="connection.doctype"><template v-for="name in connection.names" :key="name"><RouterLink v-if="connectionRoute(connection.doctype, name)" class="preview-connection" :to="connectionRoute(connection.doctype, name)"><i class="pi pi-link" aria-hidden="true" /><small>{{ connection.label }}</small><span class="record-id">{{ name }}</span></RouterLink><span v-else class="preview-connection"><i class="pi pi-link" aria-hidden="true" /><small>{{ connection.label }}</small><span class="record-id">{{ name }}</span></span></template></template></div></section>
-			<section v-if="planRows.length"><h3>Process plan</h3><div class="table-scroll preview-table"><table><thead><tr><th v-for="column in presentation.planColumns" :key="column.key">{{ column.label }}</th></tr></thead><tbody><tr v-for="(item, index) in planRows" :key="index"><td v-for="column in presentation.planColumns" :key="column.key" :class="{ numeric: column.numeric }">{{ cell(item[column.key], column) }}</td></tr></tbody></table></div></section>
+			<section v-if="planRows.length"><h3>Process plan</h3><div class="table-scroll preview-table"><table><thead><tr><th v-for="column in planColumns" :key="column.key">{{ column.label }}</th></tr></thead><tbody><tr v-for="(item, index) in planRows" :key="index"><td v-for="column in planColumns" :key="column.key" :class="{ numeric: column.numeric }">{{ cell(item[column.key], column) }}</td></tr></tbody></table></div></section>
 			<section><button class="preview-disclosure" type="button" :aria-expanded="is_timeline_open" :aria-controls="timelineId" @click="is_timeline_open = !is_timeline_open">{{ timelineLabel }}</button><ol :hidden="!is_timeline_open" :id="timelineId" class="preview-timeline"><li v-for="(entry, index) in is_timeline_open ? preview.timeline : []" :key="index"><time>{{ formatDisplayDatetime(entry.at) }}</time><span>{{ entry.text }}</span></li></ol><p v-if="is_timeline_open && !preview.timeline?.length" class="preview-muted">No activity yet.</p></section>
 		</template>
 	</article>

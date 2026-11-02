@@ -6,7 +6,8 @@ import Select from "primevue/select"
 import ActionDialog from "../../documents/shared/ActionDialog.vue"
 import { downloadPrintPdf, getPrintOptions } from "../../api/client.js"
 import { notify } from "../../shared/notify.js"
-import { buildPrintPdfArgs, buildPrintUrl, openPrintUrl } from "./print.js"
+import { isTamil } from "../../shell/displayLanguage.js"
+import { buildPrintPdfArgs, buildPrintUrl, openPrintUrl, preferredPrintFormat } from "./print.js"
 
 const props = defineProps({ doc: { type: Object, required: true }, names: Array, rows: Array, action: Object })
 const emit = defineEmits(["done", "close"])
@@ -27,7 +28,7 @@ onMounted(async () => {
 		if (is_disposed) return
 		formats.value = options.formats
 		letter_heads.value = options.letter_heads
-		format.value = options.default_format
+		format.value = preferredPrintFormat(options, props.doc.doctype, isTamil.value)
 		letter_head.value = options.default_letter_head || ""
 	} catch (cause) { if (!is_disposed) error.value = cause.message }
 	finally { if (!is_disposed) is_loading.value = false }

@@ -1,0 +1,38 @@
+{%- set label = get_print_labels(tamil) -%}
+{% include "mgk_yrp/templates/print_formats/styles.html" %}
+{% include "mgk_yrp/templates/print_formats/header.html" %}
+<div class="mgk-print">
+	{% include "mgk_yrp/templates/print_formats/status_watermark.html" %}
+	{%- set challans = (doc.delivery_challans or []) | map(attribute="delivery_challan") | select | unique | list -%}
+	<table>
+		<tr>
+			<td style="width: 34%;">
+				<span class="muted">{{ label["Supplier"] }}:</span><br>
+				<strong>{{ get_print_name("Supplier", doc.supplier, tamil) }}</strong><br>
+				{{ get_print_address(doc.supplier) | safe if doc.supplier else "" }}
+			</td>
+			<td style="width: 34%;">
+				<span class="muted">{{ label["Received At"] }}:</span><br>
+				<strong>{{ get_print_name("Supplier", doc.delivery_location, tamil) }}</strong>
+				{% if doc.warehouse %}<br><span class="muted">{{ label["Warehouse"] }}:</span> {{ get_print_name("Warehouse", doc.warehouse, tamil) }}{% endif %}<br>
+				{{ get_print_address(doc.delivery_location) | safe if doc.delivery_location else "" }}
+			</td>
+			<td style="width: 32%; padding: 0;">
+				<div class="title">{{ label["GOODS RECEIVED NOTE"] }}</div>
+				<table class="facts">
+					<tr><td class="label">{{ label["No."] }}:</td><td><strong>{{ doc.name }}</strong></td></tr>
+					<tr><td class="label">{{ label["Date"] }}:</td><td><strong>{{ get_print_date(doc.posting_date) }}</strong></td></tr>
+					{% if doc.is_internal_transfer %}<tr><td class="label">{{ label["Process"] }}:</td><td>{{ label["Internal Transfer"] }}</td></tr>{% endif %}
+					{% if doc.process_name %}<tr><td class="label">{{ label["Process"] }}:</td><td>{{ get_print_name("YRP Process", doc.process_name, tamil) }}</td></tr>{% endif %}
+					{% if doc.purchase_order %}<tr><td class="label">{{ label["PO"] }}:</td><td>{{ doc.purchase_order }}</td></tr>{% endif %}
+					{% if challans %}<tr><td class="label">{{ label["DC"] }}:</td><td>{{ challans | join(", ") }}</td></tr>{% endif %}
+					{% if doc.purchase_invoice %}<tr><td class="label">{{ label["Invoice"] }}:</td><td>{{ doc.purchase_invoice }}</td></tr>{% endif %}
+				</table>
+			</td>
+		</tr>
+	</table>
+	{% set amount_label = "Amount" %}
+	{% include "mgk_yrp/templates/print_formats/item_table.html" %}
+	{% set left_signature = "Received By" %}
+	{% include "mgk_yrp/templates/print_formats/footer.html" %}
+</div>
