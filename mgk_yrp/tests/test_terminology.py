@@ -62,7 +62,7 @@ class TestTerminology(IntegrationTestCase):
 		self.assertEqual(len(term_rows()), count)
 		self.assertEqual(rows[term_key("Purchase Order")].tamil_text, "கொள்முதல் ஆணை")
 
-	def test_seeding_preserves_user_edits_and_restores_only_missing_rows(self):
+	def test_seeding_keeps_user_edits_and_deletions(self):
 		set_tamil("Purchase Order", "வாங்கும் ஆணை")
 		doc = frappe.get_doc("YRP UI Terminology", TERMINOLOGY)
 		doc.terms = [row for row in doc.terms if row.term_key != term_key("Supplier")]
@@ -70,7 +70,18 @@ class TestTerminology(IntegrationTestCase):
 		seed_terms()
 		rows = term_rows()
 		self.assertEqual(rows[term_key("Purchase Order")].tamil_text, "வாங்கும் ஆணை")
-		self.assertEqual(rows[term_key("Supplier")].tamil_text, get_default_terms()["Supplier"])
+		self.assertNotIn(term_key("Supplier"), rows)
+		self.assertEqual(translate("Supplier"), "Supplier")
+
+	def test_seeding_adds_only_new_default_keys(self):
+		doc = frappe.get_doc("YRP UI Terminology", TERMINOLOGY)
+		doc.terms = []
+		doc.save(ignore_permissions=True)
+		with patch.object(
+			terms, "get_default_terms", return_value={**get_default_terms(), "Brand New Word": "புதிய சொல்"}
+		):
+			seed_terms()
+		self.assertEqual(set(term_rows()), {term_key("Brand New Word")})
 
 	def test_edit_invalidates_cache_and_notifies_clients(self):
 		self.assertEqual(translate("Purchase Order"), "கொள்முதல் ஆணை")
@@ -109,7 +120,7 @@ class TestTerminology(IntegrationTestCase):
 		self.assertEqual(get_boot()["terms"][STATUS_OPEN], {"source": "Open", "ta": "திறந்தவை", "keyed": 1})
 		self.assertEqual(get_boot()["terms"][term_key("Open")], {"source": "Open", "ta": "திற"})
 
-	def test_seeding_keeps_an_edited_status_term_and_restores_a_removed_one(self):
+	def test_seeding_keeps_an_edited_status_term_and_a_removed_one_stays_removed(self):
 		doc = frappe.get_doc("YRP UI Terminology", TERMINOLOGY)
 		next(row for row in doc.terms if row.term_key == STATUS_OPEN).tamil_text = "திறந்த நிலை"
 		doc.save(ignore_permissions=True)
@@ -119,4 +130,4 @@ class TestTerminology(IntegrationTestCase):
 		doc.terms = [row for row in doc.terms if row.term_key != STATUS_OPEN]
 		doc.save(ignore_permissions=True)
 		seed_terms()
-		self.assertEqual(term_rows()[STATUS_OPEN].tamil_text, "திறந்தவை")
+		self.assertNotIn(STATUS_OPEN, term_rows())
