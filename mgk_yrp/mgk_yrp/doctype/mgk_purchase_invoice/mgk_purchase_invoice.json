@@ -21,7 +21,8 @@
   "total_igst",
   "total_tax",
   "grand_total",
-  "amended_from"
+  "amended_from",
+  "company"
  ],
  "fields": [
   {
@@ -151,6 +152,14 @@
    "read_only": 1,
    "options": "MGK Purchase Invoice",
    "no_copy": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "hidden": 1,
+   "read_only": 1
   }
  ],
  "permissions": [

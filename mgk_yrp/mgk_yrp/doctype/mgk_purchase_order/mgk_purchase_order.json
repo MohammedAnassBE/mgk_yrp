@@ -28,7 +28,8 @@
   "total_qty",
   "total_amount",
   "status",
-  "amended_from"
+  "amended_from",
+  "company"
  ],
  "fields": [
   {
@@ -209,6 +210,14 @@
    "options": "MGK Purchase Order",
    "read_only": 1,
    "no_copy": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "hidden": 1,
+   "read_only": 1
   }
  ],
  "permissions": [

@@ -44,6 +44,17 @@ after_install = ["mgk_yrp.install.ensure_item_groups"]
 after_migrate = ["mgk_yrp.stock.dimension_fields.sync_dimension_fields", "mgk_yrp.install.ensure_item_groups"]
 
 doc_events = {
+	**{
+		doctype: {"before_validate": "mgk_yrp.company.set_company"}
+		for doctype in (
+			"MGK Purchase Order",
+			"MGK Delivery Challan",
+			"MGK Goods Received Note",
+			"MGK Purchase Invoice",
+			"MGK Delivery Challan Close",
+			"MGK Supplier Credit Debit",
+		)
+	},
 	"YRP Stock Valuation Adjustment": {"on_update": "mgk_yrp.web.notify.valuation_updated"},
 	"Item": {"validate": "mgk_yrp.overrides.item.validate"},
 	"Supplier": {"validate": "mgk_yrp.overrides.supplier.validate"},
