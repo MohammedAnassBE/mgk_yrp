@@ -2,7 +2,7 @@ import test from "node:test"
 import assert from "node:assert/strict"
 import { defaultTerms } from "./helpers/terms.js"
 import { setLanguage, tabLabel } from "../src/shell/displayLanguage.js"
-import { currentTerms, refreshTerms, setTerms, t, term, TERMS_METHOD } from "../src/shell/terminology.js"
+import { currentTerms, refreshTerms, setTerms, statusText, t, term, TERMS_METHOD } from "../src/shell/terminology.js"
 import { RealtimeConnection } from "../src/realtime/socket.js"
 import { FakeSocket } from "./helpers/fakeSocket.js"
 
@@ -74,3 +74,16 @@ test("shipped defaults keep the PO tab and print words", () => {
 	assert.equal(terms.All.ta, "அனைத்தும்")
 	assert.equal(terms["Goods Received Note"].ta, "பொருள் வரவு குறிப்பு")
 })
+
+test("a keyed status term is read by key and never replaces the same English word elsewhere", () => withBoot({
+	"mgk.open": { source: "Open", ta: "திற" }, "mgk.status_open": { source: "Open", ta: "திறந்தவை", keyed: 1 },
+	"mgk.closed": { source: "Closed", ta: "மூடப்பட்டது" },
+}, () => {
+	setLanguage("ta")
+	assert.equal(t("Open"), "திற")
+	assert.equal(statusText("Open"), "திறந்தவை")
+	assert.equal(statusText("Closed"), "மூடப்பட்டது")
+	assert.equal(tabLabel({ key: "open", label: "Open", filters: [] }), "திறந்தவை")
+	setLanguage("en")
+	assert.equal(statusText("Open"), "Open")
+}))

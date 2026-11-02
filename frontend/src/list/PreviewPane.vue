@@ -1,5 +1,5 @@
 <script setup>
-import { t } from "../shell/terminology.js"
+import { statusText, t } from "../shell/terminology.js"
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import Menu from "primevue/menu"
 import { documentModule } from "../documents/registry.js"
@@ -134,7 +134,7 @@ function cell(value, column) {
 		<div v-else-if="!doc" class="empty-state compact"><h2>{{ t("Select a document") }}</h2><p>{{ t("Choose a record to see its preview.") }}</p></div>
 		<template v-else>
 			<header class="preview-head">
-				<div class="preview-title"><div class="preview-title-line"><h2 class="record-id">{{ doc.name }}</h2><span class="status" :class="statusPill(doctype, doc).className">{{ t(statusPill(doctype, doc).label) }}</span></div><p class="split-party"><i class="pi pi-building" aria-hidden="true" />{{ recordParty(doctype, doc) }}</p></div>
+				<div class="preview-title"><div class="preview-title-line"><h2 class="record-id">{{ doc.name }}</h2><span class="status" :class="statusPill(doctype, doc).className">{{ statusText(statusPill(doctype, doc).label) }}</span></div><p class="split-party"><i class="pi pi-building" aria-hidden="true" />{{ recordParty(doctype, doc) }}</p></div>
 				<div class="preview-head-actions"><button v-if="actions.length" class="button secondary" type="button" aria-haspopup="menu" aria-controls="preview-action-menu" :disabled="runner.busy.value" @click="menu.toggle($event)">{{ t("Actions") }}</button><Menu id="preview-action-menu" ref="menu" :model="menuItems" popup class="preview-action-menu" @keydown.stop /><RouterLink class="button primary" :to="documentRoute(doc.name)" @click="savePosition">{{ t("Open") }}</RouterLink></div>
 			</header>
 			<dl class="preview-facts"><div v-for="fact in facts" :key="fact.label" class="preview-fact" :class="{ amount: isAmountFact(fact) }"><dt>{{ t(fact.label) }}</dt><dd><RouterLink v-if="fact.to" :to="fact.to" class="record-id preview-chip">{{ fact.value }}</RouterLink><template v-else>{{ fact.value ?? '—' }}</template></dd></div></dl>

@@ -1,4 +1,4 @@
-import { displayName } from "../shell/displayLanguage.js"
+import { attributeValueName, displayName } from "../shell/displayLanguage.js"
 
 export function fact(label, value, route, name = value, { optional = false } = {}) {
 	return { label, value: value == null || value === "" ? "—" : value,
@@ -38,7 +38,7 @@ export function withAttributeColumns(columns, items = []) {
 	const attributes = [...new Set(items.flatMap((row) => Object.keys(row.item_attributes || {})))]
 	if (!attributes.length) return columns
 	const index = columns.findIndex((column) => column.key === "item") + 1
-	const added = attributes.map((attribute) => ({ key: attributeKey(attribute), label: attribute }))
+	const added = attributes.map((attribute) => ({ key: attributeKey(attribute), label: attribute, attribute }))
 	return [...columns.slice(0, index), ...added, ...columns.slice(index)]
 }
 
@@ -54,8 +54,9 @@ export function displayRows(items, columns) {
 }
 
 function cellValue(value, column) {
-	if (value != null && value !== "" && value !== "—") return column.doctype ? displayName(column.doctype, value) : value
-	return column.numeric || column.money ? null : "—"
+	if (value == null || value === "" || value === "—") return column.numeric || column.money ? null : "—"
+	if (column.attribute) return attributeValueName(column.attribute, value)
+	return column.doctype ? displayName(column.doctype, value) : value
 }
 
 const amountFactLabels = new Set(["amount", "grand total", "total dc value"])

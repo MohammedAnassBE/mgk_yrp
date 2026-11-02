@@ -20,7 +20,7 @@ export function currentTerms() {
 
 function tamilIndex(terms) {
 	if (!indexes.has(terms)) {
-		indexes.set(terms, new Map(Object.values(terms).filter((row) => row?.source && row.ta)
+		indexes.set(terms, new Map(Object.values(terms).filter((row) => row?.source && row.ta && !row.keyed)
 			.map((row) => [normalizeTerm(row.source), row.ta])))
 	}
 	return indexes.get(terms)
@@ -37,6 +37,14 @@ export function term(key, fallback = "") {
 	const row = key ? currentTerms()[key] : null
 	if (!row) return fallback
 	return (isTamil.value && row.ta) || row.source || fallback
+}
+
+/** Statuses whose English word means something else elsewhere, such as the Open button. */
+const STATUS_TERMS = Object.freeze({ Open: "mgk.status_open" })
+
+/** Text of a status label for tabs and pills. */
+export function statusText(label) {
+	return STATUS_TERMS[label] ? term(STATUS_TERMS[label], t(label)) : t(label)
 }
 
 export function setTerms(terms) {

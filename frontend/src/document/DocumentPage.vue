@@ -18,7 +18,7 @@ import FieldControl from "./fields/FieldControl.vue"
 import MgkItemEditor from "../item-editor/MgkItemEditor.vue"
 import InvoiceItems from "../documents/purchase-invoice/InvoiceItems.vue"
 import { documentModule } from "../documents/registry.js"
-import { t } from "../shell/terminology.js"
+import { statusText, t } from "../shell/terminology.js"
 import { hasPermission } from "../permissions/usePermissions.js"
 import { visibleFields } from "./fieldConditions.js"
 import { connectedDocuments, summaryFields } from "./documentLayout.js"
@@ -243,7 +243,7 @@ function fieldValue(field) {
 					</section>
 					<section class="po-progress-card">
 						<h2>{{ t('Document status') }}</h2>
-						<p><span class="status" :class="status.className">{{ t(status.label) }}</span></p>
+						<p><span class="status" :class="status.className">{{ statusText(status.label) }}</span></p>
 						<p v-if="doc.__onload?.valuation_pending">{{ t('Valuation is pending.') }}</p>
 						<p v-if="valuationChip"><span class="status" :class="valuationChip.className">{{ t(valuationChip.label) }}</span></p>
 						<p v-else-if="valuationStatus">{{ t('Valuation') }}: {{ t(valuationStatus) }}</p>

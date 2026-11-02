@@ -10,6 +10,7 @@ from mgk_yrp.tests.fixtures import make_item, make_purchase_order, make_supplier
 from mgk_yrp.web.boot import get_boot
 
 TAMIL_PO = "MGK Purchase Order (Tamil)"
+STATUS_OPEN = "mgk.status_open"
 
 
 def term_rows():
@@ -100,3 +101,22 @@ class TestTerminology(IntegrationTestCase):
 	def test_boot_delivers_terms_by_key(self):
 		set_tamil("Save", "பதிவு செய்")
 		self.assertEqual(get_boot()["terms"][term_key("Save")], {"source": "Save", "ta": "பதிவு செய்"})
+
+	def test_open_status_has_its_own_term_and_the_open_button_keeps_its_word(self):
+		row = term_rows()[STATUS_OPEN]
+		self.assertEqual((row.source_text, row.tamil_text), ("Open", "திறந்தவை"))
+		self.assertEqual(translate("Open"), "திற")
+		self.assertEqual(get_boot()["terms"][STATUS_OPEN], {"source": "Open", "ta": "திறந்தவை", "keyed": 1})
+		self.assertEqual(get_boot()["terms"][term_key("Open")], {"source": "Open", "ta": "திற"})
+
+	def test_seeding_keeps_an_edited_status_term_and_restores_a_removed_one(self):
+		doc = frappe.get_doc("YRP UI Terminology", TERMINOLOGY)
+		next(row for row in doc.terms if row.term_key == STATUS_OPEN).tamil_text = "திறந்த நிலை"
+		doc.save(ignore_permissions=True)
+		seed_terms()
+		self.assertEqual(term_rows()[STATUS_OPEN].tamil_text, "திறந்த நிலை")
+		doc = frappe.get_doc("YRP UI Terminology", TERMINOLOGY)
+		doc.terms = [row for row in doc.terms if row.term_key != STATUS_OPEN]
+		doc.save(ignore_permissions=True)
+		seed_terms()
+		self.assertEqual(term_rows()[STATUS_OPEN].tamil_text, "திறந்தவை")

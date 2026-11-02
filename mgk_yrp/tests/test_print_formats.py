@@ -96,6 +96,22 @@ class TestPrintFormats(IntegrationTestCase):
 		self.assertNotIn("PURCHASE ORDER", html)
 		self.assertNotIn(f">{self.template.name}<", html)
 
+	def test_tamil_print_shows_tamil_attribute_values(self):
+		name = frappe.db.get_value(
+			"YRP Item Attribute Value", {"attribute_name": self.attribute, "attribute_value": self.value}
+		)
+		frappe.db.set_value("YRP Item Attribute Value", name, "mgk_tamil_name", "சோதனை மதிப்பு")
+		self.assertEqual(
+			get_print_items(self.order)["rows"][0]["attribute_labels"], {self.attribute: self.value}
+		)
+		self.assertEqual(
+			get_print_items(self.order, tamil=1)["rows"][0]["attribute_labels"],
+			{self.attribute: "சோதனை மதிப்பு"},
+		)
+		html = frappe.get_print(self.order.doctype, self.order.name, print_format=TAMIL_PO)
+		self.assertIn("சோதனை மதிப்பு", html)
+		self.assertNotIn(f">{self.value}<", html)
+
 	def test_tamil_names_fall_back_to_english(self):
 		self.assertEqual(get_print_name("Supplier", self.supplier, tamil=1), self.supplier)
 		self.assertEqual(

@@ -10,6 +10,7 @@ TAMIL_NAMES = {
 	"Warehouse": ("Warehouse Name (Tamil)", "warehouse_name"),
 	"YRP Process": ("Process Name (Tamil)", "process_name"),
 	"Item Group": ("Item Group Name (Tamil)", "item_group_name"),
+	"YRP Item Attribute Value": ("Attribute Value (Tamil)", "attribute_value"),
 }
 FIXTURE = Path(__file__).parents[1] / "fixtures" / "custom_field.json"
 

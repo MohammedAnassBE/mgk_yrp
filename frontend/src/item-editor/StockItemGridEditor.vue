@@ -12,7 +12,7 @@ import { recalculate, usesAttributeColumns } from "./editorModes.js"
 import { splitLines } from "./attributeColumns.js"
 import { clone } from "../document/mappedDraft.js"
 import { formatFieldValue } from "../document/fieldDisplay.js"
-import { displayName } from "../shell/displayLanguage.js"
+import { attributeValueName, displayName } from "../shell/displayLanguage.js"
 import { useLastRates } from "./useLastRates.js"
 
 const props = defineProps({ mode: String, editable: Boolean, permissions: Object, defaults: Object, dimensions: Array, poEntries: Array, hasTransferredQuantity: Boolean,
@@ -101,7 +101,7 @@ defineExpose({ loadData, getItems })
 						<th class="item-column">{{ t('Item') }}</th>
 						<th v-for="dimension in visibleDimensions(group)" :key="dimension.fieldname">{{ t(dimension.label) }}</th>
 						<th v-for="attribute in group.attributes" :key="attribute">{{ attribute }}</th>
-						<th v-for="key in keys(group)" :key="key">{{ key === 'default' ? t('Qty') : key }}</th>
+						<th v-for="key in keys(group)" :key="key">{{ key === 'default' ? t('Qty') : attributeValueName(group.primary_attribute, key) }}</th>
 						<th>{{ t('UOM') }}</th>
 						<th v-if="isFlat(group)">{{ t('Rate') }}</th>
 						<th v-if="isFlat(group)">{{ t('Amount') }}</th>
@@ -116,7 +116,7 @@ defineExpose({ loadData, getItems })
 							<strong>{{ displayName("Item", entry.name) }}</strong>
 						</td>
 						<td v-for="dimension in visibleDimensions(group)" :key="dimension.fieldname">{{ displayName(dimension.options, entry.dimensions?.[dimension.fieldname]) || '—' }}</td>
-						<td v-for="attribute in group.attributes" :key="attribute">{{ entry.attributes?.[attribute] || '—' }}</td>
+						<td v-for="attribute in group.attributes" :key="attribute">{{ attributeValueName(attribute, entry.attributes?.[attribute]) || '—' }}</td>
 						<td v-for="key in keys(group)" :key="key" class="pivot-cell">
 							<template v-if="entry.values[key]">
 								<InputNumber

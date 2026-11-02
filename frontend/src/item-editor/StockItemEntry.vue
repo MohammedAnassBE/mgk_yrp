@@ -8,6 +8,7 @@ import { callRead } from "../api/client.js"
 import { clone } from "../document/mappedDraft.js"
 import { itemFilters as getItemFilters, validateItem } from "./editorModes.js"
 import { attributeLinkProps } from "./attributeValues.js"
+import { attributeValueName } from "../shell/displayLanguage.js"
 
 const props = defineProps({ mode: String, defaults: Object, dimensions: Array, permissions: Object, poEntries: Array, itemGroup: String, editing: Object, disabled: Boolean })
 const emit = defineEmits(["commit", "cancel"])
@@ -137,7 +138,7 @@ function updateCell(key, field, value) {
 					<thead>
 						<tr>
 							<th>{{ details.primary_attribute || t('Quantity') }}</th>
-							<th v-for="key in keys" :key="key">{{ key === 'default' ? t('Qty') : key }}</th>
+							<th v-for="key in keys" :key="key">{{ key === 'default' ? t('Qty') : attributeValueName(details.primary_attribute, key) }}</th>
 						</tr>
 					</thead>
 					<tbody>

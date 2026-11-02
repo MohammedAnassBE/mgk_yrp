@@ -12,7 +12,7 @@ import { canQuickCreate, hasExactMatch, quickCreateLabel } from "./quickCreate.j
 
 const props = defineProps({ modelValue: { default: "" }, doctype: String, label: String, inputId: String,
 	disabled: Boolean, candidates: { type: Array, default: null }, filters: { type: Object, default: () => ({}) }, query: String,
-	searchMethod: String, searchArgs: { type: Object, default: () => ({}) },
+	searchMethod: String, searchArgs: { type: Object, default: () => ({}) }, displayValue: Function,
 	createDoctype: String, createDefaults: { type: Object, default: () => ({}) }, createWith: Function, allowCreate: { type: Boolean, default: true } })
 const emit = defineEmits(["update:modelValue", "select"])
 const { label: selectedLabel, error: labelError } = useLinkLabel(props)
@@ -47,7 +47,7 @@ async function searchOptions(needle) {
 	}
 	if (props.searchMethod) {
 		const values = await callRead(props.searchMethod, { ...props.searchArgs, txt: needle, page_len: 20 })
-		return withTamilNames(props.doctype, (values || []).map((value) => ({ value })))
+		return withTamilNames(props.doctype, (values || []).map((value) => typeof value === "string" ? { value } : value))
 	}
 	const rows = await callRead("frappe.desk.search.search_link", { doctype: props.doctype, txt: needle, filters: props.filters, query: props.query, page_length: 20 })
 	return withTamilNames(props.doctype, rows || [])

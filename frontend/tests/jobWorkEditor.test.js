@@ -273,3 +273,35 @@ test("missing or mixed-template UOM metadata clears stale units and empty cells 
 	setCellValue(entry, "S", "qty", 2)
 	assert.deepEqual(entry.values.S, { qty: 2, rate: 0, is_prefilled: 1 })
 })
+
+test("Tamil mode names attribute values in editable cells, both-language suggestions and read-only cells", async () => {
+	const { setLanguage, tamilNamesSettled } = await import("../src/shell/displayLanguage.js")
+	const network = mockFetch((method, args) => {
+		if (method.endsWith(".search_item_attribute_values")) return [{ value: "Blue", tamil: "நீலம்" }, { value: "Red", tamil: "" }]
+		if (method === "frappe.client.get_list" && args.doctype === "YRP Item Attribute Value") {
+			return [{ name: "IAV-RAW", attribute_name: "Colour", attribute_value: "Raw", mgk_tamil_name: "கச்சா" },
+				{ name: "IAV-BLUE", attribute_name: "Colour", attribute_value: "Blue", mgk_tamil_name: "நீலம்" }]
+		}
+	})
+	setLanguage("ta")
+	try {
+		const page = await mountEditor()
+		try {
+			await tamilNamesSettled(); await settle()
+			const colour = input(page.root, "Colour")
+			assert.equal(colour.props.value, "கச்சா")
+			await colour.props.onFocus()
+			await settle()
+			const rows = nodes(page.root, (node) => node.tag === "li")
+			assert.deepEqual(rows.map((row) => nodes(row, (node) => ["strong", "small"].includes(node.tag)).map(textContent)), [["நீலம்", "Blue"], ["Red"]])
+			rows[0].props.onMousedown({ preventDefault() {} })
+			await settle()
+			assert.equal(page.editor.value.getItems()[0].items[0].attributes.Colour, "Blue", "the stored value stays English")
+		} finally { page.close() }
+		const readOnly = await mountEditor({ editable: false })
+		try {
+			await tamilNamesSettled(); await settle()
+			assert.ok(textContent(readOnly.root).includes("கச்சா"))
+		} finally { readOnly.close() }
+	} finally { setLanguage("en"); network.restore() }
+})

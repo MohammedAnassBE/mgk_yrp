@@ -1,11 +1,12 @@
 import { computed, reactive, ref } from "vue"
 import { callRead } from "../api/client.js"
-import { t } from "./terminology.js"
+import { statusText } from "./terminology.js"
 
 export const ENGLISH = "en"
 export const TAMIL = "ta"
 export const TAMIL_NAME_FIELD = "mgk_tamil_name"
-export const TAMIL_NAME_DOCTYPES = Object.freeze(["Item", "Supplier", "Warehouse", "MGK Agent", "YRP Process", "Item Group"])
+export const ATTRIBUTE_VALUE = "YRP Item Attribute Value"
+export const TAMIL_NAME_DOCTYPES = Object.freeze(["Item", "Supplier", "Warehouse", "MGK Agent", "YRP Process", "Item Group", ATTRIBUTE_VALUE])
 const LANGUAGES = new Set([ENGLISH, TAMIL])
 
 function storageKey() {
@@ -28,7 +29,7 @@ export const isTamil = computed(() => language.value === TAMIL)
 
 export function setLanguage(value) {
 	const next = LANGUAGES.has(value) ? value : ENGLISH
-	if (next === TAMIL && language.value !== TAMIL) requested.clear()
+	if (next === TAMIL && language.value !== TAMIL) { requested.clear(); requestedPairs.clear() }
 	language.value = next
 	try {
 		globalThis.window?.localStorage?.setItem(storageKey(), language.value)
@@ -54,12 +55,15 @@ export const LINK_FIELD_DOCTYPES = Object.freeze({
 })
 /** Each master's English title field, used where a master's own list shows its title. */
 export const TITLE_FIELDS = Object.freeze({ Item: "item_name", Supplier: "supplier_name", Warehouse: "warehouse_name", "MGK Agent": "agent_name",
-	"YRP Process": "process_name", "Item Group": "item_group_name" })
+	"YRP Process": "process_name", "Item Group": "item_group_name", [ATTRIBUTE_VALUE]: "attribute_value" })
 const LOOKUP_CHUNK = 100
 const tamilNames = reactive({})
 const englishTitles = reactive({})
 const variantTemplates = reactive({})
 const requested = new Set()
+const pairTamilNames = reactive({})
+const requestedPairs = new Set()
+const ATTRIBUTE_TARGET = "attribute\u0000"
 const queued = new Map()
 const inFlight = new Set()
 let flushScheduled = false
@@ -127,8 +131,8 @@ export async function tamilNamesSettled() {
 	while (flushScheduled || inFlight.size) await Promise.all([Promise.resolve(), ...inFlight])
 }
 
-function queueLookup(doctype, name, key) {
-	requested.add(key)
+function queueLookup(doctype, name, key, seen = requested) {
+	seen.add(key)
 	if (!queued.has(doctype)) queued.set(doctype, new Set())
 	queued.get(doctype).add(name)
 	if (flushScheduled) return
@@ -138,7 +142,8 @@ function queueLookup(doctype, name, key) {
 		const batches = [...queued]
 		queued.clear()
 		for (const [target, names] of batches) {
-			const lookup = fetchTamilNames(target, [...names])
+			const lookup = target.startsWith(ATTRIBUTE_TARGET)
+				? fetchAttributeValues(target.slice(ATTRIBUTE_TARGET.length), [...names]) : fetchTamilNames(target, [...names])
 			inFlight.add(lookup)
 			lookup.finally(() => inFlight.delete(lookup))
 		}
@@ -160,11 +165,48 @@ async function fetchTamilNames(doctype, names) {
 	}
 }
 
+/**
+ * What to show for an attribute value, which items store as plain text under its attribute.
+ * Tamil mode: the value's Tamil name, else the value; a miss queues one batched lookup per attribute.
+ */
+export function attributeValueName(attribute, value) {
+	return (isTamil.value && storedAttributeValueTamil(attribute, value)) || value
+}
+
+export function storedAttributeValueTamil(attribute, value) {
+	if (!attribute || !value) return ""
+	const key = cacheKey(attribute, String(value))
+	if (!requestedPairs.has(key)) queueLookup(`${ATTRIBUTE_TARGET}${attribute}`, String(value), key, requestedPairs)
+	return pairTamilNames[key] || ""
+}
+
+/** Drops a cached attribute value so a newly saved Tamil name shows. */
+export function forgetAttributeValue(attribute, value) {
+	const key = cacheKey(attribute, String(value))
+	requestedPairs.delete(key)
+	delete pairTamilNames[key]
+}
+
+async function fetchAttributeValues(attribute, values) {
+	for (let start = 0; start < values.length; start += LOOKUP_CHUNK) {
+		const chunk = values.slice(start, start + LOOKUP_CHUNK)
+		try {
+			const rows = await callRead("frappe.client.get_list", { doctype: ATTRIBUTE_VALUE, limit_page_length: chunk.length,
+				fields: ["name", "attribute_name", "attribute_value", TAMIL_NAME_FIELD],
+				filters: [["attribute_name", "=", attribute], ["attribute_value", "in", chunk]] })
+			for (const row of rows) pairTamilNames[cacheKey(attribute, row.attribute_value)] = row[TAMIL_NAME_FIELD] || ""
+			rememberTamilNames(ATTRIBUTE_VALUE, rows)
+		} catch {
+			for (const value of chunk) requestedPairs.delete(cacheKey(attribute, value))
+		}
+	}
+}
+
 /** List tab label: Tamil mode prefers the tab's Item Group Tamil name, then the tab label's term. */
 export function tabLabel(tab) {
 	if (!isTamil.value) return tab.label
 	const group = (tab.filters || []).find(([fieldname, operator]) => fieldname === "item_group" && operator === "=")
-	return (group && tamilName("Item Group", group[2])) || t(tab.label)
+	return (group && tamilName("Item Group", group[2])) || statusText(tab.label)
 }
 
 /** Adds `tamil` to Link suggestions in both languages; the stored value stays the record name. */

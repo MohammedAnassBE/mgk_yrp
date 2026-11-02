@@ -3,12 +3,23 @@ from unittest import TestCase
 import frappe
 from frappe.desk.search import search_link
 
-TAMIL_NAME_DOCTYPES = ("Item", "Supplier", "Warehouse", "MGK Agent", "YRP Process", "Item Group")
+from mgk_yrp.tests.fixtures import make_item_attribute
+
+TAMIL_NAME_DOCTYPES = (
+	"Item",
+	"Supplier",
+	"Warehouse",
+	"MGK Agent",
+	"YRP Process",
+	"Item Group",
+	"YRP Item Attribute Value",
+)
 BASE_SEARCH_FIELDS = {
 	"Item": ["item_name", "description", "item_group", "customer_code"],
 	"Supplier": ["supplier_group", "alias"],
 	"MGK Agent": ["agent_name"],
 	"Item Group": ["parent_item_group"],
+	"YRP Item Attribute Value": ["attribute_name", "attribute_value"],
 }
 
 
@@ -36,3 +47,12 @@ class TestTamilSearch(TestCase):
 		).insert(ignore_permissions=True)
 		values = [row["value"] for row in search_link("MGK Agent", "முகவர்")]
 		self.assertIn(agent.name, values)
+
+	def test_search_link_finds_attribute_value_by_tamil_name(self):
+		attribute, value = make_item_attribute()
+		name = frappe.db.get_value(
+			"YRP Item Attribute Value", {"attribute_name": attribute["attribute"], "attribute_value": value}
+		)
+		frappe.db.set_value("YRP Item Attribute Value", name, "mgk_tamil_name", "தேடல் நீலம்")
+		values = [row["value"] for row in search_link("YRP Item Attribute Value", "நீலம்")]
+		self.assertIn(name, values)

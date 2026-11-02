@@ -6,7 +6,7 @@ import InputNumber from "primevue/inputnumber"
 import Select from "primevue/select"
 import LinkField from "../document/fields/LinkField.vue"
 import { formatFieldValue } from "../document/fieldDisplay.js"
-import { displayName } from "../shell/displayLanguage.js"
+import { attributeValueName, displayName } from "../shell/displayLanguage.js"
 import { columnOptions, loadDimensionOptions, nonPrimaryAttributes, refreshEntryUom, setCellValue, sizes } from "./attributeColumns.js"
 import { attributeLinkProps } from "./attributeValues.js"
 
@@ -98,7 +98,7 @@ function removeSelected() {
 					<th>{{ t('Item') }}</th>
 					<th v-for="dimension in dimensions" :key="dimension.fieldname">{{ t(dimension.label) }}</th>
 					<th v-for="attribute in nonPrimaryAttributes(group)" :key="attribute">{{ attribute }}</th>
-					<th v-for="size in sizes(group)" :key="size">{{ size === 'default' ? t('Quantity') : size }}</th>
+					<th v-for="size in sizes(group)" :key="size">{{ size === 'default' ? t('Quantity') : attributeValueName(group.primary_attribute, size) }}</th>
 					<th>{{ t('UOM') }}</th>
 					<th v-if="mode !== 'plan'">{{ t('Rate') }}</th>
 					<th v-if="hasTransferredQuantity">{{ t('Transferred Qty') }}</th>
@@ -119,7 +119,7 @@ function removeSelected() {
 					<td v-for="attribute in nonPrimaryAttributes(group)" :key="attribute">
 						<LinkField v-if="editable" :label="attribute" :model-value="entry.attributes?.[attribute] || ''"
 							v-bind="attributeLinkProps(entry.name, attribute)" @update:model-value="setAttribute(group, entry, attribute, $event)" />
-						<span v-else>{{ entry.attributes?.[attribute] || '—' }}</span>
+						<span v-else>{{ attributeValueName(attribute, entry.attributes?.[attribute]) || '—' }}</span>
 					</td>
 					<td v-for="size in sizes(group)" :key="size" class="pivot-cell">
 						<InputNumber v-if="editable" :model-value="Number(entry.values[size]?.qty) || 0" :min="0" :max-fraction-digits="6" fluid
@@ -134,7 +134,7 @@ function removeSelected() {
 						<span v-else>{{ money(getRowRate(entry)) }}</span>
 					</td>
 					<td v-if="hasTransferredQuantity">
-						<div v-for="size in sizes(group)" :key="size">{{ size === 'default' ? '' : `${size}: ` }}{{ entry.values[size]?.transferred_qty || 0 }} {{ entry.values[size]?.uom || entry.default_uom }}</div>
+						<div v-for="size in sizes(group)" :key="size">{{ size === 'default' ? '' : `${attributeValueName(group.primary_attribute, size)}: ` }}{{ entry.values[size]?.transferred_qty || 0 }} {{ entry.values[size]?.uom || entry.default_uom }}</div>
 					</td>
 					<td v-if="mode !== 'plan'" class="numeric">{{ money(getRowAmount(group, entry)) }}</td>
 					<td v-if="editable" class="actions-column"><div class="row-actions">

@@ -15,7 +15,7 @@
 	<tr>
 		<td class="center">{{ loop.index }}</td>
 		<td>{{ row.item_label }}</td>
-		{% for attribute in items.attributes %}<td>{{ row.item_attributes.get(attribute) or "" }}</td>{% endfor %}
+		{% for attribute in items.attributes %}<td>{{ row.attribute_labels.get(attribute) or "" }}</td>{% endfor %}
 		{% if items.has_received_type %}<td>{{ row.received_type or "" }}</td>{% endif %}
 		<td class="numeric">{{ frappe.format(row.qty, {"fieldtype": "Float"}) }}</td>
 		<td>{{ row.uom or "" }}</td>

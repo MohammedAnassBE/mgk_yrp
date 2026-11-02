@@ -2,7 +2,7 @@ import test from "node:test"
 import assert from "node:assert/strict"
 import { mountComponent, textContent, settle } from "./helpers/component.js"
 import { clearReadCaches } from "../src/api/client.js"
-import { displayName, fieldDisplayName, setLanguage, tamilNamesSettled } from "../src/shell/displayLanguage.js"
+import { attributeValueName, displayName, fieldDisplayName, setLanguage, tamilNamesSettled } from "../src/shell/displayLanguage.js"
 import { formatFieldValue } from "../src/document/fieldDisplay.js"
 import { recordParty } from "../src/list/useSplitSelection.js"
 import { filterLabel } from "../src/list/clickFilters.js"
@@ -18,6 +18,9 @@ const masters = {
 	"MGK Agent": [{ name: "AGT-1", mgk_tamil_name: "முகவர்", agent_name: "Agent One" }],
 	Item: [{ name: "Yarn 30's", mgk_tamil_name: "நூல் 30", item_name: "Yarn 30's", variant_of: null },
 		{ name: "Yarn 30's-Grey", mgk_tamil_name: "", item_name: "Yarn 30's-Grey", variant_of: "Yarn 30's" }],
+	"YRP Item Attribute Value": [{ name: "IAV-1", attribute_name: "Colour", attribute_value: "Grey", mgk_tamil_name: "சாம்பல்" },
+		{ name: "IAV-2", attribute_name: "Colour", attribute_value: "Red", mgk_tamil_name: "" },
+		{ name: "IAV-3", attribute_name: "Shade", attribute_value: "Grey", mgk_tamil_name: "சாம்பல் நிழல்" }],
 }
 
 function stubLists() {
@@ -28,9 +31,11 @@ function stubLists() {
 		let message = []
 		if (String(url).includes("frappe.client.get_list")) {
 			const doctype = params.get("doctype")
-			const names = JSON.parse(params.get("filters"))[0][2]
-			calls.push({ doctype, names, fields: JSON.parse(params.get("fields")) })
-			message = (masters[doctype] || []).filter((row) => names.includes(row.name))
+			const filters = JSON.parse(params.get("filters"))
+			const names = filters.at(-1)[2]
+			calls.push({ doctype, names, filters, fields: JSON.parse(params.get("fields")) })
+			message = (masters[doctype] || []).filter((row) => filters.every(([field, operator, value]) =>
+				operator === "in" ? value.includes(row[field]) : row[field] === value))
 		}
 		return { ok: true, status: 200, json: async () => ({ message }) }
 	}
@@ -84,6 +89,27 @@ test("an item variant shows its template's Tamil name with the English variant s
 	} finally { stub.restore() }
 })
 
+test("attribute values show their Tamil name per attribute with one lookup per attribute", async () => {
+	const stub = stubLists()
+	try {
+		assert.equal(attributeValueName("Colour", "Grey"), "Grey")
+		assert.equal(stub.calls.length, 0, "English mode makes no lookup")
+		setLanguage("ta")
+		const read = () => ["Grey", "Red", "Navy"].map((value) => attributeValueName("Colour", value)).concat(attributeValueName("Shade", "Grey"))
+		assert.deepEqual(read(), ["Grey", "Red", "Navy", "Grey"])
+		await resolved()
+		assert.deepEqual(read(), ["சாம்பல்", "Red", "Navy", "சாம்பல் நிழல்"])
+		assert.deepEqual(stub.calls.map((call) => [call.doctype, call.filters[0][2], call.names]),
+			[["YRP Item Attribute Value", "Colour", ["Grey", "Red", "Navy"]], ["YRP Item Attribute Value", "Shade", ["Grey"]]])
+		read()
+		await resolved()
+		assert.equal(stub.calls.length, 2, "cached after the first lookup")
+		assert.equal(displayName("YRP Item Attribute Value", "IAV-1"), "சாம்பல்")
+		setLanguage("en")
+		assert.equal(attributeValueName("Colour", "Grey"), "Grey")
+	} finally { stub.restore() }
+})
+
 test("read-only values, summaries, previews, list parties and filters switch with the toggle", async () => {
 	const stub = stubLists()
 	const doc = { name: "MGK-PO-26-00001", docstatus: 1, supplier: "Buying Supplier", delivery_location: "MGK Main",
@@ -111,7 +137,7 @@ test("read-only values, summaries, previews, list parties and filters switch wit
 		assert.equal(tamil.summary["Delivery to"], "எம்ஜிகே மெயின்")
 		assert.equal(tamil.previewFacts["Deliver To"], "எம்ஜிகே மெயின் / கிடங்கு")
 		assert.equal(tamil.poItem.item, "நூல் 30")
-		assert.equal(tamil.poItem["attribute:Colour"], "Grey")
+		assert.equal(tamil.poItem["attribute:Colour"], "சாம்பல்")
 		assert.equal(tamil.poItem.received_type, "Fresh")
 		assert.equal(tamil.grnItem, "நூல் 30")
 		assert.equal(tamil.field, "எம்ஜிகே மெயின்")

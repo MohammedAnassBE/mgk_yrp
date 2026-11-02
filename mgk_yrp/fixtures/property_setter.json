@@ -97,5 +97,16 @@
   "property": "search_fields",
   "property_type": "Data",
   "value": "parent_item_group,mgk_tamil_name"
+ },
+ {
+  "doctype": "Property Setter",
+  "name": "YRP Item Attribute Value-main-search_fields",
+  "module": "MGK YRP",
+  "doc_type": "YRP Item Attribute Value",
+  "doctype_or_field": "DocType",
+  "field_name": null,
+  "property": "search_fields",
+  "property_type": "Data",
+  "value": "attribute_name,attribute_value,mgk_tamil_name"
  }
 ]

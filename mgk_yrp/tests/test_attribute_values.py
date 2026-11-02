@@ -9,6 +9,7 @@ from yrp.yrp.doctype.yrp_item.yrp_item import (
 )
 
 from mgk_yrp.stock.attribute_values import create_attribute_value
+from mgk_yrp.stock.attribute_values import search_item_attribute_values as search_with_tamil
 from mgk_yrp.tests.fixtures import make_item_attribute, make_item_group, make_uom
 
 
@@ -106,3 +107,39 @@ class TestCreateAttributeValue(IntegrationTestCase):
 		):
 			create_attribute_value(item, attribute["attribute"], "Grey")
 		self.assertEqual(len(item_values(item)), 1)
+
+	def test_tamil_name_is_saved_on_a_new_value(self):
+		attribute, _ = make_item_attribute()
+		item = make_item_with(attribute)
+		create_attribute_value(item, attribute["attribute"], "Grey", tamil_name=" சாம்பல் ")
+		self.assertEqual(tamil_name(attribute["attribute"], "Grey"), "சாம்பல்")
+
+	def test_tamil_name_fills_an_existing_value_without_one(self):
+		attribute, existing = make_item_attribute()
+		item = make_item_with(attribute)
+		create_attribute_value(item, attribute["attribute"], existing, tamil_name="நீலம்")
+		create_attribute_value(item, attribute["attribute"], existing, tamil_name="மாற்றம்")
+		self.assertEqual(tamil_name(attribute["attribute"], existing), "நீலம்")
+
+
+def tamil_name(attribute, value):
+	return frappe.db.get_value(
+		"YRP Item Attribute Value", {"attribute_name": attribute, "attribute_value": value}, "mgk_tamil_name"
+	)
+
+
+class TestSearchAttributeValues(IntegrationTestCase):
+	def test_suggestions_carry_tamil_names_and_match_tamil_text(self):
+		attribute, existing = make_item_attribute()
+		item = make_item_with(attribute)
+		create_attribute_value(item, attribute["attribute"], "Grey", tamil_name="சாம்பல்")
+		self.assertEqual(
+			search_with_tamil("", attribute["attribute"], item),
+			[{"value": existing, "tamil": ""}, {"value": "Grey", "tamil": "சாம்பல்"}],
+		)
+		self.assertEqual(
+			search_with_tamil("சாம்", attribute["attribute"], item), [{"value": "Grey", "tamil": "சாம்பல்"}]
+		)
+		self.assertEqual(
+			search_with_tamil("gr", attribute["attribute"], item, page_len=1)[0]["value"], "Grey"
+		)
